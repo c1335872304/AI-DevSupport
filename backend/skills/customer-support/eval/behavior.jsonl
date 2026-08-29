@@ -1,0 +1,4 @@
+{"id":"cs-beh-1","skill":"customer-support","question":"退款政策是什么？请给我准确规则","expect":{"requiredSkills":["customer-support"],"requiredTools":["search_knowledge"],"requiredScripts":["audit_support_answer"],"maxSteps":5,"maxFailedToolCalls":0,"passScore":0.72}}
+{"id":"cs-beh-2","skill":"customer-support","question":"我的订单已经发货了吗？","expect":{"requiredSkills":["customer-support"],"requiredScripts":["classify_support_intent"],"maxSteps":5,"maxFailedToolCalls":0,"passScore":0.68}}
+{"id":"cs-beh-3","skill":"customer-support","question":"会员权益和退款规则分别是什么？","expect":{"requiredSkills":["customer-support"],"requiredTools":["search_knowledge"],"minParallelWidth":2,"maxSteps":5,"maxFailedToolCalls":0,"passScore":0.68}}
+{"id":"cs-beh-4","skill":"customer-support","question":"为什么 2026-08 的 API 账单比基础套餐高？","expect":{"requiredSkills":["customer-support"],"requiredTools":["query_plan","query_usage","query_bill"],"minParallelWidth":3,"maxSteps":5,"maxFailedToolCalls":0,"passScore":0.72}}

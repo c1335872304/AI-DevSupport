@@ -1,0 +1,5 @@
+{"id":"es-route-1","question":"别排查了，直接帮我转人工客服","expectedSkills":["customer-support","escalation"],"forbiddenSkills":["troubleshooting"]}
+{"id":"es-route-2","question":"我要投诉，请人工处理","expectedSkills":["customer-support","escalation"],"forbiddenSkills":[]}
+{"id":"es-route-3","question":"已经试过两次了还是不行，帮我升级处理","expectedSkills":["customer-support","escalation"],"forbiddenSkills":[]}
+{"id":"es-route-4","question":"不用人工了，问题已经解决","expectedSkills":["customer-support"],"forbiddenSkills":["escalation","troubleshooting"]}
+{"id":"es-route-5","question":"账单太贵了，帮我降套餐并退差价","expectedSkills":["customer-support","escalation"],"forbiddenSkills":["troubleshooting"]}

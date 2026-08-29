@@ -1,270 +1,401 @@
-# AI-DevSupport：面向 API 开放平台的多智能体技术支持系统
+# PaiSmart
 
-AI-DevSupport 是一个面向 API 开放平台技术支持场景的研究型原型系统。项目关注的问题是：当开发者遇到鉴权失败、接口限流、签名错误、账单异常等问题时，如何让大语言模型不仅回答文档问题，还能够结合调用日志、账户状态和业务规则完成可解释的诊断，并在风险较高或证据不足时安全地转交人工处理。
+PaiSmart 是一个面向企业业务场景的 **AI 客服 Agent**。它的核心目标不是做通用研究，而是围绕客服闭环完成三件事：**准确回答客户问题、结构化排查故障、在需要时可靠转交人工客服**。
 
-本项目采用多智能体协作与检索增强生成（RAG）相结合的方法，将意图识别、文档检索、API 故障诊断、账单分析、工单处理和敏感信息审查组织为一条完整工作流。系统定位为课程设计或科研实践原型，重点验证多智能体编排在技术支持任务中的可行性，而非直接用于生产环境。
+系统使用 **LangGraph StateGraph** 编排客服工作流，Skill 驱动客服行为，LLM 通过统一 Tool Runtime 调用客服知识库、本地业务能力和外部 MCP 系统；同一轮中无依赖且安全的 Tool 会并行执行。RAG 用于回答企业政策、产品说明、FAQ 和排障知识，MCP Client 用于连接订单、支付、账户、CRM 等真实业务系统，人工升级则通过持久化客服工单闭环。
 
-## 研究目标
+> 当前代码版本：`0.14.0`。仓库文档只描述当前 AI 客服架构，不保留历史版本说明。
 
-项目主要围绕以下问题展开：
+## 先看什么
 
-1. 如何根据用户问题动态选择文档问答、故障诊断和账单分析等不同能力；
-2. 如何联合结构化业务数据与非结构化文档，提高回答的依据完整性；
-3. 如何记录智能体执行过程，使诊断结果可以追踪和复核；
-4. 如何在模型输出前执行统一的敏感信息检测与人工兜底策略；
-5. 如何通过评估集、链路耗时和 Token 用量对系统效果进行初步分析。
+第一次阅读项目建议按这个顺序：
 
-## 系统功能
+1. [架构与职责边界](docs/ARCHITECTURE.md)
+2. [本地启动](docs/GETTING_STARTED.md)
+3. [客服 Agent、Skill、Tool 与 MCP](docs/AGENT_AND_SKILLS.md)
+4. [客服知识库与 RAG](docs/KNOWLEDGE_PIPELINE.md)
+5. [客服质量评测](docs/EVALUATION.md)
+6. [生产部署](docs/PRODUCTION.md)
 
-| 功能 | 说明 |
-| --- | --- |
-| 文档问答 | 对 API 接入、签名、回调、计费等知识进行混合检索、重排和引用式回答 |
-| API 故障诊断 | 结合 request_id、调用日志、错误码和 API Key 状态生成诊断结论与修复建议 |
-| 账单分析 | 对比不同月份的调用量和费用构成，解释费用变化 |
-| 多智能体编排 | 根据问题意图调度一个或多个专业 Agent，并对结果进行汇总 |
-| 工单流转 | 在证据不足、操作风险较高或模型无法处理时创建人工工单 |
-| 安全审查 | 对 API Key、Secret、Token、手机号、邮箱、身份证号和银行卡号等信息进行检测与脱敏 |
-| 链路观测 | 展示节点耗时、模型调用、命中文档和 Token 用量 |
+完整文档导航见 [docs/README.md](docs/README.md)。
 
-可以使用以下问题观察系统在不同任务下的处理过程：
+## 产品主链路
 
-```text
-我调用实名认证接口一直返回 401。
-今天下午出现很多 429，是不是服务故障？
-接口签名应该如何生成？
-为什么这个月的费用比上个月高？
+```mermaid
+flowchart TD
+    U[Customer] --> FE[Vue Chat UI]
+    FE --> API[FastAPI HTTP / WebSocket]
+    API --> GEN[Detached Generation Runtime]
+    GEN --> LG[LangGraph Customer Service Workflow]
+    LG --> AGENT[LLM Agent Decision]
+
+    AGENT --> BASE[customer-support\nDefault Skill]
+    BASE --> TS[troubleshooting\nwhen needed]
+    BASE --> ES[escalation\nwhen needed]
+
+    AGENT --> TOOLS[Tool Registry]
+    TOOLS --> KB[Customer-service Knowledge Tool]
+    TOOLS --> BIZ[Business / MCP Tools]
+    TOOLS --> HANDOFF[Support Handoff Tool]
+    TOOLS --> SCRIPT[Controlled Skill Scripts]
+
+    KB --> RAG[Hybrid RAG / Reranker / Parent-Child]
+    BIZ --> EXT[Order / Payment / Account / CRM]
+    HANDOFF --> TICKET[(Support Handoff)]
+
+    AGENT -. trace .-> TRACE[(Agent / Tool Trace)]
+    AGENT -. eval .-> EVAL[Customer-service Eval]
 ```
 
-## 方法与架构
+## 客服 Skill
 
-系统的主要处理流程为：
-
-```text
-用户请求
-   ↓
-身份认证与租户隔离
-   ↓
-意图识别与任务路由
-   ↓
-文档问答 / API 诊断 / 账单分析（按需执行）
-   ↓
-结果汇总与工单判断
-   ↓
-敏感信息审查
-   ↓
-流式返回与链路记录
-```
-
-整体实现分为三层：
-
-- 交互层：使用 FastAPI 提供 REST 与 SSE 接口，React 实现用户端和内部工作台；
-- 智能体层：使用 LangGraph 组织意图路由、专业 Agent、结果汇总与安全审查；
-- 数据与工具层：使用 MySQL 保存业务数据，Milvus 保存知识向量，Redis 管理缓存和会话，并通过工具接口向 Agent 提供结构化证据。
-
-安全审查位于输出流程末端，避免不同专业 Agent 绕过统一脱敏规则。对套餐变更、退款和密钥重置等高风险操作，当前原型仅进行工单转交，不允许模型直接执行。
-
-## 技术栈
-
-| 模块 | 技术 |
-| --- | --- |
-| 后端 | Python 3.11+、FastAPI、LangGraph、SQLAlchemy |
-| 模型服务 | DashScope OpenAI 兼容接口、Qwen、text-embedding-v3、gte-rerank-v2 |
-| 数据存储 | MySQL 8、Redis 7、Milvus 2.4、MinIO |
-| 前端 | React 18、TypeScript、Vite、Ant Design、React Flow |
-| 工程与评估 | Docker Compose、pytest、评估集、并发压测脚本 |
-
-## 项目结构
+当前只保留与 AI 客服直接相关的三个 Skill：
 
 ```text
-AI-DevSupport/
-├── backend/
-│   ├── app/          # API、Agent、RAG、工具、安全与可观测模块
-│   ├── scripts/      # 建表、种子数据和知识库入库脚本
-│   ├── eval/         # 功能与安全评估集
-│   └── benchmark/    # 并发压测脚本
-├── frontend/         # React 前端
-├── data/knowledge/   # RAG 使用的领域文档
-├── docker-compose.yml
-└── Makefile
+customer-support   默认客服应答：理解诉求、查知识、区分政策与个人账户事实、给下一步
+troubleshooting    故障排查：结构化症状、最短诊断路径、避免高风险操作、判断停止排障
+escalation         人工升级：判断升级、整理上下文、创建真实工单、返回 handoffId
 ```
 
-## 运行环境
+其中 `customer-support` 是默认 Skill。普通客服消息不需要“命中关键词”才能使用 Skill；只有故障或人工升级场景才叠加 specialist Skill。
 
-运行项目前需要准备：
+例如：
 
-- Docker 与 Docker Compose v2；
-- Python 3.11 或更高版本，推荐 Python 3.11；
-- Node.js 18 或更高版本，推荐 Node.js 20 LTS；
-- 可用的 DashScope API Key。
+```text
+“退款政策是什么？”
+customer-support
+    -> search_knowledge
+    -> grounded answer
 
-模型、Embedding 和 Rerank 请求会调用外部服务，可能产生费用。请勿将真实 API Key 提交到代码仓库。
+“登录一直报 E401”
+customer-support + troubleshooting
+    -> classify failure
+    -> search_knowledge
+    -> diagnostic plan
 
-## 快速复现
+“别排查了，直接转人工”
+customer-support + escalation
+    -> build handoff summary
+    -> create_support_handoff
+    -> return real handoffId
+```
 
-### 1. 安装后端依赖
 
-Linux 或 macOS：
+## LangGraph 客服工作流
+
+当前主执行路径使用真实 `StateGraph`，不是仅保留依赖或示例文件：
+
+```text
+START
+  -> load_context
+  -> skill_route
+  -> agent_decide
+       |
+       |-- tool_calls ------> execute_tools --┐
+       |-- handoff tool ---> handoff ---------┤
+       |                                      |
+       └<-------------------------------------┘
+       |
+       |-- max steps ------> force_finalize
+       |-- final answer ---> safety
+                              -> emit_final
+                              -> persist_trace
+                              -> END
+```
+
+LangGraph 负责**状态与阶段路由**；Tool Runtime 继续负责 Schema、权限、Scope、超时、并发和部分失败。RAG、MCP、Skill Script 都不会被拆成大量图节点，避免工作流图过度复杂。
+
+同一轮 LLM 返回多个独立 Tool Call 时，`execute_tools` 节点内部仍通过异步执行器并行处理；需要前序结果的 Tool 由下一轮 `agent_decide` 自然形成动态依赖。
+
+## Tool 与 MCP
+
+当前核心本地 Tool 包括：
+
+- `search_knowledge`：查询客服知识库（原 `doc_rag` 能力已经升级到 Hybrid RAG Tool）。
+- `query_call_log` / `query_api_key_status` / `query_recent_call_stats` / `query_error_code`：API 技术支持诊断能力。
+- `query_plan` / `query_usage` / `query_bill`：客户套餐、调用量和账单真实数据查询。
+- `create_support_handoff` / `get_support_handoff`：真实人工客服工单闭环。
+- `list_documents` / `get_document`：知识文档访问能力。
+- `activate_skill` / `read_skill_reference` / `run_skill_script`：Skill Runtime 能力。
+
+原始 AI-DevSupport 的三个专业 Agent 没有以旧式子 Agent 文件重新引入，而是按当前职责重构：
+
+```text
+API Diagnostic Agent -> troubleshooting Skill + 4 API diagnostic Tools
+Billing Agent        -> customer-support Skill + 3 billing Tools
+Doc RAG Agent        -> search_knowledge + Hybrid RAG
+```
+
+因此 LangGraph 仍负责编排客服工作流，专业能力由 Skill 决定“怎么做”，Tool 负责查询真实数据。
+
+真实订单、支付、账户、物流、CRM 等**客户特定数据不应该由知识库猜测**。推荐通过外部 MCP Server 或本地业务 Tool 接入。V14 增加稳定 Business MCP Adapter：Agent 始终调用 `query_call_log / query_plan / query_bill` 等固定 Tool 名，部署时只需把 `BUSINESS_TOOL_BACKEND` 从 `local` 切到 `mcp` 并配置映射，无需修改 LangGraph、Skill 或 Prompt。
+
+
+```text
+PaiSmart Agent
+   -> MCP Client Adapter
+      -> Order MCP
+      -> Payment MCP
+      -> Account MCP
+      -> CRM MCP
+```
+
+LLM 能看到 Tool Schema，但看不到数据库凭据、JWT Secret、MCP Secret 或 Tool 内部实现。Tool Runtime 统一执行参数校验、权限、Scope、超时、错误处理和 Trace。
+
+## 无依赖 Tool 并行
+
+客服场景中互不依赖的查询可以同轮并行。例如处理“钱扣了但会员没到账”时，未来接入对应业务 MCP 后可以同时执行：
+
+```text
+search_knowledge(payment policy) ─┐
+get_payment_record(customer) ─────┼─ parallel
+get_subscription_status(customer) ┘
+                 ↓
+            LLM 综合判断
+```
+
+并行调度发生在 LangGraph 的 `execute_tools` / `handoff` 执行阶段内部，不依赖 Skill Prompt，也不会因为 MCP 化而丢失。
+
+## 客服知识库
+
+知识库服务于：
+
+```text
+产品说明
+FAQ
+退款/会员/售后政策
+使用流程
+错误码与排障手册
+客服 SOP 中可公开给模型的知识
+```
+
+RAG 链路：
+
+```text
+Document + Customer-service Metadata
+ -> Parse
+ -> Parent / Child Chunking
+ -> Child Embedding
+ -> Versioned DB + Elasticsearch Index
+ -> ACL + Metadata Filter
+ -> BM25 + Vector KNN Hybrid Recall
+ -> RRF
+ -> Reranker
+ -> Parent Expansion
+ -> Context Budget
+ -> Agent Tool Result
+```
+
+当前知识元数据支持 `category / product / region / channel / effective_date / version / error_code / plan`。`search_knowledge` 可以把这些条件在召回前下推到 Elasticsearch，例如先限定 `category=rate_limit + product=API Platform + channel=api`，再执行 BM25/KNN，避免无关产品或过期政策进入候选集。
+
+知识库只能回答通用或文档事实。诸如“我的订单是否发货”“我的退款是否到账”必须由业务 Tool/MCP 验证；没有工具时 Agent 要明确说明无法核实，不能用 RAG 猜测个人状态。
+
+## 内置 Demo 客服知识库
+
+为了让项目 Clone 后不必先准备 PDF，仓库自带一套小型但可真实建库的 AI 客服知识：
+
+```text
+backend/demo_knowledge/
+├── api-getting-started.md
+├── authentication.md
+├── rate-limit.md
+├── billing-policy.md
+├── refund-policy.md
+├── error-codes.md
+├── troubleshooting-faq.md
+└── manifest.json
+```
+
+这些文档不是 Prompt 占位文本，而是通过现有 `DocumentParser -> Parent-Child -> Embedding -> Versioned DB/Elasticsearch` 链路建立索引。
+
+```bash
+cd backend
+python scripts/seed_demo_knowledge.py --username admin --reset
+```
+
+只验证文档能否被当前 Parser/Chunker 正常处理：
+
+```bash
+python scripts/seed_demo_knowledge.py --validate-only
+```
+
+建库后可以直接执行随仓库提供的 RAG Benchmark：
+
+```bash
+python scripts/evaluate_rag.py eval/demo_knowledge_rag.jsonl --username admin -k 6
+```
+
+Demo 知识覆盖 API 入门、认证、429/QPS、套餐计费、退款边界、错误码和排障 FAQ。客户实时调用日志、API Key 状态、实际用量与账单仍由业务 Tool 查询，RAG 不会替代这些事实源。
+
+## 人工客服闭环
+
+`escalation` Skill 可以调用真实写操作：
+
+```text
+create_support_handoff
+```
+
+工单持久化到 `support_handoffs`，支持：
+
+```text
+Customer: 查看自己的 handoff
+Admin:    查看、接手、更新状态、填写 resolution note
+```
+
+只有 Tool 真正返回 `SUCCESS + handoffId` 后，Agent 才允许告诉客户“已创建人工工单”。
+
+## 后端目录
+
+```text
+backend/
+├── app/
+│   ├── api/             # HTTP / WebSocket 边界
+│   ├── agent/           # LangGraph 工作流、LLM、并行 Tool Runtime、Generation、Trace
+│   ├── skill_runtime/   # Skill 发现、路由、加载
+│   ├── tools/           # Tool Schema、Registry、Local/MCP Adapter
+│   ├── support/         # 人工客服 handoff 领域逻辑
+│   ├── knowledge/       # 客服 RAG、Embedding、Indexer、Reranker
+│   ├── documents/       # 客服知识文档上传与处理
+│   ├── accounting/      # Token、Usage、Rate Limit
+│   ├── evaluation/      # 六层客服 Eval：RAG / Tool / Decision / Answer / Safety / Performance
+│   ├── db/              # SQLAlchemy persistence
+│   ├── core/            # Config / Security / Observability
+│   └── workers/         # Kafka/background worker
+├── skills/              # AI 客服 Skill 内容包
+├── demo_knowledge/      # 可一键建库的内置客服知识
+├── eval/                # Demo RAG / 客服 Benchmark 数据
+├── scripts/             # Seed / Eval CLI
+├── tests/               # 自动化测试
+├── alembic/             # 数据库迁移
+├── run.py
+└── mcp_server.py
+```
+
+`app/skill_runtime/` 是 Skill 引擎；`backend/skills/` 是真正由 Agent 使用的客服 Skill 内容，两者刻意分开。
+
+## 最快启动
+
+要求 Python 3.11+、Node.js、pnpm。
+
+后端：
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e ".[dev]"
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
 cp .env.example .env
+python run.py
 ```
 
-Windows PowerShell：
+另开终端可一键准备完整 Demo 数据：
 
-```powershell
+```bash
 cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -e ".[dev]"
-Copy-Item .env.example .env
+python scripts/seed_support_demo.py --username admin --reset
+python scripts/seed_demo_knowledge.py --username admin --reset
 ```
 
-编辑 `backend/.env`，填写模型服务密钥：
+前者写入 API/Billing 结构化业务数据，后者通过真实 RAG 建库链路写入 7 份客服知识文档。
 
-```env
-DASHSCOPE_API_KEY=your_api_key
+默认开发地址：
+
+```text
+API      http://localhost:8000
+Swagger  http://localhost:8000/docs
+Health   http://localhost:8000/health
+WebSocket ws://localhost:8000/chat
 ```
 
-### 2. 安装前端依赖
+前端：
 
 ```bash
 cd frontend
-npm install
-cd ..
+pnpm install
+pnpm dev
 ```
 
-### 3. 启动基础设施
-
-根目录中的 Docker Compose 负责启动 MySQL、Redis、Milvus、etcd 和 MinIO，不包含前后端应用容器。
+完整基础设施：
 
 ```bash
-docker compose up -d
-docker compose ps
+docker compose -f deploy/compose.infra.yml up -d
+cd backend
+cp .env.full.example .env
+alembic upgrade head
+python run.py
 ```
 
-首次启动 Milvus 通常需要一段时间。请等待相关容器显示为 `healthy` 后再初始化数据。
+Kafka Worker：
 
-### 4. 初始化实验数据
+```bash
+python -m app.workers.file_processor
+```
 
-激活后端虚拟环境，并在项目根目录执行：
+## Eval
+
+PaiSmart 现在使用 **六层 AI 客服 Benchmark**，最终目标不是“Agent 调了几个 Tool”，而是衡量客户问题是否被正确、安全、有效地解决。
+
+```text
+1. RAG Retrieval     Recall@K / MRR / nDCG / Hit Rate
+2. Tool Calling      Tool Selection / Argument Accuracy / Success Rate
+3. Agent Decision    Decision Accuracy / Unnecessary Tool Rate / Escalation Precision & Recall
+4. Answer Quality    Correctness / Groundedness / Completeness / Instruction Following
+5. Safety            Hallucination / Unauthorized Claim / Prompt Injection
+6. Performance       P50/P95 Latency / Token Cost / Tool Failure / Recovery / Parallel Speedup
+```
+
+统一客服 Benchmark：
 
 ```bash
 cd backend
-python -m scripts.init_db --recreate
-python -m scripts.seed_data
-python -m scripts.ingest_knowledge
+python scripts/evaluate_customer_service.py
 ```
 
-其中知识库入库步骤会调用 Embedding 服务。
+仓库保留 `24` 条 canonical smoke cases，并新增 `120` 条 extended benchmark（24 个客服场景 × 5 种真实问法变体），覆盖 FAQ、订单/支付、API 401/429 诊断、API Key 状态、套餐/用量/账单、故障排查、转人工、部分失败、越权请求和 Prompt Injection。扩展集不预填任何模型成绩；真实指标必须在配置 LLM/RAG 后运行得到。
 
-### 5. 启动后端与前端
-
-后端终端：
+快速契约回归：
 
 ```bash
-cd backend
-uvicorn app.main:app --reload
+python scripts/evaluate_customer_service.py
 ```
 
-前端终端：
+完整 120 条 Benchmark：
 
 ```bash
-cd frontend
-npm run dev
+python scripts/evaluate_customer_service.py --dataset eval/customer_service/benchmark_extended.jsonl
 ```
 
-启动完成后可访问：
-
-| 服务 | 地址 |
-| --- | --- |
-| Web 前端 | http://localhost:5173 |
-| 后端 API | http://localhost:8000 |
-| OpenAPI 文档 | http://localhost:8000/docs |
-| 健康检查 | http://localhost:8000/api/health |
-| MinIO 控制台 | http://localhost:9003 |
-
-## 演示账户
-
-种子数据中的账户密码统一为 `password123`，仅用于本地实验：
-
-| 账户 | 角色 | 可观察功能 |
-| --- | --- | --- |
-| `dev_acme` | 客户开发者 | 智能问答、会话与工单 |
-| `admin_acme` | 客户管理员 | 客户侧管理功能 |
-| `support1` | 技术支持人员 | 工单工作台与诊断链路 |
-| `admin` | 系统管理员 | 运营指标与评估入口 |
-
-## 评估与实验
-
-项目提供两类实验脚本：
+配置真实 LLM 后可运行：
 
 ```bash
-make eval
-make bench
+python scripts/evaluate_customer_service.py --live --compare-no-skill --output eval/customer-service-report.json
 ```
 
-- `make eval`：运行意图识别、文档引用和敏感信息处理等评估；
-- `make bench`：执行并发请求并统计阶段耗时，用于观察缓存和编排开销。
-
-在没有 GNU Make 的 Windows 环境中，可以直接运行对应 Python 模块：
-
-```powershell
-cd backend
-python -m eval.run_eval
-python -m benchmark.loadtest
-```
-
-评估结果受模型版本、知识库内容、网络状态和随机性影响，因此当前结果更适合作为原型对比依据，不应被视为稳定的生产指标。
-
-## 常见问题
-
-### Milvus 连接失败
-
-执行 `docker compose ps`，确认 Milvus、etcd 和 MinIO 已正常启动。Milvus 首次启动较慢，未就绪时执行知识入库会失败。
-
-### 后端无法连接 MySQL 或 Redis
-
-确认 Docker 服务已经启动，并检查 `.env` 与 `docker-compose.yml` 中的端口是否一致：MySQL 为 `3307`，Redis 为 `6380`，Milvus 为 `19531`。
-
-### 模型调用失败
-
-检查 `DASHSCOPE_API_KEY` 是否已填写、账户是否具有可用额度，以及当前网络能否访问模型服务。
-
-### Python 导入 `jose` 时出现语法错误
-
-项目依赖的是 `python-jose`，不是旧版的 `jose` 包。建议在独立虚拟环境中重新安装项目依赖，并通过下面的命令启动后端：
+真实 RAG 仍单独对实际知识索引评测，再合并到六层报告：
 
 ```bash
-uvicorn app.main:app --reload
+python scripts/evaluate_rag.py eval/my_dataset.jsonl --username admin -k 6 --output eval/rag-report.json
+python scripts/evaluate_customer_service.py --rag-report eval/rag-report.json
 ```
 
-不要直接运行 `backend/app/main.py`。
+核心业务指标是 **Customer Resolution Rate**：只有 Tool、决策、最终回答、安全边界以及必要的人工交接都正确，才算成功解决。
 
-## 当前局限
+详细见 [docs/EVALUATION.md](docs/EVALUATION.md)。
 
-- 知识库和业务数据均为面向实验的模拟数据，覆盖范围有限；
-- 效果依赖外部大模型，尚未完成跨模型和多随机种子的系统性比较；
-- 工具调用主要围绕预设业务场景，泛化到其他 API 平台仍需补充适配层；
-- 当前只实现文本交互，尚未覆盖图片、语音等多模态输入；
-- Docker Compose 仅编排基础设施，前后端仍需在本机单独运行；
-- 高风险业务操作只生成工单，没有接入真实生产系统。
+## 开发原则
 
-## 后续工作
+所有新增功能都先问：**它是否直接服务 AI 客服？**
 
-后续可从以下方向继续完善：
+```text
+客服对话决策/调度       -> app/agent/
+客服工作方法            -> backend/skills/
+客户/人工交接领域能力   -> app/support/
+LLM 可调用业务能力      -> app/tools/
+政策/FAQ/排障知识       -> app/knowledge/
+知识文档生命周期        -> app/documents/
+订单/支付/账户/CRM 接入 -> Tool 或 MCP Adapter
+质量验证                 -> app/evaluation/
+```
 
-1. 扩充真实但经过匿名化处理的故障案例与知识文档；
-2. 引入基线方法，对比单 Agent、固定流程和动态多 Agent 的效果与成本；
-3. 增加答案正确性、证据一致性、任务完成率和人工接管率等指标；
-4. 研究更细粒度的权限控制、提示注入防护和工具调用审计；
-5. 补充前后端容器与自动化测试，使实验环境更容易复现。
-
-## 数据与安全说明
-
-仓库中的租户、用户、日志、账单、API Key、邮箱和手机号均为演示或安全测试数据。运行实际数据前应完成匿名化处理，并使用环境变量或密钥管理服务保存凭证。生产部署还需要替换默认数据库密码与 JWT Secret，并补充 HTTPS、访问控制、审计和备份机制。
+不要再加入与客服主链路无关的通用 Skill，也不要重新创建万能 `services/` 目录。

@@ -1,0 +1,5 @@
+{"id":"cs-route-1","question":"你们会员套餐有什么区别？","expectedSkills":["customer-support"],"forbiddenSkills":["troubleshooting","escalation"]}
+{"id":"cs-route-2","question":"退款政策是什么？","expectedSkills":["customer-support"],"forbiddenSkills":["escalation"]}
+{"id":"cs-route-3","question":"你好","expectedSkills":["customer-support"],"forbiddenSkills":["troubleshooting","escalation"]}
+{"id":"cs-route-4","question":"我的订单现在发货了吗？","expectedSkills":["customer-support"],"forbiddenSkills":["troubleshooting"]}
+{"id":"cs-route-5","question":"我 2026-08 的账单和调用量是多少？","expectedSkills":["customer-support"],"forbiddenSkills":["troubleshooting","escalation"]}

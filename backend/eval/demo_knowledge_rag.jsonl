@@ -1,0 +1,12 @@
+{"question": "API 调用失败时客服通常需要 request_id 之外的哪些信息？", "expectedFileName": "api-getting-started.md", "filters": {"category": "billing", "product": "API Platform", "channel": "billing"}}
+{"question": "为什么客服不应该让我直接粘贴完整 API Key？", "expectedFileName": "authentication.md", "filters": {"category": ["authentication", "error_code"], "product": "API Platform", "channel": "api"}}
+{"question": "AUTH_KEY_EXPIRED 返回 401 后应该怎么处理？", "expectedFileName": "authentication.md", "filters": {"category": ["authentication", "error_code"], "product": "API Platform", "channel": "api"}}
+{"question": "429 一定代表这个月的调用额度用完了吗？", "expectedFileName": "rate-limit.md", "filters": {"category": ["rate_limit", "error_code"], "product": "API Platform", "channel": "api"}}
+{"question": "Professional Demo 套餐的 QPS 上限是多少？", "expectedFileName": "rate-limit.md", "filters": {"category": ["rate_limit", "error_code"], "product": "API Platform", "channel": "api"}}
+{"question": "125 万次调用、基础费 299 时，Demo 超额账单为什么是 424？", "expectedFileName": "billing-policy.md", "filters": {"category": "billing", "product": "API Platform", "channel": "billing"}}
+{"question": "客户要求降套餐并退差价时，AI 是否可以直接执行？", "expectedFileName": "billing-policy.md", "filters": {"category": "billing", "product": "API Platform", "channel": "billing"}}
+{"question": "我的退款是否已经到账，可以直接靠 RAG 判断吗？", "expectedFileName": "refund-policy.md", "filters": {"category": "refund", "product": "API Platform", "channel": "billing"}}
+{"question": "RATE_LIMIT_EXCEEDED 对应什么 HTTP 状态以及如何处理？", "expectedFileName": "error-codes.md"}
+{"question": "AUTH_KEY_INVALID 和 AUTH_KEY_EXPIRED 有什么区别？", "expectedFileName": "error-codes.md", "filters": {"category": ["authentication", "error_code"], "product": "API Platform", "channel": "api"}}
+{"question": "接口超时时应该先收集哪些诊断信息？", "expectedFileName": "troubleshooting-faq.md", "filters": {"category": "troubleshooting", "product": "API Platform", "channel": "api"}}
+{"question": "客户已经反复排障失败，什么时候应该转人工？", "expectedFileName": "troubleshooting-faq.md", "filters": {"category": "troubleshooting", "product": "API Platform", "channel": "api"}}

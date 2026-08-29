@@ -1,0 +1,3 @@
+{"id":"es-beh-1","skill":"escalation","question":"我明确要求人工客服，请直接转人工","expect":{"requiredSkills":["customer-support","escalation"],"requiredTools":["create_support_handoff"],"requiredScripts":["assess_escalation","build_handoff_summary","audit_handoff"],"maxSteps":6,"maxFailedToolCalls":0,"passScore":0.75}}
+{"id":"es-beh-2","skill":"escalation","question":"这笔扣费有争议，需要人工核实","expect":{"requiredSkills":["customer-support","escalation"],"requiredTools":["create_support_handoff"],"requiredScripts":["assess_escalation"],"maxSteps":6,"maxFailedToolCalls":0,"passScore":0.7}}
+{"id":"es-beh-3","skill":"escalation","question":"查看我刚才创建的人工工单状态","expect":{"requiredSkills":["customer-support"],"requiredTools":["get_support_handoff"],"maxSteps":5,"maxFailedToolCalls":0,"passScore":0.65}}

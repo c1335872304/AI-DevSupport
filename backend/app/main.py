@@ -1,80 +1,114 @@
-import sys
+from __future__ import annotations
+
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-BACKEND_ROOT = Path(__file__).resolve().parents[1]
-
-if str(BACKEND_ROOT) not in sys.path:
-    sys.path.insert(0, str(BACKEND_ROOT))
-    
-"""FastAPI 应用入口。
-
-本文件是整个后端服务的启动入口，负责：
-  1. 初始化 FastAPI 应用实例，配置元信息（标题、描述、版本）；
-  2. 注册 CORS 中间件，允许前端开发服务器（Vite 默认端口 5173）跨域访问；
-  3. 注册健康检查路由（/health 和 /api/health），供容器编排（K8s/Docker）探活；
-  4. 挂载所有业务路由模块（认证、聊天、会话、文档、工单、工作台、追踪、评测）。
-
-使用方式：
-    uvicorn app.main:app --reload
-"""
-
-# 标准库：logging 用于初始化全局日志配置
-import logging
-
-# FastAPI 核心框架
-from fastapi import FastAPI
-# CORS 中间件：处理跨域请求，允许前端开发服务器的浏览器请求通过
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, Response
 
-# 业务路由模块：每个模块对应一组相关 API 端点
-from app.api import auth, chat, conversations, docs  # 认证、聊天、会话管理、文档查询
-from app.api import eval as eval_api                  # 评测模块（避免与 Python 内置 eval 函数命名冲突）
-from app.api import tickets, traces, workbench        # 工单管理、Agent 链路追踪、内部工作台
-# 全局配置：读取日志级别、运行环境等参数
-from app.config import settings
+from app import __version__
 
-# 初始化全局日志：按配置中的 log_level 设置日志级别（INFO/DEBUG/WARNING 等）
-logging.basicConfig(level=settings.log_level)
-# 获取本模块专属 logger，便于在日志中区分来源模块
-logger = logging.getLogger("ai_devsupport")
+from app.api.router import api_router
+from app.core.config import get_settings
+from app.core.observability import HTTP_LATENCY, HTTP_REQUESTS, prometheus_payload, setup_otel
+from app.db.init_db import init_db
+from app.api.websocket.chat import router as websocket_router
+from app.tools.mcp.client import register_configured_mcp_tools
+from app.tools.registry import tool_registry
+from app.documents.jobs import resume_processing_jobs
+from app.agent.generation import generation_runtime
+from app.agent.graph.engine import LANGGRAPH_AVAILABLE, LANGGRAPH_ENGINE
 
-# 创建 FastAPI 应用实例，配置 OpenAPI 文档展示的元信息
+settings = get_settings()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    settings.validate_runtime_safety()
+    Path("./data").mkdir(parents=True, exist_ok=True)
+    await init_db()
+    app.state.interrupted_generations = await generation_runtime.recover_orphaned_states()
+    app.state.external_mcp_tools = await register_configured_mcp_tools(tool_registry)
+    app.state.resumed_processing_jobs = await resume_processing_jobs()
+    yield
+
+
 app = FastAPI(
-    title="AI-DevSupport",                                              # API 文档标题
-    description="面向 API 开放平台的多 Agent 智能技术支持系统",              # API 文档描述
-    version="0.1.0",                                                    # 应用版本号，同步于 __init__.py
+    title=settings.app_name,
+    version=__version__,
+    description="Python/FastAPI LangGraph AI customer-service Agent + RAG knowledge base",
+    lifespan=lifespan,
 )
+setup_otel(app)
 
-# 注册 CORS 中间件：允许前端开发服务器（localhost:5173 / 127.0.0.1:5173，即 Vite 默认端口）发起跨域请求
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # 仅允许本地前端开发服务器跨域，生产应配置真实域名
-    allow_credentials=True,   # 允许携带 Cookie / Authorization 凭证头
-    allow_methods=["*"],      # 允许所有 HTTP 方法（GET/POST/PUT/DELETE 等）
-    allow_headers=["*"],      # 允许所有请求头（包括自定义头）
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
-@app.get("/health", tags=["system"])      # 注册 /health 路由，供外部健康检查工具直接访问
-@app.get("/api/health", tags=["system"])  # 同时注册 /api/health，供前端统一走 /api 前缀访问
-async def health() -> dict:
-    """健康检查。
-
-    返回服务当前运行状态、所处环境和版本号。
-    可被 Kubernetes liveness/readiness probe、Docker HEALTHCHECK 或监控系统调用。
-
-    Returns:
-        dict: 包含 status（固定为 "ok"）、env（运行环境）、version（版本号）的响应字典
-    """
-    return {"status": "ok", "env": settings.app_env, "version": app.version}  # 固定返回 ok，env 和 version 来自配置和应用元信息
 
 
-# 挂载各业务路由模块，每个 router 内部定义了各自的路径前缀和端点
-app.include_router(auth.router)           # 认证路由：登录、刷新 Token 等
-app.include_router(chat.router)           # 聊天路由：用户与 AI Agent 交互的核心接口
-app.include_router(conversations.router)  # 会话管理路由：查询、关闭会话，查看历史消息
-app.include_router(docs.router)           # 知识库文档路由：文档查询与管理
-app.include_router(tickets.router)        # 工单路由：创建、查询、更新工单
-app.include_router(workbench.router)      # 工作台路由：内部支持人员使用的管理视图
-app.include_router(traces.router)         # 链路追踪路由：查看 Agent 执行步骤和工具调用记录
-app.include_router(eval_api.router)       # 评测路由：对 AI 回复质量进行人工或自动评测
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    import time
+    started = time.monotonic()
+    response = await call_next(request)
+    route = request.scope.get("route")
+    path = getattr(route, "path", None) or request.url.path
+    if HTTP_REQUESTS is not None:
+        HTTP_REQUESTS.labels(method=request.method, path=path, status=str(response.status_code)).inc()
+    if HTTP_LATENCY is not None:
+        HTTP_LATENCY.labels(method=request.method, path=path).observe(time.monotonic() - started)
+    return response
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    message = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+    return JSONResponse(status_code=exc.status_code, content={"code": exc.status_code, "message": message})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"code": 422, "message": "参数校验失败", "data": exc.errors()})
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"code": 500, "message": str(exc) or "Internal server error"})
+
+
+app.include_router(api_router, prefix=settings.api_prefix)
+app.include_router(websocket_router)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": settings.app_name}
+
+
+@app.get("/health/details")
+async def health_details():
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "agentEnabled": settings.agent_enabled,
+        "workflowEngine": LANGGRAPH_ENGINE,
+        "langGraphAvailable": LANGGRAPH_AVAILABLE,
+        "searchBackend": settings.search_backend,
+        "taskMode": settings.task_mode,
+        "externalMcpTools": list(getattr(app.state, "external_mcp_tools", [])),
+    }
+
+
+@app.get("/metrics")
+async def metrics():
+    if not settings.metrics_enabled:
+        raise HTTPException(status_code=404, detail="Metrics disabled")
+    payload, content_type = prometheus_payload()
+    return Response(content=payload, media_type=content_type)

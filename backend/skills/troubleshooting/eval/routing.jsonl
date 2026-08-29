@@ -1,0 +1,5 @@
+{"id":"ts-route-1","question":"我登录一直报错，验证码也收不到","expectedSkills":["customer-support","troubleshooting"],"forbiddenSkills":["escalation"]}
+{"id":"ts-route-2","question":"文件上传失败，页面提示 413","expectedSkills":["customer-support","troubleshooting"],"forbiddenSkills":[]}
+{"id":"ts-route-3","question":"支付页面打不开怎么办","expectedSkills":["customer-support","troubleshooting"],"forbiddenSkills":[]}
+{"id":"ts-route-4","question":"已经解决了，不用排查","expectedSkills":["customer-support"],"forbiddenSkills":["troubleshooting","escalation"]}
+{"id":"ts-route-5","question":"request_id req_demo_401 返回 401，帮我查 API Key 状态","expectedSkills":["customer-support","troubleshooting"],"forbiddenSkills":["escalation"]}

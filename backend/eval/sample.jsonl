@@ -1,0 +1,3 @@
+# Replace these examples with questions whose expected document exists in your own knowledge base.
+{"question":"示例问题：这份文档的主要结论是什么？","expectedFileName":"example.pdf"}
+{"question":"示例问题：关键方法出现在哪个分块？","expectedFileMd5":"00000000000000000000000000000000","expectedChunkIds":[0,1]}
