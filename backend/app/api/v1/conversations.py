@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import current_user
 from app.core.response import ok
+from app.core.time import utcnow
 from app.db.models import ConversationMessage, ConversationSession, User
 from app.db.session import get_db
 
@@ -61,7 +60,7 @@ async def _session(conversation_id: str, user: User, db: AsyncSession) -> Conver
 async def switch_session(conversation_id: str, user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
     item = await _session(conversation_id, user, db)
     item.status = "ACTIVE"
-    item.updated_at = datetime.utcnow()
+    item.updated_at = utcnow()
     await db.commit()
     return ok(serialize_session(item))
 

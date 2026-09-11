@@ -12,19 +12,23 @@ class CustomerServiceState(TypedDict, total=False):
     # Request/context
     question: str
     history: list[dict]
+    conversation_id: str
     generation_id: str
 
     # Prompt / skills
-    messages: list[dict]
     active_skills: list[str]
-    skill_catalog: str
     skill_trace: SkillTrace
+    intent_classification: dict[str, Any]
+    entity_memory: dict[str, str]
+    entities: dict[str, str]
+    entity_sources: dict[str, str]
+    retrieval_query: str
+    query_optimization: dict[str, Any]
 
     # Agent turn
     step: int
     max_steps: int
     tool_calls: list[AgentToolCall]
-    turn_chunks: list[str]
     next_action: str
 
     # Results
@@ -38,6 +42,22 @@ class CustomerServiceState(TypedDict, total=False):
     handoff_attempted: bool
     handoff_success: bool
     handoff_id: str | None
+    quality_gate_results: dict[str, dict[str, Any]]
+    quality_gate_blocked: bool
+    quality_gate_action: str
+
+    # Target-architecture contracts carried across the authoritative workflow.
+    routing_decision: dict[str, Any]
+    agent_plans: list[dict[str, Any]]
+    tool_batches: list[dict[str, Any]]
+    agent_evidence: list[dict[str, Any]]
+    evidence_summary: dict[str, Any]
+    handoff_result: dict[str, Any]
+    billing_mcp_catalog: list[dict[str, Any]]
+    target_tool_outcomes: list[tuple[AgentToolCall, Any]]
+    target_scheduled_batches: list[dict[str, Any]]
+    executed_tool_fingerprints: list[str]
+    executed_tool_call_count: int
 
     # Observability
     graph_path: list[str]

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import asyncio
+import logging
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -12,16 +14,21 @@ from app import __version__
 
 from app.api.router import api_router
 from app.core.config import get_settings
+from app.core.deps import protected_ops_user
 from app.core.observability import HTTP_LATENCY, HTTP_REQUESTS, prometheus_payload, setup_otel
+from app.core.redaction import redact_text
 from app.db.init_db import init_db
+from app.db.session import engine
 from app.api.websocket.chat import router as websocket_router
-from app.tools.mcp.client import register_configured_mcp_tools
+from app.knowledge.elasticsearch import elasticsearch_service
+from app.tools.mcp.billing import billing_mcp_adapter
 from app.tools.registry import tool_registry
 from app.documents.jobs import resume_processing_jobs
 from app.agent.generation import generation_runtime
 from app.agent.graph.engine import LANGGRAPH_AVAILABLE, LANGGRAPH_ENGINE
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -30,9 +37,33 @@ async def lifespan(app: FastAPI):
     Path("./data").mkdir(parents=True, exist_ok=True)
     await init_db()
     app.state.interrupted_generations = await generation_runtime.recover_orphaned_states()
-    app.state.external_mcp_tools = await register_configured_mcp_tools(tool_registry)
+    billing_mcp_adapter.validate_configuration()
     app.state.resumed_processing_jobs = await resume_processing_jobs()
-    yield
+    privacy_task = None
+    if settings.privacy_auto_maintenance_enabled:
+        from app.privacy.maintenance import run_once
+
+        async def privacy_loop() -> None:
+            while True:
+                try:
+                    await run_once()
+                except Exception:
+                    logger.exception("[PRIVACY] scheduled maintenance failed")
+                await asyncio.sleep(max(3600, settings.privacy_maintenance_interval_seconds))
+
+        privacy_task = asyncio.create_task(privacy_loop(), name="privacy-maintenance")
+        app.state.privacy_maintenance_task = privacy_task
+    try:
+        yield
+    finally:
+        if privacy_task and not privacy_task.done():
+            privacy_task.cancel()
+            try:
+                await privacy_task
+            except asyncio.CancelledError:
+                pass
+        await elasticsearch_service.close()
+        await engine.dispose()
 
 
 app = FastAPI(
@@ -75,12 +106,14 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.warning("[HTTP 422] %s %s errors=%s", request.method, request.url.path, exc.errors())
     return JSONResponse(status_code=422, content={"code": 422, "message": "参数校验失败", "data": exc.errors()})
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(status_code=500, content={"code": 500, "message": str(exc) or "Internal server error"})
+    logger.exception("[HTTP 500] %s %s error=%s", request.method, request.url.path, redact_text(str(exc)))
+    return JSONResponse(status_code=500, content={"code": 500, "message": "服务器内部错误，请稍后重试"})
 
 
 app.include_router(api_router, prefix=settings.api_prefix)
@@ -93,21 +126,21 @@ async def health():
 
 
 @app.get("/health/details")
-async def health_details():
+async def health_details(_ops_user=Depends(protected_ops_user)):
     return {
         "status": "ok",
         "service": settings.app_name,
-        "agentEnabled": settings.agent_enabled,
+        "customerServiceWorkflow": "target",
         "workflowEngine": LANGGRAPH_ENGINE,
         "langGraphAvailable": LANGGRAPH_AVAILABLE,
         "searchBackend": settings.search_backend,
         "taskMode": settings.task_mode,
-        "externalMcpTools": list(getattr(app.state, "external_mcp_tools", [])),
+        "billingMcpEnabled": billing_mcp_adapter.enabled,
     }
 
 
 @app.get("/metrics")
-async def metrics():
+async def metrics(_ops_user=Depends(protected_ops_user)):
     if not settings.metrics_enabled:
         raise HTTPException(status_code=404, detail="Metrics disabled")
     payload, content_type = prometheus_payload()

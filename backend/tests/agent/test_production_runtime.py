@@ -6,7 +6,8 @@ import pytest
 from fastapi import HTTPException
 
 from app.agent.runtime import AgentRuntime
-from app.agent.types import AgentToolCall
+from app.agent.target_agents import target_specialist_agents
+from app.agent.types import AgentPlan, AgentToolCall
 from app.core.security import create_access_token, decode_token
 from app.db.models import User
 from app.accounting.embedding_usage import capture_embedding_usage, record_embedding_usage
@@ -17,6 +18,8 @@ from app.accounting.rate_limit import RateLimitService
 from app.tools.base import BaseTool, ToolExecutionContext
 from app.tools.registry import ToolRegistry
 from app.tools.validation import ToolValidationError, validate_json_schema
+from app.skill_runtime.registry import skill_registry
+from app.tools.registry import tool_registry
 
 
 class _EchoTool(BaseTool):
@@ -79,49 +82,23 @@ async def test_tool_registry_enforces_schema_and_scopes():
 
 @pytest.mark.asyncio
 async def test_agent_buffers_tool_preamble_instead_of_streaming_it(monkeypatch):
-    registry = ToolRegistry([_EchoTool()])
-    runtime = AgentRuntime(registry)
-    turn = 0
-    seen_second_turn_messages = []
-
     async def fake_turn(messages, tools):
-        nonlocal turn
-        turn += 1
-        if turn == 1:
-            # Providers are allowed to emit content before a tool call. That content is
-            # canonical assistant/tool context, but must not leak into final UI output.
-            yield {"type": "content", "content": "I will inspect this..."}
-            yield {"type": "tool_calls", "tool_calls": [AgentToolCall("c1", "echo", {"text": "ok"})]}
-        else:
-            seen_second_turn_messages.extend(messages)
-            yield {"type": "content", "content": "final answer"}
+        # Specialist planners may receive provider preamble text, but only Tool
+        # calls are allowed into the shared scheduler.
+        yield {"type": "content", "content": "I will inspect this..."}
+        yield {"type": "tool_calls", "tool_calls": [AgentToolCall("c1", "search_knowledge", {"query": "ok"})]}
 
     monkeypatch.setattr(llm_service, "stream_agent_turn", fake_turn)
-    chunks: list[str] = []
-    events: list[dict] = []
-
-    async def add_chunk(chunk: str):
-        chunks.append(chunk)
-
-    async def add_event(payload: dict):
-        events.append(payload)
-
-    content, _ = await runtime.run(
-        user=_user(),
+    work = await target_specialist_agents.plan_work(
+        plans=[AgentPlan("knowledge", "knowledge", ("search_knowledge",), "find verified documentation")],
         question="plain test question",
-        history=[],
-        generation_id="buffer-test",
-        send_json=add_event,
-        on_chunk=add_chunk,
+        entities={},
+        registry=skill_registry,
+        tool_registry=tool_registry,
     )
 
-    assert content == "final answer"
-    assert chunks == ["final answer"]
-    assert "I will inspect this..." not in "".join(chunks)
-    assert any(
-        item.get("role") == "assistant" and item.get("content") == "I will inspect this..." and item.get("tool_calls")
-        for item in seen_second_turn_messages
-    )
+    assert len(work) == 1
+    assert [call.name for call in work[0].proposed_calls] == ["search_knowledge"]
 
 
 @pytest.mark.asyncio

@@ -3,7 +3,6 @@ import { getRgb } from '@sa/color';
 import { DARK_CLASS } from '@/constants/app';
 import { localStg } from '@/utils/storage';
 import { toggleHtmlClass } from '@/utils/common';
-import systemLogo from '@/assets/svg-icon/logo.svg?raw';
 import { $t } from '@/locales';
 
 export function setupLoading() {
@@ -24,7 +23,7 @@ export function setupLoading() {
     'right-0 bottom-0 animate-delay-1500'
   ];
 
-  const logoWithClass = systemLogo.replace('<svg', `<svg class="size-128px text-primary"`);
+  const logoWithClass = '<div class="size-128px flex-center rounded-32px bg-primary text-28px text-white font-bold">API</div>';
 
   const dot = loadingClasses
     .map(item => {

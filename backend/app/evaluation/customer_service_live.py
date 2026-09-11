@@ -5,9 +5,11 @@ import time
 from typing import Any
 
 from app.accounting.llm_usage import capture_llm_usage
+from app.agent.agent_skill_policy import SHARED_NODE_SKILLS, TARGET_AGENT_SKILLS
+from app.agent.routing_policy import routing_policy
 from app.agent.types import AgentToolCall
+from app.core.config import get_settings
 from app.skill_runtime.registry import skill_registry
-from app.skill_runtime.router import skill_router
 from app.tools.registry import tool_registry
 
 
@@ -110,7 +112,15 @@ def _tools_for(active_skills: list[str], with_skill: bool) -> list[dict[str, Any
 
 async def run_live_customer_service_case(case: dict[str, Any], *, llm_service: Any, with_skill: bool = True) -> dict[str, Any]:
     question = str(case.get("question") or "")
-    active_skills = list(dict.fromkeys(skill_router.route(question))) if with_skill else []
+    if with_skill:
+        decision = routing_policy.decide(question)
+        active_skills = [SHARED_NODE_SKILLS["generate_customer_response"]]
+        active_skills.extend(TARGET_AGENT_SKILLS[agent] for agent in decision.selected_agents)
+        if decision.requires_handoff_after_summary:
+            active_skills.append(SHARED_NODE_SKILLS["handoff_decision"])
+        active_skills = list(dict.fromkeys(active_skills))
+    else:
+        active_skills = []
     messages = llm_service.build_agent_messages(
         question,
         [],
@@ -164,9 +174,12 @@ async def run_live_customer_service_case(case: dict[str, Any], *, llm_service: A
                 if call.name == "activate_skill" and status == "SUCCESS" and with_skill:
                     skill_name = str(call.arguments.get("skill") or "")
                     if skill_registry.get(skill_name) and skill_name not in active_skills:
-                        # Keep the product invariant: default support + at most one specialist.
-                        specialists = [name for name in active_skills if name != "customer-support"]
-                        if specialists and skill_name != "customer-support":
+                        # Keep the configured active-skill limit while allowing the
+                        # three-layer high-risk route: support + billing + escalation.
+                        if len(active_skills) >= max(1, get_settings().skills_max_active):
+                            specialists = [name for name in active_skills if name != "customer-support"]
+                            if not specialists or skill_name == "customer-support":
+                                continue
                             active_skills.remove(specialists[0])
                         active_skills.append(skill_name)
                         messages[0]["content"] += "\n\n" + skill_registry.build_prompt([skill_name])

@@ -3,12 +3,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from collections.abc import Callable
 from typing import Any, Iterable
 
 from app.agent.types import AgentToolCall
 from app.skill_runtime.models import SkillDefinition
 from app.skill_runtime.registry import SkillRegistry
-from app.skill_runtime.router import SkillRouter
 from app.skill_runtime.trace import SkillTrace
 from app.tools.base import ToolResult
 
@@ -62,9 +62,9 @@ def validate_skill_contract(skill: SkillDefinition, known_tools: Iterable[str]) 
     return {"skill": skill.name, "pass": passed, **errors}
 
 
-def evaluate_routing_case(case: dict[str, Any], router: SkillRouter) -> EvalScore:
+def evaluate_routing_case(case: dict[str, Any], route: Callable[[str], list[str]]) -> EvalScore:
     question = str(case.get("question") or "")
-    selected = router.route(question)
+    selected = route(question)
     expected = [str(x) for x in case.get("expectedSkills") or []]
     forbidden = [str(x) for x in case.get("forbiddenSkills") or []]
     expected_hits = sum(1 for name in expected if name in selected)

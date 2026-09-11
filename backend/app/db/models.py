@@ -5,14 +5,16 @@ from datetime import date, datetime
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+from app.core.time import utcnow
+
 
 class Base(DeclarativeBase):
     pass
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class User(Base, TimestampMixin):
@@ -56,7 +58,7 @@ class FileUpload(Base):
     estimated_chunk_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     actual_embedding_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     actual_chunk_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     active_vector_version: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # Customer-service knowledge metadata. These fields live on the document and are
@@ -124,6 +126,9 @@ class ConversationSession(Base, TimestampMixin):
     title: Mapped[str] = mapped_column(String(255), default="新对话")
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
     last_message_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Structured entities remembered across turns, e.g. request_id/app_id/error_code.
+    # This preserves the legacy supervisor's entity memory without requiring Redis.
+    collected_entities_json: Mapped[str] = mapped_column(Text, default="{}")
 
 
 class ConversationMessage(Base):
@@ -135,7 +140,7 @@ class ConversationMessage(Base):
     content: Mapped[str] = mapped_column(Text)
     generation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     reference_mappings_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class GenerationState(Base):
@@ -148,8 +153,19 @@ class GenerationState(Base):
     status: Mapped[str] = mapped_column(String(20), default="PENDING")
     reference_mappings_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class LLMTokenReservation(Base):
+    __tablename__ = "llm_token_reservations"
+    generation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    reserved_tokens: Mapped[int] = mapped_column(BigInteger)
+    settled_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="RESERVED", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class InviteCode(Base, TimestampMixin):
@@ -202,7 +218,7 @@ class UserTokenRecord(Base):
     balance_after: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     remark: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class ChatFeedback(Base):
@@ -211,7 +227,7 @@ class ChatFeedback(Base):
     generation_id: Mapped[str] = mapped_column(String(64), index=True)
     user_id: Mapped[str] = mapped_column(String(64), index=True)
     rating: Mapped[str] = mapped_column(String(32))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class AgentRun(Base):
@@ -224,7 +240,7 @@ class AgentRun(Base):
     active_skills_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     trace_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
@@ -240,7 +256,7 @@ class ToolExecution(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     arguments_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class RateLimitPolicy(Base, TimestampMixin):
@@ -277,8 +293,8 @@ class SupportHandoff(Base):
     requested_by: Mapped[str] = mapped_column(String(20), default="AI")
     assigned_to: Mapped[str | None] = mapped_column(String(64), nullable=True)
     resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class SupportApplication(Base):
@@ -287,7 +303,7 @@ class SupportApplication(Base):
     user_id: Mapped[str] = mapped_column(String(64), index=True)
     name: Mapped[str] = mapped_column(String(128))
     product: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class SupportApiKey(Base):
@@ -298,7 +314,7 @@ class SupportApiKey(Base):
     key_masked: Mapped[str] = mapped_column(String(128))
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
     expire_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class SupportApiCallLog(Base):
@@ -311,7 +327,7 @@ class SupportApiCallLog(Base):
     http_status: Mapped[int] = mapped_column(Integer, index=True)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
 
 
 class SupportErrorCode(Base):
@@ -338,7 +354,7 @@ class SupportSubscription(Base):
     user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     plan_id: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(20), default="ACTIVE")
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class SupportUsageRecord(Base):
@@ -369,6 +385,6 @@ class ProcessingJob(Base):
     status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

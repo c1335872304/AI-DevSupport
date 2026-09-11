@@ -50,7 +50,11 @@ const bgColor = computed(() => {
     <NCard :bordered="false" class="relative z-4 w-auto card-wrapper">
       <div :class="isRegisterModule ? 'login-panel login-panel--register' : 'login-panel'">
         <header class="flex-y-center justify-between">
-          <SystemLogo class="text-64px text-primary lt-sm:text-48px" />
+          <span
+            class="size-64px flex-center rounded-16px bg-primary text-18px text-white font-bold lt-sm:size-48px lt-sm:rounded-12px"
+          >
+            API
+          </span>
           <h3 class="flex-y-center gap-2 text-28px text-primary font-500 lt-sm:text-22px">
             <span>{{ $t('system.title') }}</span>
             <span v-if="isRegisterModule" class="text-18px font-medium opacity-80 lt-sm:text-16px">

@@ -7,11 +7,15 @@ from typing import Any
 @dataclass(slots=True)
 class SkillTrace:
     question: str
+    intent_classification: dict[str, Any] = field(default_factory=dict)
+    entities: dict[str, str] = field(default_factory=dict)
+    entity_sources: dict[str, str] = field(default_factory=dict)
     initial_skills: list[str] = field(default_factory=list)
     active_skills: list[str] = field(default_factory=list)
     activations: list[str] = field(default_factory=list)
     deactivations: list[dict[str, str]] = field(default_factory=list)
     tool_batches: list[dict[str, Any]] = field(default_factory=list)
+    quality_gate_results: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def activate(self, skill: str, *, dynamic: bool = False) -> None:
         if skill not in self.active_skills:
@@ -32,6 +36,10 @@ class SkillTrace:
                 "status": result.status,
                 "durationMs": result.duration_ms,
             }
+            if getattr(call, "source_agent", None):
+                entry["agent"] = call.source_agent
+            if getattr(call, "source_skill", None):
+                entry["skill"] = call.source_skill
             if call.name == "run_skill_script":
                 entry["skill"] = call.arguments.get("skill")
                 entry["script"] = call.arguments.get("script")
@@ -42,6 +50,9 @@ class SkillTrace:
                 entry["skill"] = call.arguments.get("skill")
             items.append(entry)
         self.tool_batches.append({"step": step + 1, "calls": items})
+
+    def record_quality_gate(self, skill: str, gate: str, result: dict[str, Any]) -> None:
+        self.quality_gate_results[f"{skill}:{gate}"] = dict(result)
 
     def summary(self) -> dict[str, Any]:
         flattened = [item for batch in self.tool_batches for item in batch["calls"]]
@@ -62,6 +73,9 @@ class SkillTrace:
                 references.append(str(reference))
         return {
             "question": self.question,
+            "intentClassification": dict(self.intent_classification),
+            "entities": dict(self.entities),
+            "entitySources": dict(self.entity_sources),
             "initialSkills": list(self.initial_skills),
             "activeSkills": list(self.active_skills),
             "dynamicActivations": list(self.activations),
@@ -74,4 +88,5 @@ class SkillTrace:
             "totalToolCalls": len(flattened),
             "maxParallelWidth": max((len(batch["calls"]) for batch in self.tool_batches), default=0),
             "failedToolCalls": failures,
+            "qualityGateResults": dict(self.quality_gate_results),
         }

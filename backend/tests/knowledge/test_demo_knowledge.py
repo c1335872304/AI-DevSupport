@@ -21,6 +21,8 @@ def test_demo_knowledge_manifest_is_complete_and_searchable():
         "refund-policy.md",
         "error-codes.md",
         "troubleshooting-faq.md",
+        "security-and-data-handling.md",
+        "release-notes.md",
     ]
 
     for name in names:
@@ -50,8 +52,11 @@ def test_demo_rag_eval_targets_only_shipped_documents():
 def test_demo_knowledge_keeps_policy_and_customer_state_separate():
     refund = (DEMO_DIR / "refund-policy.md").read_text(encoding="utf-8")
     billing = (DEMO_DIR / "billing-policy.md").read_text(encoding="utf-8")
+    security = (DEMO_DIR / "security-and-data-handling.md").read_text(encoding="utf-8")
     assert "不能推断" in refund
     assert "业务 Tool/MCP" in refund
     assert "query_plan" in billing
     assert "query_usage" in billing
     assert "query_bill" in billing
+    assert "完整 API Key" in security
+    assert "Prompt Injection" in security

@@ -19,8 +19,9 @@ from app.evaluation.skills import (
     run_live_planning_case,
     validate_skill_contract,
 )
+from app.agent.agent_skill_policy import SHARED_NODE_SKILLS, TARGET_AGENT_SKILLS
+from app.agent.routing_policy import routing_policy
 from app.skill_runtime.registry import skill_registry
-from app.skill_runtime.router import skill_router
 from app.tools.registry import tool_registry
 
 
@@ -42,13 +43,22 @@ def _selected_skills(args) -> list[str]:
     return names
 
 
+def _target_skill_route(question: str) -> list[str]:
+    decision = routing_policy.decide(question)
+    selected = [SHARED_NODE_SKILLS["generate_customer_response"]]
+    selected.extend(TARGET_AGENT_SKILLS[agent] for agent in decision.selected_agents)
+    if decision.requires_handoff_after_summary:
+        selected.append(SHARED_NODE_SKILLS["handoff_decision"])
+    return list(dict.fromkeys(selected))
+
+
 def run_static(names: list[str]) -> dict[str, Any]:
     contracts = [validate_skill_contract(skill_registry.get(name), tool_registry.names()) for name in names]
     routing_details = []
     routing_scores = []
     for name in names:
         for case in _skill_rows(name, "eval/routing.jsonl"):
-            score = evaluate_routing_case(case, skill_router)
+            score = evaluate_routing_case(case, _target_skill_route)
             routing_scores.append(score)
             routing_details.append({"skillDataset": name, "pass": score.passed, "score": score.score, **score.details})
     return {

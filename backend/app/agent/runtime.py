@@ -1,17 +1,25 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 
 from app.agent.types import AgentToolCall
 from app.core.config import get_settings
+from app.core.redaction import redact_data
 from app.db.models import User
 from app.agent.trace_store import trace_store
 from app.skill_runtime.registry import skill_registry
 from app.tools.base import ToolExecutionContext, ToolResult
 from app.tools.registry import ToolRegistry, tool_registry
+
+logger = logging.getLogger(__name__)
+
+
+def _console(message: str) -> None:
+    print(message, flush=True)
 
 SendJson = Callable[[dict], Awaitable[None]]
 ChunkCallback = Callable[[str], Awaitable[None]]
@@ -28,6 +36,8 @@ class AgentRuntime:
         user: User,
         question: str,
         history: list[dict],
+        conversation_id: str | None = None,
+        entity_memory: dict[str, str] | None = None,
         generation_id: str,
         send_json: SendJson,
         on_chunk: ChunkCallback,
@@ -45,6 +55,8 @@ class AgentRuntime:
             user=user,
             question=question,
             history=history,
+            conversation_id=conversation_id,
+            entity_memory=entity_memory,
             generation_id=generation_id,
             send_json=send_json,
             on_chunk=on_chunk,
@@ -90,13 +102,18 @@ class AgentRuntime:
         async def execute_one(call: AgentToolCall) -> ToolResult:
             tool = self.registry.get(call.name)
             event_id = call.id or f"tool-{uuid.uuid4().hex}"
+            started = time.monotonic()
+            logger.info("[GEN %s] tool start name=%s step=%d", generation_id[:8], call.name, step + 1)
+            _console(f"[GEN {generation_id[:8]}] tool_start name={call.name} step={step + 1}")
             await send_json(
                 {
                     "type": "tool_call",
                     "toolCallId": event_id,
                     "tool": call.name,
                     "status": "executing",
-                    "arguments": call.arguments,
+                    "arguments": redact_data(call.arguments),
+                    "agent": call.source_agent,
+                    "skill": call.source_skill,
                     "agentStep": step + 1,
                     "generationId": generation_id,
                     "timestamp": int(time.time() * 1000),
@@ -108,7 +125,25 @@ class AgentRuntime:
                     generation_id=generation_id,
                     active_skills=active_skills,
                 )
-                if tool and (not tool.parallel_safe or not tool.read_only):
+                allowed_by_skill = not active_skills
+                if active_skills:
+                    allowed_names = {"activate_skill"}
+                    for skill_name in active_skills:
+                        skill = skill_registry.get(skill_name)
+                        if skill:
+                            allowed_names.update(skill.allowed_tools)
+                    allowed_by_skill = call.name in allowed_names or bool(tool and call.name.startswith("mcp__") and tool.read_only)
+                # Specialist-generated calls carry their owning Skill. Enforce that
+                # narrower boundary even when several specialists are active at once.
+                if call.source_skill:
+                    owner = skill_registry.get(call.source_skill)
+                    owner_allowed = bool(owner and call.name in owner.allowed_tools)
+                    if tool and call.name.startswith("mcp__") and tool.read_only:
+                        owner_allowed = True
+                    allowed_by_skill = allowed_by_skill and owner_allowed
+                if not allowed_by_skill:
+                    result = ToolResult(status="DENIED", error=f"Tool {call.name} is not allowed by active Skill", duration_ms=0)
+                elif tool and (not tool.parallel_safe or not tool.read_only):
                     # Unsafe/write tools sharing a resource group serialize with each
                     # other. Pure read tools remain fully parallel even when they read
                     # from the same knowledge subsystem.
@@ -119,6 +154,8 @@ class AgentRuntime:
                 else:
                     result = await self.registry.execute(call.name, call.arguments, context)
             ui_status = "success" if result.status == "SUCCESS" else "failed"
+            logger.info("[GEN %s] tool end name=%s status=%s duration_ms=%d", generation_id[:8], call.name, result.status, int((time.monotonic() - started) * 1000))
+            _console(f"[GEN {generation_id[:8]}] tool_end name={call.name} status={result.status} duration_ms={int((time.monotonic() - started) * 1000)}")
             await trace_store.tool(generation_id, event_id, call.name, step + 1, call.arguments, result)
             await send_json(
                 {
@@ -128,7 +165,9 @@ class AgentRuntime:
                     "status": ui_status,
                     "resultStatus": result.status,
                     "durationMs": result.duration_ms,
-                    "error": result.error,
+                    "error": redact_data(result.error),
+                    "agent": call.source_agent,
+                    "skill": call.source_skill,
                     "agentStep": step + 1,
                     "generationId": generation_id,
                     "timestamp": int(time.time() * 1000),

@@ -109,14 +109,12 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
       const pass = await loginByToken(loginToken);
 
       if (pass) {
-        // Check if the tab needs to be cleared
+        // Clear stale tabs when the account changes, but retain an explicit
+        // protected-page redirect.  Without this, opening /usage-monitor in
+        // a fresh browser always landed on the home/chat page after login.
         const isClear = checkTabClear();
-        let needRedirect = redirect;
-
-        if (isClear) {
-          // If the tab needs to be cleared,it means we don't need to redirect.
-          needRedirect = false;
-        }
+        const requestedRedirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/');
+        const needRedirect = redirect && (!isClear || requestedRedirect);
         await redirectFromLogin(needRedirect);
 
         window.$notification?.success({

@@ -173,10 +173,12 @@ const routeMap: RouteMap = {
   "knowledge-base": "/knowledge-base",
   "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
   "model-provider": "/model-provider",
+  "my-chat-history": "/my-chat-history",
   "org-tag": "/org-tag",
   "personal-center": "/personal-center",
   "recharge": "/recharge",
   "recharge-manage": "/recharge-manage",
+  "support-handoff": "/support-handoff",
   "usage-monitor": "/usage-monitor",
   "user": "/user"
 };

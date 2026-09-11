@@ -252,14 +252,27 @@ class ElasticsearchService:
             filters.append({"range": {"effectiveDate": {"lte": effective_at.isoformat()}}})
         return filters
 
-    async def search(self, user: User, query: str, query_vector: list[float], top_k: int, metadata_filters: dict | None = None) -> list[dict]:
+    async def search(
+        self,
+        user: User,
+        query: str,
+        query_vector: list[float],
+        top_k: int,
+        metadata_filters: dict | None = None,
+        *,
+        include_evaluation_fixtures: bool = False,
+    ) -> list[dict]:
         if not self.client:
             return []
         await self.ensure_index()
         index = self.settings.elasticsearch_index
         permission = self._permission_filter(user)
         metadata_filter = self._metadata_filter(metadata_filters)
-        combined_filter = {"bool": {"filter": [permission, *metadata_filter]}} if metadata_filter else permission
+        # Blind-RAG fixtures may be public in order to test authorization. They
+        # are test data, not customer knowledge, so normal searches exclude the
+        # reserved prefix even while a shared legacy index is being migrated.
+        fixture_filter = [] if include_evaluation_fixtures else [{"bool": {"must_not": [{"prefix": {"fileName": "fixture-"}}]}}]
+        combined_filter = {"bool": {"filter": [permission, *metadata_filter, *fixture_filter]}}
         recall = max(top_k * 3, 30)
 
         semantic = await self.client.search(
@@ -300,7 +313,7 @@ class ElasticsearchService:
             query={
                 "bool": {
                     "must": [{"match": {"textContent": {"query": query}}}],
-                    "filter": [permission, *metadata_filter],
+                    "filter": [permission, *metadata_filter, *fixture_filter],
                 }
             },
             source=[

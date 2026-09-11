@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select, update
@@ -10,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import current_user, user_orgs
 from app.core.response import ok
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
+from app.core.time import utcnow
 from app.db.models import InviteCode, OrganizationTag, User, UserTokenRecord
 from app.db.session import get_db
 from app.accounting.rate_limit import rate_limit_service
@@ -30,8 +29,14 @@ class PrimaryOrgRequest(BaseModel):
 
 
 @router.post("/register")
-async def register(payload: UserRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    await rate_limit_service.check(db, "register", request.client.host if request.client else "unknown")
+async def register(payload: UserRequest, request: Request = None, db: AsyncSession = Depends(get_db)):
+    # Keep direct service-level callers compatible with the old (payload, db)
+    # signature while FastAPI still injects Request and the database normally.
+    if request is not None and not hasattr(request, "client") and hasattr(request, "execute"):
+        db = request  # type: ignore[assignment]
+        request = None
+    client_host = request.client.host if request and request.client else "unknown"
+    await rate_limit_service.check(db, "register", client_host)
     username = payload.username.strip()
     invite_code = (payload.inviteCode or "").strip()
     if not username or not payload.password:
@@ -44,7 +49,7 @@ async def register(payload: UserRequest, request: Request, db: AsyncSession = De
     invite = await db.scalar(select(InviteCode).where(InviteCode.code == invite_code))
     if not invite or not invite.enabled:
         raise HTTPException(status_code=400, detail="INVITE_CODE_INVALID")
-    if invite.expires_at and invite.expires_at <= datetime.utcnow():
+    if invite.expires_at and invite.expires_at <= utcnow():
         raise HTTPException(status_code=400, detail="INVITE_CODE_EXPIRED")
     if invite.used_count >= invite.max_uses:
         raise HTTPException(status_code=400, detail="INVITE_CODE_EXHAUSTED")

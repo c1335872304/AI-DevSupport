@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import GenerationState, SupportHandoff, User
+from app.core.time import utcnow
 
 VALID_PRIORITIES = {"LOW", "NORMAL", "HIGH", "URGENT"}
 VALID_STATUSES = {"OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"}
@@ -22,10 +22,36 @@ def serialize_handoff(row: SupportHandoff) -> dict:
         "priority": row.priority,
         "status": row.status,
         "reason": row.reason,
-        "summary": row.summary,
+        "summary": row.summary[:500],
         "requestedBy": row.requested_by,
         "assignedTo": row.assigned_to,
         "resolutionNote": row.resolution_note,
+        "createdAt": row.created_at.isoformat(),
+        "updatedAt": row.updated_at.isoformat(),
+    }
+
+
+def serialize_handoff_list_item(row: SupportHandoff, *, username: str | None = None) -> dict:
+    """Return the bounded fields needed by the administrator ticket table.
+
+    Full handoff reasons and resolution notes are intentionally kept on the
+    detail endpoint. This prevents an administrative list request from
+    becoming a bulk export of customer conversation content.
+    """
+    return {
+        "handoffId": row.handoff_id,
+        "userId": row.user_id,
+        "username": username,
+        "conversationId": row.conversation_id,
+        "generationId": row.generation_id,
+        "category": row.category,
+        "priority": row.priority,
+        "status": row.status,
+        # The list endpoint is intentionally bounded. Full summaries are
+        # available only from the authorized detail endpoint.
+        "summary": row.summary[:500],
+        "requestedBy": row.requested_by,
+        "assignedTo": row.assigned_to,
         "createdAt": row.created_at.isoformat(),
         "updatedAt": row.updated_at.isoformat(),
     }
@@ -81,7 +107,20 @@ async def create_handoff(
         requested_by=(requested_by or "AI")[:20],
     )
     db.add(row)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # The pre-check above handles normal retries. The unique generation_id
+        # constraint is the final race-safe idempotency barrier when two workers
+        # submit the same handoff at the same time.
+        await db.rollback()
+        if generation_id:
+            existing = await db.scalar(
+                select(SupportHandoff).where(SupportHandoff.generation_id == generation_id)
+            )
+            if existing:
+                return existing
+        raise
     await db.refresh(row)
     return row
 
@@ -112,7 +151,7 @@ async def update_handoff(
         row.assigned_to = assigned_to.strip()[:64] or None
     if resolution_note is not None:
         row.resolution_note = resolution_note.strip()[:6000] or None
-    row.updated_at = datetime.utcnow()
+    row.updated_at = utcnow()
     await db.commit()
     await db.refresh(row)
     return row

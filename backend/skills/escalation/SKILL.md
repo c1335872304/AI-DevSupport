@@ -1,7 +1,7 @@
 ---
 name: escalation
 description: 当客户明确要求人工、投诉/争议升级、重复排障失败或 AI 缺少必要权限时，整理上下文并创建真实人工客服工单。
-triggers: ["人工客服", "转人工", "人工处理", "找人工", "投诉", "升级处理", "客服经理", "人工介入", "还是不行", "仍然不行", "已经试过了", "human agent", "representative", "escalate", "complaint", "降套餐", "降级套餐", "改价", "退差价", "退订", "取消套餐", "套餐变更"]
+triggers: ["人工客服", "转人工", "人工处理", "找人工", "投诉", "升级处理", "客服经理", "人工介入", "还是不行", "仍然不行", "已经试过了", "human agent", "representative", "escalate", "complaint", "申请退款", "我想退款", "退费争议", "重复扣费", "支付争议", "降套餐", "降级套餐", "改价", "退差价", "退订", "取消套餐", "套餐变更"]
 negative_triggers: ["不用人工", "不要转人工", "已经解决"]
 allowed_tools: ["create_support_handoff", "get_support_handoff", "search_knowledge", "query_plan", "query_usage", "query_bill", "query_call_log", "query_api_key_status", "query_recent_call_stats", "query_error_code", "read_skill_reference", "run_skill_script"]
 references: ["references/handoff-policy.md", "references/priority-rules.md", "references/handoff-summary-format.md"]

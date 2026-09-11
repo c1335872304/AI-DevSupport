@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
-
 from sqlalchemy import select
 
+from app.core.time import utcnow
 from app.db.models import MCPAccessToken, User
 
 
@@ -16,12 +15,12 @@ async def resolve_mcp_principal(token: str) -> tuple[User, frozenset[str], MCPAc
     from app.db.session import SessionLocal
     async with SessionLocal() as db:
         row = await db.scalar(select(MCPAccessToken).where(MCPAccessToken.token_hash == hash_mcp_token(token)))
-        if not row or not row.enabled or (row.expires_at and row.expires_at <= datetime.utcnow()):
+        if not row or not row.enabled or (row.expires_at and row.expires_at <= utcnow()):
             return None
         user = await db.get(User, int(row.user_id))
         if not user:
             return None
-        row.last_used_at = datetime.utcnow()
+        row.last_used_at = utcnow()
         await db.commit()
         principal = User(
             id=user.id, username=user.username, password="", role=user.role,

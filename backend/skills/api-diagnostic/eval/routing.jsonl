@@ -1,0 +1,3 @@
+{"id":"api-route-1","question":"request_id req_demo_401 返回 401，帮我查 API Key 状态","expectedSkills":["customer-support","api-diagnostic"],"forbiddenSkills":["billing"]}
+{"id":"api-route-2","question":"接口返回 429，帮我看看是不是限流","expectedSkills":["customer-support","api-diagnostic"],"forbiddenSkills":["billing"]}
+{"id":"api-route-3","question":"request_id req_demo_500 的 API Key 状态需要核验","expectedSkills":["customer-support","api-diagnostic"],"forbiddenSkills":["billing"]}

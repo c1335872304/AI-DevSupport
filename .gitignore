@@ -1,4 +1,6 @@
 .env
+.uv-cache/
+.pnpm-store/
 .venv/
 __pycache__/
 *.py[cod]

@@ -17,7 +17,7 @@ def _case(skill: str, case_id: str):
 
 
 def test_all_customer_service_answer_eval_datasets_are_valid():
-    for name in ("customer-support", "troubleshooting", "escalation"):
+    for name in ("customer-support", "api-diagnostic", "billing", "knowledge", "escalation"):
         skill = skill_registry.get(name)
         assert "eval/answer.jsonl" in skill.evals
         rows = load_jsonl(skill.root / "eval/answer.jsonl")

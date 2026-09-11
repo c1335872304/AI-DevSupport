@@ -84,16 +84,24 @@ class GenerationRuntime:
             self._subscribers.pop(generation_id, None)
 
     async def recover_orphaned_states(self) -> int:
-        from sqlalchemy import update
+        from sqlalchemy import select, update
+        from app.accounting.usage import usage_service
         from app.db.models import GenerationState
         from app.db.session import SessionLocal
         async with SessionLocal() as db:
+            orphaned_ids = list((await db.scalars(
+                select(GenerationState.generation_id).where(
+                    GenerationState.status.in_(["PENDING", "STREAMING"])
+                )
+            )).all())
             result = await db.execute(
                 update(GenerationState)
                 .where(GenerationState.status.in_(["PENDING", "STREAMING"]))
                 .values(status="INTERRUPTED", error="Server restarted before generation completed")
             )
             await db.commit()
+            for generation_id in orphaned_ids:
+                await usage_service.release_llm(db, generation_id, "server_restart_recovery")
             return int(result.rowcount or 0)
 
     def is_running(self, generation_id: str) -> bool:

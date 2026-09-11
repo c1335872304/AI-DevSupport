@@ -1,0 +1,6 @@
+{"id":"target-route-001","question":"我要申请退款，请人工处理。","entities":{},"expected":{"agents":["billing"],"handoff":true,"risk":"HIGH"}}
+{"id":"target-route-002","question":"退款政策和申请条件是什么？","entities":{},"expected":{"agents":["knowledge"],"handoff":false,"risk":"LOW"}}
+{"id":"target-route-003","question":"request_id req_demo_429 接口限流了，帮我转人工。","entities":{"request_id":"req_demo_429","http_status":"429"},"expected":{"agents":["api_diagnostic"],"handoff":true,"risk":"HIGH"}}
+{"id":"target-route-004","question":"别排查了，直接转人工。","entities":{},"expected":{"agents":[],"handoff":true,"risk":"HIGH"}}
+{"id":"target-route-005","question":"不要转人工，帮我查 2026-08 的账单。","entities":{"month":"2026-08"},"expected":{"agents":["billing"],"handoff":false,"risk":"LOW"}}
+{"id":"target-route-006","question":"接口 429，同时八月账单费用异常。","entities":{"http_status":"429","month":"2026-08"},"expected":{"agents":["api_diagnostic","billing","knowledge"],"handoff":false,"risk":"MEDIUM"}}

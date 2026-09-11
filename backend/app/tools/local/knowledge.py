@@ -9,17 +9,23 @@ from app.knowledge.metadata import metadata_filter_schema, file_metadata
 from app.tools.base import BaseTool, ToolExecutionContext
 
 
-def _access_filter(user):
+def _access_filter(user, *, include_evaluation_fixtures: bool = False):
     if user.role == "ADMIN":
-        return True
-    clauses = [
-        FileUpload.user_id == str(user.id),
-        FileUpload.is_public.is_(True),
-    ]
-    orgs = sorted(user_orgs(user))
-    if orgs:
-        clauses.append(FileUpload.org_tag.in_(orgs))
-    return or_(*clauses)
+        permission = True
+    else:
+        clauses = [
+            FileUpload.user_id == str(user.id),
+            FileUpload.is_public.is_(True),
+        ]
+        orgs = sorted(user_orgs(user))
+        if orgs:
+            clauses.append(FileUpload.org_tag.in_(orgs))
+        permission = or_(*clauses)
+    # `fixture-*` is a reserved evaluation namespace. No customer-facing Tool
+    # may enumerate or read it, even for an administrator using the Demo UI.
+    if include_evaluation_fixtures:
+        return permission
+    return and_(permission, FileUpload.file_name.not_like("fixture-%"))
 
 
 class SearchKnowledgeTool(BaseTool):

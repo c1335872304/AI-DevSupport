@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: 'PaiSmart',
+    title: 'API Assistant',
     updateTitle: 'System Version Update Notification',
     updateContent: 'A new version of the system has been detected. Do you want to refresh the page immediately?',
     updateConfirm: 'Refresh immediately',
@@ -164,10 +164,12 @@ const local: App.I18n.Schema = {
     'iframe-page': 'Iframe',
     chat: 'Chat Assistant',
     'chat-history': 'Chat History',
+    'my-chat-history': 'My Chat History',
     'invite-code': 'Invite Codes',
     'knowledge-base': 'Knowledge Base',
     'model-provider': 'Model Providers',
     'org-tag': 'Organization Tag',
+    'support-handoff': 'Support Tickets',
     'usage-monitor': 'Usage Monitor',
     user: 'User Management',
     'personal-center': 'Personal Center',

@@ -27,10 +27,12 @@ declare module "@elegant-router/types" {
     "knowledge-base": "/knowledge-base";
     "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?";
     "model-provider": "/model-provider";
+    "my-chat-history": "/my-chat-history";
     "org-tag": "/org-tag";
     "personal-center": "/personal-center";
     "recharge": "/recharge";
     "recharge-manage": "/recharge-manage";
+    "support-handoff": "/support-handoff";
     "usage-monitor": "/usage-monitor";
     "user": "/user";
   };
@@ -74,10 +76,12 @@ declare module "@elegant-router/types" {
     | "knowledge-base"
     | "login"
     | "model-provider"
+    | "my-chat-history"
     | "org-tag"
     | "personal-center"
     | "recharge"
     | "recharge-manage"
+    | "support-handoff"
     | "usage-monitor"
     | "user"
   >;
@@ -106,10 +110,12 @@ declare module "@elegant-router/types" {
     | "invite-code"
     | "knowledge-base"
     | "model-provider"
+    | "my-chat-history"
     | "org-tag"
     | "personal-center"
     | "recharge-manage"
     | "recharge"
+    | "support-handoff"
     | "usage-monitor"
     | "user"
   >;

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import heapq
 import json
+import logging
 import math
 import re
+import time
 from collections import Counter, defaultdict
 
 from sqlalchemy import and_, or_, select
@@ -17,23 +19,56 @@ from app.knowledge.elasticsearch import elasticsearch_service
 from app.knowledge.metadata import SCALAR_FIELDS, normalize_metadata, file_metadata
 from app.knowledge.reranker import reranker_service
 
+logger = logging.getLogger(__name__)
+
+
+def _console(message: str) -> None:
+    print(message, flush=True)
+
 
 class RagService:
     def __init__(self) -> None:
         self.settings = get_settings()
 
-    async def search(self, db: AsyncSession, user: User, query: str, top_k: int | None = None, metadata_filters: dict | None = None) -> list[dict]:
+    async def search(
+        self,
+        db: AsyncSession,
+        user: User,
+        query: str,
+        top_k: int | None = None,
+        metadata_filters: dict | None = None,
+        *,
+        include_evaluation_fixtures: bool = False,
+    ) -> list[dict]:
+        started = time.monotonic()
         top_k = top_k or self.settings.top_k
         candidate_k = max(top_k, top_k * max(1, self.settings.rag_candidate_multiplier))
         if self.settings.search_backend.lower() == "elasticsearch":
             qvec = await embedding_service.embed_one(query)
-            raw_candidates = await elasticsearch_service.search(user, query, qvec, max(candidate_k * 2, candidate_k), metadata_filters=metadata_filters)
+            raw_candidates = await elasticsearch_service.search(
+                user,
+                query,
+                qvec,
+                max(candidate_k * 2, candidate_k),
+                metadata_filters=metadata_filters,
+                include_evaluation_fixtures=include_evaluation_fixtures,
+            )
             candidates = await self._filter_active_versions(db, raw_candidates, candidate_k)
         else:
-            candidates = await self._search_database(db, user, query, candidate_k, metadata_filters=metadata_filters)
+            candidates = await self._search_database(
+                db,
+                user,
+                query,
+                candidate_k,
+                metadata_filters=metadata_filters,
+                include_evaluation_fixtures=include_evaluation_fixtures,
+            )
 
         reranked = reranker_service.rerank(query, candidates, candidate_k)
-        return await self._expand_parent_context(db, reranked, top_k)
+        output = await self._expand_parent_context(db, reranked, top_k)
+        logger.info("[RAG] search user=%s backend=%s candidates=%d results=%d duration_ms=%d", user.id, self.settings.search_backend, len(candidates), len(output), int((time.monotonic() - started) * 1000))
+        _console(f"[RAG] search backend={self.settings.search_backend} candidates={len(candidates)} results={len(output)} duration_ms={int((time.monotonic() - started) * 1000)}")
+        return output
 
 
     async def _filter_active_versions(self, db: AsyncSession, candidates: list[dict], limit: int) -> list[dict]:
@@ -62,7 +97,16 @@ class RagService:
                 break
         return output
 
-    async def _search_database(self, db: AsyncSession, user: User, query: str, top_k: int, metadata_filters: dict | None = None) -> list[dict]:
+    async def _search_database(
+        self,
+        db: AsyncSession,
+        user: User,
+        query: str,
+        top_k: int,
+        metadata_filters: dict | None = None,
+        *,
+        include_evaluation_fixtures: bool = False,
+    ) -> list[dict]:
         """Exact fallback search for small installations.
 
         Permissions are applied in SQL; rows are streamed; only a bounded candidate heap is
@@ -79,6 +123,8 @@ class RagService:
             metadata_clauses.append(column.in_(value) if isinstance(value, list) else column == value)
         if metadata.get("effective_at"):
             metadata_clauses.append(FileUpload.knowledge_effective_date <= metadata["effective_at"])
+        if not include_evaluation_fixtures:
+            metadata_clauses.append(FileUpload.file_name.not_like("fixture-%"))
         stmt = (
             select(DocumentVector, FileUpload)
             .join(

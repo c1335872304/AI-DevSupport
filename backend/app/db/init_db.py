@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select, text
 
 from app.core.config import get_settings
 from app.core.security import hash_password
@@ -13,6 +13,15 @@ async def init_db() -> None:
     if settings.app_env.lower() not in {"prod", "production"} and settings.database_auto_create_dev:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            # create_all does not add columns to an existing SQLite/MySQL table.
+            # Keep local upgrades self-contained because this project has no
+            # migration runner in the development setup.
+            def add_missing_columns(sync_conn):
+                columns = {item["name"] for item in inspect(sync_conn).get_columns("conversation_sessions")}
+                if "collected_entities_json" not in columns:
+                    sync_conn.execute(text("ALTER TABLE conversation_sessions ADD COLUMN collected_entities_json TEXT DEFAULT '{}'"))
+
+            await conn.run_sync(add_missing_columns)
 
     async with SessionLocal() as db:
         default_tag = await db.get(OrganizationTag, "default")

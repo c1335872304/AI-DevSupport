@@ -43,26 +43,28 @@ watch(
 
 <template>
   <Teleport :to="`#${GLOBAL_SIDER_MENU_ID}`">
-    <SimpleScrollbar class="relative">
-      <NMenu
-        v-model:expanded-keys="expandedKeys"
-        mode="vertical"
-        :value="selectedKey"
-        :collapsed="appStore.siderCollapse"
-        :collapsed-width="themeStore.sider.collapsedWidth"
-        :collapsed-icon-size="22"
-        :options="routeStore.menus"
-        :inverted="inverted"
-        :indent="18"
-        @update:value="routerPushByKeyWithMetaQuery"
-      />
+    <div class="h-full flex-col-stretch">
+      <SimpleScrollbar class="flex-1-hidden">
+        <NMenu
+          v-model:expanded-keys="expandedKeys"
+          mode="vertical"
+          :value="selectedKey"
+          :collapsed="appStore.siderCollapse"
+          :collapsed-width="themeStore.sider.collapsedWidth"
+          :collapsed-icon-size="22"
+          :options="routeStore.menus"
+          :inverted="inverted"
+          :indent="18"
+          @update:value="routerPushByKeyWithMetaQuery"
+        />
+      </SimpleScrollbar>
       <MenuToggler
         v-if="!appStore.isMobile"
-        class="absolute bottom-0 w-full"
+        class="shrink-0 w-full"
         :collapsed="appStore.siderCollapse"
         @click="appStore.toggleSiderCollapse"
       />
-    </SimpleScrollbar>
+    </div>
   </Teleport>
 </template>
 

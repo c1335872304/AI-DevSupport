@@ -33,33 +33,45 @@ const params = computed(() => {
     end_date?: string;
   } = {};
 
-  if (userId.value !== null) {
-    query.userid = userId.value;
+  // Remote selects can briefly emit undefined or an empty string while their
+  // options are loading/clearing. Never pass those transient values to the
+  // FastAPI integer query parameter.
+  const selectedUserId = Number(userId.value);
+  if (Number.isInteger(selectedUserId) && selectedUserId > 0) {
+    query.userid = selectedUserId;
   }
 
-  if (range.value) {
-    query.start_date = dayjs(range.value[0]).format('YYYY-MM-DD');
-    query.end_date = dayjs(range.value[1]).format('YYYY-MM-DD');
+  // A date-range picker can be in a half-selected state. Send date filters
+  // only after both timestamps are valid, instead of emitting Invalid Date.
+  const [start, end] = range.value || [];
+  if (Number.isFinite(start) && Number.isFinite(end)) {
+    query.start_date = dayjs(start).format('YYYY-MM-DD');
+    query.end_date = dayjs(end).format('YYYY-MM-DD');
   }
 
   return query;
 });
 
-watchEffect(() => {
-  getList();
-});
+let latestRequest = 0;
+
+watch([userId, range], () => {
+  void getList();
+}, { immediate: true, deep: true });
 
 async function getList() {
+  const requestId = ++latestRequest;
   loading.value = true;
   const { error, data } = await request<Api.Chat.Message[]>({
     url: 'admin/conversation',
     params: params.value
   });
-  if (!error) {
+  if (!error && requestId === latestRequest) {
     list.value = data;
     scrollToBottom();
   }
-  loading.value = false;
+  if (requestId === latestRequest) {
+    loading.value = false;
+  }
 }
 </script>
 
@@ -67,12 +79,12 @@ async function getList() {
   <div class="h-full">
     <Teleport defer to="#header-extra">
       <div class="px-10">
-        <NForm :model="params" label-placement="left" :show-feedback="false" inline>
+        <NForm label-placement="left" :show-feedback="false" inline>
           <NFormItem label="用户">
             <TheSelect
               v-model:value="userId"
               url="admin/users/list"
-              :params="{ page: 1, size: 999 }"
+              :params="{ page: 1, size: 200 }"
               key-field="content"
               value-field="userId"
               label-field="username"

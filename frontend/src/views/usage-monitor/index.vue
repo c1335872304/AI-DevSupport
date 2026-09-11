@@ -26,67 +26,19 @@ async function getOverview() {
   overviewLoading.value = false;
 }
 
-function createDefaultRateLimitSettings(): Api.Admin.RateLimitSettings {
+function cloneRateLimitPolicy(payload?: Partial<Api.Admin.RateLimitPolicy> | null): Api.Admin.RateLimitPolicy {
   return {
-    chatMessage: {
-      max: 30,
-      windowSeconds: 60
-    },
-    llmGlobalToken: {
-      minuteMax: 120000,
-      minuteWindowSeconds: 60,
-      dayMax: 8000000,
-      dayWindowSeconds: 86400
-    },
-    embeddingUploadToken: {
-      minuteMax: 200000,
-      minuteWindowSeconds: 60,
-      dayMax: 20000000,
-      dayWindowSeconds: 86400
-    },
-    embeddingQueryRequest: {
-      minuteMax: 60,
-      minuteWindowSeconds: 60,
-      dayMax: 5000,
-      dayWindowSeconds: 86400
-    },
-    embeddingQueryGlobalToken: {
-      minuteMax: 60000,
-      minuteWindowSeconds: 60,
-      dayMax: 4000000,
-      dayWindowSeconds: 86400
-    }
-  };
-}
-
-function cloneTokenBudgetLimit(payload?: Partial<Api.Admin.TokenBudgetLimit> | null): Api.Admin.TokenBudgetLimit {
-  return {
-    minuteMax: Number(payload?.minuteMax || 0),
-    minuteWindowSeconds: Number(payload?.minuteWindowSeconds || 0),
-    dayMax: Number(payload?.dayMax || 0),
-    dayWindowSeconds: Number(payload?.dayWindowSeconds || 0)
-  };
-}
-
-function cloneDualWindowLimit(payload?: Partial<Api.Admin.DualWindowLimit> | null): Api.Admin.DualWindowLimit {
-  return {
-    minuteMax: Number(payload?.minuteMax || 0),
-    minuteWindowSeconds: Number(payload?.minuteWindowSeconds || 0),
-    dayMax: Number(payload?.dayMax || 0),
-    dayWindowSeconds: Number(payload?.dayWindowSeconds || 0)
+    max: Number(payload?.max || 1),
+    windowSeconds: Number(payload?.windowSeconds || 1),
+    enabled: payload?.enabled !== false
   };
 }
 
 function cloneRateLimitSettings(payload?: Api.Admin.RateLimitSettings | null): Api.Admin.RateLimitSettings {
   return {
-    chatMessage: {
-      max: Number(payload?.chatMessage.max || 0),
-      windowSeconds: Number(payload?.chatMessage.windowSeconds || 0)
-    },
-    llmGlobalToken: cloneTokenBudgetLimit(payload?.llmGlobalToken),
-    embeddingUploadToken: cloneTokenBudgetLimit(payload?.embeddingUploadToken),
-    embeddingQueryRequest: cloneDualWindowLimit(payload?.embeddingQueryRequest),
-    embeddingQueryGlobalToken: cloneTokenBudgetLimit(payload?.embeddingQueryGlobalToken)
+    register: cloneRateLimitPolicy(payload?.register),
+    login: cloneRateLimitPolicy(payload?.login),
+    chat: cloneRateLimitPolicy(payload?.chat)
   };
 }
 
@@ -98,8 +50,6 @@ async function getRateLimits() {
 
   if (!error && data) {
     rateLimits.value = cloneRateLimitSettings(data);
-  } else if (!rateLimits.value) {
-    rateLimits.value = createDefaultRateLimitSettings();
   }
   rateLimitLoading.value = false;
 }
@@ -269,102 +219,48 @@ onMounted(() => {
 
       <NSpin :show="rateLimitLoading">
         <div class="mb-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
-          这里集中管理聊天消息、LLM 全网 Token 预算，以及 Embedding 上传/查询两条链路的运行时限流配置。保存后对新请求立即生效，无需改 `application.yml`。
+          此处配置项目当前真实启用的请求次数限流：注册、登录和聊天。保存后仅对新请求生效，无需重启服务。
         </div>
 
-        <div v-if="rateLimits" class="grid gap-4 xl:grid-cols-2">
+        <div v-if="rateLimits" class="grid gap-4 xl:grid-cols-3">
+          <div class="limit-card">
+            <div class="limit-title">注册</div>
+            <div class="limit-grid">
+              <div>
+                <div class="limit-label">次数上限</div>
+                <NInputNumber v-model:value="rateLimits.register.max" :min="1" class="w-full" />
+              </div>
+              <div>
+                <div class="limit-label">窗口秒数</div>
+                <NInputNumber v-model:value="rateLimits.register.windowSeconds" :min="1" class="w-full" />
+              </div>
+            </div>
+          </div>
+
+          <div class="limit-card">
+            <div class="limit-title">登录</div>
+            <div class="limit-grid">
+              <div>
+                <div class="limit-label">次数上限</div>
+                <NInputNumber v-model:value="rateLimits.login.max" :min="1" class="w-full" />
+              </div>
+              <div>
+                <div class="limit-label">窗口秒数</div>
+                <NInputNumber v-model:value="rateLimits.login.windowSeconds" :min="1" class="w-full" />
+              </div>
+            </div>
+          </div>
+
           <div class="limit-card">
             <div class="limit-title">聊天消息</div>
             <div class="limit-grid">
               <div>
                 <div class="limit-label">次数上限</div>
-                <NInputNumber v-model:value="rateLimits.chatMessage.max" :min="1" class="w-full" />
+                <NInputNumber v-model:value="rateLimits.chat.max" :min="1" class="w-full" />
               </div>
               <div>
                 <div class="limit-label">窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.chatMessage.windowSeconds" :min="1" class="w-full" />
-              </div>
-            </div>
-          </div>
-
-          <div class="limit-card">
-            <div class="limit-title">LLM 全网 Token 预算</div>
-            <div class="limit-grid">
-              <div>
-                <div class="limit-label">分钟 Token 上限</div>
-                <NInputNumber v-model:value="rateLimits.llmGlobalToken.minuteMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.llmGlobalToken.minuteWindowSeconds" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">日 Token 上限</div>
-                <NInputNumber v-model:value="rateLimits.llmGlobalToken.dayMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.llmGlobalToken.dayWindowSeconds" :min="1" class="w-full" />
-              </div>
-            </div>
-          </div>
-
-          <div class="limit-card">
-            <div class="limit-title">Embedding 上传 Token 预算</div>
-            <div class="limit-grid">
-              <div>
-                <div class="limit-label">分钟 Token 上限</div>
-                <NInputNumber v-model:value="rateLimits.embeddingUploadToken.minuteMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingUploadToken.minuteWindowSeconds" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">日 Token 上限</div>
-                <NInputNumber v-model:value="rateLimits.embeddingUploadToken.dayMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingUploadToken.dayWindowSeconds" :min="1" class="w-full" />
-              </div>
-            </div>
-          </div>
-
-          <div class="limit-card">
-            <div class="limit-title">Embedding 查询</div>
-            <div class="limit-grid">
-              <div>
-                <div class="limit-label">单用户分钟次数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryRequest.minuteMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryRequest.minuteWindowSeconds" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">单用户日次数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryRequest.dayMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryRequest.dayWindowSeconds" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">全网分钟 Token</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryGlobalToken.minuteMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">查询分钟窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryGlobalToken.minuteWindowSeconds" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">全网日 Token</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryGlobalToken.dayMax" :min="1" class="w-full" />
-              </div>
-              <div>
-                <div class="limit-label">查询日窗口秒数</div>
-                <NInputNumber v-model:value="rateLimits.embeddingQueryGlobalToken.dayWindowSeconds" :min="1" class="w-full" />
+                <NInputNumber v-model:value="rateLimits.chat.windowSeconds" :min="1" class="w-full" />
               </div>
             </div>
           </div>
@@ -394,7 +290,7 @@ onMounted(() => {
             <div class="summary-card">
               <div class="summary-label">今日聊天消息</div>
               <div class="summary-value">{{ formatNumber(todaySummary?.chatRequestCount) }}</div>
-              <div class="summary-sub">按通过限流的消息数统计</div>
+              <div class="summary-sub">按已完成的 LLM 请求统计</div>
             </div>
             <div class="summary-card">
               <div class="summary-label">今日 LLM Tokens</div>
@@ -449,7 +345,7 @@ onMounted(() => {
               </NCard>
 
               <NCard size="small" embedded class="overview-section">
-                <template #header>今日用量排行</template>
+                <template #header>所选期间用量排行</template>
                 <div class="flex flex-col gap-4">
                   <div>
                     <div class="mb-2 text-xs font-semibold uppercase tracking-0.12em text-stone-400">LLM</div>

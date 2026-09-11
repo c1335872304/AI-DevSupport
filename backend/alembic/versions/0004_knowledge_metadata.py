@@ -26,6 +26,15 @@ COLUMNS = [
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    # Recover databases initialized by the pre-Alembic baseline, where only
+    # the alembic_version row existed and this table was never created.
+    if "file_upload" not in inspector.get_table_names():
+        from app.db.models import Base
+
+        Base.metadata.create_all(bind=bind)
+        return
     with op.batch_alter_table("file_upload") as batch:
         for name, type_ in COLUMNS:
             batch.add_column(sa.Column(name, type_, nullable=True))
@@ -33,6 +42,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if "file_upload" not in sa.inspect(op.get_bind()).get_table_names():
+        return
     with op.batch_alter_table("file_upload") as batch:
         for name, _ in reversed(COLUMNS):
             batch.drop_index(f"ix_file_upload_{name}")

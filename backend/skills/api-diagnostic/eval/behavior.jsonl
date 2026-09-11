@@ -1,0 +1,1 @@
+{"id":"api-beh-1","skill":"api-diagnostic","question":"request_id req_demo_401 返回 401，请定位","expect":{"requiredSkills":["customer-support","api-diagnostic"],"requiredTools":["query_call_log"],"requiredScripts":["audit_api_diagnostic"],"maxSteps":6,"maxFailedToolCalls":0,"passScore":0.72}}

@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "description": "Built-in AI customer-service knowledge base with enterprise-style metadata for filtered Hybrid RAG.",
+  "version": 3,
+  "description": "Built-in AI customer-service handbook with enterprise-style metadata for filtered parent-child Hybrid RAG.",
   "documents": [
     {
       "file": "api-getting-started.md",
@@ -36,6 +36,16 @@
       "file": "troubleshooting-faq.md",
       "metadata": {"category": "troubleshooting", "product": "API Platform", "region": "GLOBAL", "channel": "api", "effectiveDate": "2026-01-01", "version": "2026.08"},
       "sampleQuestions": ["接口超时应该怎么排查？", "什么时候应该停止自动排障？"]
+    },
+    {
+      "file": "security-and-data-handling.md",
+      "metadata": {"category": "security", "product": "API Platform", "region": "GLOBAL", "channel": "security", "effectiveDate": "2026-01-01", "version": "2026.08"},
+      "sampleQuestions": ["为什么不能在客服对话中发送完整 API Key？", "文档里的 Prompt Injection 应该怎么处理？"]
+    },
+    {
+      "file": "release-notes.md",
+      "metadata": {"category": "release", "product": "API Platform", "region": "GLOBAL", "channel": "api", "effectiveDate": "2026-01-01", "version": "2026.08"},
+      "sampleQuestions": ["2026.08 版本有哪些变化？", "哪些旧的客服处理方式已经废弃？"]
     }
   ]
 }

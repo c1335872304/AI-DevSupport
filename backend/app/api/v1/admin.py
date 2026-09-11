@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import admin_user
 from app.core.response import ok
 from app.core.security import hash_password
+from app.core.time import utcnow
 from app.db.models import ConversationMessage, InviteCode, OrganizationTag, RechargePackage, User, UserTokenRecord, MCPAccessToken
 from app.db.session import get_db
 from app.accounting.rate_limit import rate_limit_service
@@ -222,15 +223,19 @@ async def update_invite(invite_id: int, payload: InviteUpdate, admin: User = Dep
 
 @router.get("/conversation")
 async def admin_conversation(
-    userid: int | None = None,
+    userid: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     admin: User = Depends(admin_user),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(ConversationMessage).order_by(ConversationMessage.id)
-    if userid is not None:
-        stmt = stmt.where(ConversationMessage.user_id == str(userid))
+    # The remote user select can briefly serialize an empty/undefined value
+    # while its options load. Treat it as "all users" instead of returning a
+    # 422 for an administrative read-only filter.
+    normalized_user_id = str(userid or "").strip()
+    if normalized_user_id.isdigit() and int(normalized_user_id) > 0:
+        stmt = stmt.where(ConversationMessage.user_id == normalized_user_id)
     rows = list((await db.scalars(stmt)).all())
     if start_date:
         rows = [x for x in rows if x.created_at.date().isoformat() >= start_date]
@@ -256,29 +261,101 @@ async def admin_conversation(
 
 @router.get("/usage/overview")
 async def usage_overview(days: int = Query(7, ge=1, le=90), admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    start = datetime.utcnow().date() - timedelta(days=days - 1)
+    """Return the usage-monitor contract consumed by the admin UI.
+
+    Token records are a ledger, so reservations and refunds must not be
+    counted as consumption.  Only settled ``CONSUME`` records are used here.
+    """
+    start = utcnow().date() - timedelta(days=days - 1)
     rows = list((await db.scalars(select(UserTokenRecord).where(UserTokenRecord.record_date >= start))).all())
-    users = {str(u.id): u.username for u in (await db.scalars(select(User))).all()}
-    by_date: dict[str, dict] = {}
-    llm_by_user: dict[str, int] = {}
-    embedding_by_user: dict[str, int] = {}
+    user_rows = list((await db.scalars(select(User))).all())
+    users = {str(u.id): u for u in user_rows}
+
+    def empty_day(day: str) -> dict:
+        return {
+            "day": day,
+            "chatRequestCount": 0,
+            "llmUsedTokens": 0,
+            "llmRequestCount": 0,
+            "embeddingUsedTokens": 0,
+            "embeddingRequestCount": 0,
+        }
+
+    # Always return a continuous series.  Otherwise a quiet day disappears
+    # from the chart and makes a seven-day view look like a one-day view.
+    by_date = {
+        (start + timedelta(days=offset)).isoformat(): empty_day((start + timedelta(days=offset)).isoformat())
+        for offset in range(days)
+    }
+    by_scope_user: dict[str, dict[str, dict[str, int]]] = {"llm": {}, "embedding": {}}
     for row in rows:
         day = row.record_date.isoformat()
-        item = by_date.setdefault(day, {"recordDate": day, "llmTokens": 0, "embeddingTokens": 0, "chatRequests": 0})
+        item = by_date.setdefault(day, empty_day(day))
         consumed = abs(min(0, int(row.amount or 0))) if row.change_type == "CONSUME" else 0
+        if not consumed:
+            continue
         if row.token_type.upper() == "LLM":
-            item["llmTokens"] += consumed
-            item["chatRequests"] += int(row.request_count or 0)
-            llm_by_user[row.user_id] = llm_by_user.get(row.user_id, 0) + consumed
+            item["llmUsedTokens"] += consumed
+            item["llmRequestCount"] += int(row.request_count or 0)
+            item["chatRequestCount"] += int(row.request_count or 0)
+            aggregate = by_scope_user["llm"].setdefault(row.user_id, {"tokens": 0, "requests": 0})
         elif row.token_type.upper() == "EMBEDDING":
-            item["embeddingTokens"] += consumed
-            embedding_by_user[row.user_id] = embedding_by_user.get(row.user_id, 0) + consumed
+            item["embeddingUsedTokens"] += consumed
+            item["embeddingRequestCount"] += int(row.request_count or 0)
+            aggregate = by_scope_user["embedding"].setdefault(row.user_id, {"tokens": 0, "requests": 0})
+        else:
+            continue
+        aggregate["tokens"] += consumed
+        aggregate["requests"] += int(row.request_count or 0)
+
     trends = [by_date[key] for key in sorted(by_date)]
-    today_key = datetime.utcnow().date().isoformat()
-    today = by_date.get(today_key, {"recordDate": today_key, "llmTokens": 0, "embeddingTokens": 0, "chatRequests": 0})
-    def rankings(data: dict[str, int]):
-        return [{"userId": uid, "username": users.get(uid, uid), "tokens": total} for uid, total in sorted(data.items(), key=lambda x: x[1], reverse=True)[:10]]
-    return ok({"days": days, "today": today, "trends": trends, "llmRankings": rankings(llm_by_user), "embeddingRankings": rankings(embedding_by_user), "alerts": []})
+    today_key = utcnow().date().isoformat()
+    today = by_date.get(today_key, empty_day(today_key))
+
+    def rankings(scope: str) -> list[dict]:
+        result = []
+        for user_id, aggregate in by_scope_user[scope].items():
+            user = users.get(user_id)
+            remaining = int(
+                (user.llm_token_balance if scope == "llm" else user.embedding_token_balance) if user else 0
+            )
+            used = aggregate["tokens"]
+            result.append({
+                "userId": user_id,
+                "username": user.username if user else f"已删除用户 ({user_id})",
+                "scope": scope,
+                "usedTokens": used,
+                # The ledger has no immutable per-period quota.  This value is
+                # deliberately a current available-total snapshot, not a claim
+                # about a subscription plan.
+                "limitTokens": used + max(0, remaining),
+                "remainingTokens": remaining,
+                "requestCount": aggregate["requests"],
+            })
+        return sorted(result, key=lambda item: item["usedTokens"], reverse=True)[:10]
+
+    llm_rankings = rankings("llm")
+    embedding_rankings = rankings("embedding")
+    alerts = []
+    for item in [*llm_rankings, *embedding_rankings]:
+        limit = item["limitTokens"]
+        ratio = item["usedTokens"] / limit if limit else 1.0
+        if item["remainingTokens"] <= 0:
+            level, message = "critical", "余额已耗尽"
+        elif ratio >= 0.8:
+            level, message = "warning", "可用余额不足 20%"
+        else:
+            continue
+        alerts.append({**item, "level": level, "usageRatio": ratio, "message": message})
+
+    return ok({
+        "days": days,
+        "today": today,
+        "trends": trends,
+        "llmRankings": llm_rankings,
+        "embeddingRankings": embedding_rankings,
+        "alerts": alerts,
+    })
 
 
 @router.get("/rate-limits")
@@ -296,11 +373,48 @@ async def model_providers(admin: User = Depends(admin_user)):
     from app.core.config import get_settings
 
     s = get_settings()
+
+    def provider_item(*, scope: str, model: str, base_url: str, dimension: int | None, api_key: str) -> dict:
+        """Expose the active deployment provider without ever returning its secret."""
+        masked_key = ""
+        if api_key:
+            masked_key = f"{api_key[:3]}***{api_key[-4:]}" if len(api_key) > 7 else "***"
+        return {
+            "provider": "openai-compatible",
+            "displayName": "OpenAI Compatible",
+            "apiStyle": "openai-compatible",
+            "apiBaseUrl": base_url,
+            "model": model,
+            "dimension": dimension,
+            "enabled": True,
+            "active": True,
+            "hasApiKey": bool(api_key),
+            "maskedApiKey": masked_key,
+        }
+
+    llm = provider_item(
+        scope="llm",
+        model=s.llm_model,
+        base_url=s.llm_base_url,
+        dimension=None,
+        api_key=s.llm_api_key,
+    )
+    embedding = provider_item(
+        scope="embedding",
+        model=s.embedding_model,
+        base_url=s.embedding_base_url,
+        dimension=s.embedding_dimension,
+        api_key=s.embedding_api_key,
+    )
     return ok(
-        [
-            {"scope": "llm", "providerCode": "openai-compatible", "displayName": "OpenAI Compatible", "modelName": s.llm_model, "apiBaseUrl": s.llm_base_url, "active": True},
-            {"scope": "embedding", "providerCode": "openai-compatible", "displayName": "OpenAI Compatible", "modelName": s.embedding_model, "apiBaseUrl": s.embedding_base_url, "active": True, "embeddingDimension": s.embedding_dimension},
-        ]
+        {
+            "llm": {"scope": "llm", "activeProvider": llm["provider"], "providers": [llm]},
+            "embedding": {
+                "scope": "embedding",
+                "activeProvider": embedding["provider"],
+                "providers": [embedding],
+            },
+        }
     )
 
 
@@ -314,6 +428,7 @@ async def update_model_provider(scope: str, payload: dict, admin: User = Depends
 @router.post("/model-providers/{scope}/test")
 async def test_model_provider(scope: str, payload: dict, admin: User = Depends(admin_user)):
     import httpx
+    import time
     from app.core.config import get_settings
     s = get_settings()
     if scope not in {"llm", "embedding"}:
@@ -323,10 +438,20 @@ async def test_model_provider(scope: str, payload: dict, admin: User = Depends(a
     if not api_key:
         raise HTTPException(status_code=422, detail="API key is required to test provider connectivity")
     try:
+        started = time.monotonic()
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.get(base_url + "/models", headers={"Authorization": f"Bearer {api_key}"})
             response.raise_for_status()
-        return ok({"success": True, "scope": scope, "statusCode": response.status_code}, "Provider connection succeeded")
+        return ok(
+            {
+                "success": True,
+                "scope": scope,
+                "statusCode": response.status_code,
+                "message": "Provider connection succeeded",
+                "latencyMs": int((time.monotonic() - started) * 1000),
+            },
+            "Provider connection succeeded",
+        )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Provider connection failed: {str(exc)[:300]}") from exc
 

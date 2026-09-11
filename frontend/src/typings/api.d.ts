@@ -219,31 +219,16 @@ declare namespace Api {
   }
 
   namespace Admin {
-    interface WindowLimit {
+    interface RateLimitPolicy {
       max: number;
       windowSeconds: number;
-    }
-
-    interface DualWindowLimit {
-      minuteMax: number;
-      minuteWindowSeconds: number;
-      dayMax: number;
-      dayWindowSeconds: number;
-    }
-
-    interface TokenBudgetLimit {
-      minuteMax: number;
-      minuteWindowSeconds: number;
-      dayMax: number;
-      dayWindowSeconds: number;
+      enabled: boolean;
     }
 
     interface RateLimitSettings {
-      chatMessage: WindowLimit;
-      llmGlobalToken: TokenBudgetLimit;
-      embeddingUploadToken: TokenBudgetLimit;
-      embeddingQueryRequest: DualWindowLimit;
-      embeddingQueryGlobalToken: TokenBudgetLimit;
+      register: RateLimitPolicy;
+      login: RateLimitPolicy;
+      chat: RateLimitPolicy;
     }
 
     interface ModelProviderItem {
@@ -317,6 +302,51 @@ declare namespace Api {
       embeddingRankings: UsageRankingItem[];
       alerts: UsageAlert[];
     }
+  }
+
+  namespace Support {
+    type HandoffStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+    type HandoffPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+    type SearchParams = CommonType.RecordNullable<
+      Common.CommonSearchParams & {
+        status: HandoffStatus;
+        priority: HandoffPriority;
+        category: string;
+        keyword: string;
+        userId: string;
+      }
+    >;
+
+    interface HandoffListItem {
+      handoffId: string;
+      userId: string;
+      username?: string | null;
+      conversationId: string | null;
+      generationId: string | null;
+      category: string;
+      priority: HandoffPriority;
+      status: HandoffStatus;
+      summary: string;
+      requestedBy: string;
+      assignedTo: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }
+
+    interface HandoffDetail extends HandoffListItem {
+      reason: string;
+      resolutionNote: string | null;
+    }
+
+    interface HandoffStatistics {
+      status: Partial<Record<HandoffStatus, number>>;
+      priority: Partial<Record<HandoffPriority, number>>;
+    }
+
+    type HandoffList = Common.PaginatingQueryRecord<HandoffListItem> & {
+      statistics: HandoffStatistics;
+    };
   }
 
   namespace KnowledgeBase {
@@ -439,6 +469,8 @@ declare namespace Api {
       resultStatus?: 'SUCCESS' | 'ERROR' | 'TIMEOUT' | 'DENIED' | 'CANCELLED';
       error?: string | null;
       agentStep?: number;
+      agent?: string | null;
+      skill?: string | null;
     }
 
 
@@ -457,13 +489,32 @@ declare namespace Api {
       qualityGatesRecommended?: string[];
       qualityGatesUsed?: string[];
       qualityGatesMissing?: string[];
+      qualityGatesFailed?: string[];
       qualityGateCoverage?: number;
+      qualityGateBlocked?: boolean;
+      qualityGateAction?: string;
       workflowEngine?: string;
       graphPath?: string[];
       graphTransitions?: number;
       handoffAttempted?: boolean;
       handoffSuccess?: boolean;
       handoffId?: string | null;
+      entities?: Record<string, string>;
+      entitySources?: Record<string, string>;
+      specialistDecisions?: Array<{
+        agent?: string;
+        skill?: string;
+        toolCalls?: string[];
+        durationMs?: number;
+        error?: string | null;
+      }>;
+      dependencyBatches?: Array<{
+        batches?: string[][];
+        blocked?: string[];
+        reason?: string;
+        barrier?: string;
+        dependencies?: Array<{ tool: string; dependsOn: string }>;
+      }>;
     }
 
     interface Conversation {
@@ -477,11 +528,17 @@ declare namespace Api {
       timestamp?: string;
       conversationId?: string;
       generationId?: string;
+      intent?: string;
+      intentConfidence?: number;
+      needsHuman?: boolean;
       username?: string;
       referenceMappings?: Record<string, ReferenceEvidence>;
       toolEvents?: AgentToolEvent[];
       activeSkills?: string[];
       skillTrace?: SkillTrace;
+      entities?: Record<string, string>;
+      entitySources?: Record<string, string>;
+      specialistAgents?: string[];
       feedbackRating?: 'good' | 'bad';
     }
 

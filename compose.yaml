@@ -1,0 +1,262 @@
+name: paismart-demo
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: PaiSmart
+      MYSQL_ROOT_PASSWORD: paismart
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: paismart-backend:dev
+    build: &runtime_build
+      context: ./backend
+      target: runtime
+    command: ["alembic", "upgrade", "head"]
+    environment: &backend_environment
+      APP_ENV: dev
+      PYTHONPATH: /app
+      DATABASE_URL: mysql+aiomysql://root:paismart@mysql:3306/PaiSmart
+      DATABASE_AUTO_CREATE_DEV: "false"
+      DATABASE_AUTO_MIGRATE: "false"
+      LOCAL_STORAGE_DIR: /app/data/storage
+      STORAGE_BACKEND: minio
+      SEARCH_BACKEND: elasticsearch
+      TASK_MODE: kafka
+      REDIS_ENABLED: "true"
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: file-processing-topic1
+      KAFKA_GROUP_ID: paismart-python-file-processor
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: uploads
+      MINIO_SECURE: "false"
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      ELASTICSEARCH_INDEX: paismart_knowledge
+      BILLING_MCP_ENABLED: "false"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: paismart-backend:dev
+    build: *runtime_build
+    env_file:
+      - ./backend/.env
+    environment:
+      <<: *backend_environment
+      REDIS_ENABLED: "true"
+      BILLING_MCP_ENABLED: "true"
+      BILLING_MCP_URL: http://billing-mcp:8011/mcp
+    ports:
+      - "8000:8000"
+    volumes:
+      - api_data:/app/data
+    depends_on:
+      demo-seed:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      billing-mcp:
+        condition: service_started
+    restart: unless-stopped
+
+  billing-mcp:
+    image: paismart-backend:dev
+    build: *runtime_build
+    command: ["python", "billing_mcp_server.py", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8011"]
+    environment:
+      <<: *backend_environment
+      REDIS_ENABLED: "false"
+      BILLING_MCP_ENABLED: "false"
+    expose:
+      - "8011"
+    healthcheck:
+      disable: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  demo-seed:
+    image: paismart-backend:dev
+    build: *runtime_build
+    env_file:
+      - ./backend/.env
+    command:
+      - sh
+      - -c
+      - >-
+        python -c "import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())"
+        && python scripts/seed_support_demo.py --username admin
+        && python scripts/seed_demo_knowledge.py --username admin
+    environment:
+      <<: *backend_environment
+      BILLING_MCP_ENABLED: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    restart: "no"
+
+  worker:
+    image: paismart-backend:dev
+    build: *runtime_build
+    env_file:
+      - ./backend/.env
+    command: ["python", "-m", "app.workers.file_processor"]
+    healthcheck:
+      disable: true
+    environment:
+      <<: *backend_environment
+      BILLING_MCP_ENABLED: "false"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    expose:
+      - "9000"
+      - "9001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    expose:
+      - "9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  kafka:
+    image: apache/kafka:3.9.2
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    expose:
+      - "9092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  frontend:
+    image: paismart-frontend:dev
+    build:
+      context: ./frontend
+    ports:
+      - "9527:80"
+    depends_on:
+      api:
+        condition: service_started
+    restart: unless-stopped
+
+  test:
+    profiles: ["test"]
+    image: paismart-backend-test:dev
+    build:
+      context: ./backend
+      target: test
+    env_file:
+      - ./backend/.env
+    command: ["pytest", "tests/agent/test_target_workflow_e2e.py", "tests/agent/test_billing_mcp_adapter.py", "tests/e2e/test_billing_mcp_compose.py", "tests/e2e/test_websocket_architecture.py"]
+    environment:
+      <<: *backend_environment
+      REDIS_ENABLED: "true"
+      BILLING_MCP_ENABLED: "false"
+      BILLING_MCP_COMPOSE_E2E: "true"
+      BILLING_MCP_COMPOSE_URL: http://billing-mcp:8011/mcp
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      billing-mcp:
+        condition: service_started
+      demo-seed:
+        condition: service_completed_successfully
+    restart: "no"
+
+volumes:
+  mysql_data:
+  api_data:
+  redis_data:
+  minio_data:
+  elasticsearch_data:
+  kafka_data:

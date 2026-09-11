@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import datetime
-
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.access import user_orgs
+from app.core.time import utcnow
 from app.db.models import ChunkInfo, FileUpload, OrganizationTag, User
 from app.documents.storage import storage_service
 from app.knowledge.metadata import apply_metadata_to_file
@@ -191,7 +190,7 @@ class UploadService:
             raise ValueError("Merged file MD5 mismatch")
         upload.storage_key = key
         upload.status = 1
-        upload.merged_at = datetime.utcnow()
+        upload.merged_at = utcnow()
         upload.process_status = "PENDING"
         await db.commit()
         for chunk in chunks:

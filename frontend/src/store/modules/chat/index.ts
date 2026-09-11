@@ -273,6 +273,12 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       allowReconnect.value = !isAuthOrProtocolFailure;
       if (isAuthOrProtocolFailure && !authFailureNotified.value) {
         authFailureNotified.value = true;
+        for (const item of list.value) {
+          if (item.role === 'assistant' && ['pending', 'loading'].includes(item.status || '')) {
+            item.status = 'error';
+            item.content = '聊天连接鉴权失败，请刷新页面后重试';
+          }
+        }
         window.$message?.error('聊天连接鉴权失败，请重新登录后再试');
       }
     }
@@ -388,10 +394,14 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const scrollToBottom = ref<null | (() => void)>(null);
   const isRateLimited = computed(() => rateLimitRemainingSeconds.value > 0);
   const connectionStatus = computed(() => {
-    if (wsStatus.value === 'OPEN') {
+    // The browser WebSocket becomes OPEN before the server accepts the auth
+    // handshake. Do not expose that short window as chat-ready: sending a
+    // question there makes the backend treat it as an invalid auth frame and
+    // close the socket with code 1008.
+    if (wsStatus.value === 'OPEN' && handshakeConfirmed.value) {
       return 'OPEN';
     }
-    if (wsStatus.value === 'CONNECTING' && handshakeConfirmed.value) {
+    if (wsStatus.value === 'OPEN' || (wsStatus.value === 'CONNECTING' && handshakeConfirmed.value)) {
       return 'RECONNECTING';
     }
     return wsStatus.value;

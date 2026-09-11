@@ -214,8 +214,8 @@ def infer_agent_decision(case: dict[str, Any], artifact: dict[str, Any]) -> str:
     business_tools.update(name for name in names if name.startswith("mcp__") and any(token in name for token in ("order", "refund", "payment", "account", "billing", "subscription")))
     if "create_support_handoff" in names or "escalation" in skills:
         return "ESCALATE"
-    if "troubleshooting" in skills:
-        return "TROUBLESHOOT"
+    if "api-diagnostic" in skills:
+        return "API_DIAGNOSTIC"
     if any(name in business_tools for name in names):
         return "BUSINESS_TOOL"
     if "search_knowledge" in names:

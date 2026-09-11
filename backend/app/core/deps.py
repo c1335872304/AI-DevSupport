@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.access import user_orgs
+from app.core.config import get_settings
 from app.core.security import decode_token
 from app.db.models import User
 from app.db.session import get_db
@@ -33,6 +34,20 @@ async def current_user(
 
 
 async def admin_user(user: User = Depends(current_user)) -> User:
+    if user.role != "ADMIN":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
+    return user
+
+
+async def protected_ops_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Protect operational details in production while keeping dev probes easy."""
+    settings = get_settings()
+    if settings.app_env.lower() not in {"prod", "production"}:
+        return None
+    user = await current_user(credentials, db)
     if user.role != "ADMIN":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return user

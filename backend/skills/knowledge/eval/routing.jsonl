@@ -1,0 +1,2 @@
+{"id":"knowledge-route-1","question":"退款政策是什么？","expectedSkills":["customer-support","knowledge"],"forbiddenSkills":["api-diagnostic","billing"]}
+{"id":"knowledge-route-2","question":"请查一下 API 错误码说明文档","expectedSkills":["customer-support","api-diagnostic","knowledge"],"forbiddenSkills":["billing"]}

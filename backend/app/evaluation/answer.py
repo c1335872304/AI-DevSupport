@@ -391,6 +391,7 @@ def build_judge_messages(
         page = f" | page {item.get('pageNumber')}" if item.get("pageNumber") else ""
         sources.append(f"[Source #{source_id}: {name}{page}]\n{item.get('textContent') or item.get('text') or ''}")
     rubric = case.get("rubric") or {}
+    evidence_text = "\n\n".join(sources)
     return [
         {
             "role": "system",
@@ -414,7 +415,7 @@ def build_judge_messages(
                 "instructionFollowing, uncertaintyCalibration, rationale.\n\n"
                 f"QUESTION:\n{case.get('question') or ''}\n\n"
                 f"RUBRIC:\n{json.dumps(rubric, ensure_ascii=False)}\n\n"
-                f"EVIDENCE:\n{'\n\n'.join(sources)}\n\n"
+                f"EVIDENCE:\n{evidence_text}\n\n"
                 f"CANDIDATE ANSWER:\n{answer}"
             ),
         },

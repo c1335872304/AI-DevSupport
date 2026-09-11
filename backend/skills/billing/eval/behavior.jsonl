@@ -1,0 +1,1 @@
+{"id":"billing-beh-1","skill":"billing","question":"我想申请退款，请转人工客服处理","expect":{"requiredSkills":["customer-support","billing","escalation"],"requiredTools":["create_support_handoff"],"requiredScripts":["audit_billing_safety"],"maxSteps":6,"maxFailedToolCalls":0,"passScore":0.72}}

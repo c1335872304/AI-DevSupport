@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue';
 import { NButton, NCard, NEmpty } from 'naive-ui';
 
 const modelProvidersLoading = ref(false);
-const modelProvidersSaving = ref(false);
 const modelProviders = ref<Api.Admin.ModelProviderSettings | null>(null);
 
 function cloneProviderItem(item: Api.Admin.ModelProviderItem): Api.Admin.ModelProviderItem {
@@ -52,40 +51,6 @@ async function getModelProviders() {
   modelProvidersLoading.value = false;
 }
 
-function buildProviderPayload(scope: Api.Admin.ModelProviderScopeSettings) {
-  return {
-    activeProvider: scope.activeProvider,
-    providers: scope.providers.map(item => ({
-      provider: item.provider,
-      apiBaseUrl: item.apiBaseUrl,
-      model: item.model,
-      apiKey: item.apiKeyInput?.trim() || '',
-      dimension: scope.scope === 'embedding' ? item.dimension : null,
-      enabled: item.enabled
-    }))
-  };
-}
-
-async function submitModelProviders(scopeKey: 'llm' | 'embedding') {
-  const scope = modelProviders.value?.[scopeKey];
-  if (!scope) {
-    return;
-  }
-
-  modelProvidersSaving.value = true;
-  const { error, data } = await request<Api.Admin.ModelProviderScopeSettings>({
-    url: `/admin/model-providers/${scopeKey}`,
-    method: 'put',
-    data: buildProviderPayload(scope)
-  });
-
-  if (!error && data && modelProviders.value) {
-    modelProviders.value[scopeKey] = cloneModelProviderScope(data);
-    window.$message?.success(scopeKey === 'llm' ? 'LLM 模型配置已更新' : 'Embedding 配置已更新');
-  }
-  modelProvidersSaving.value = false;
-}
-
 async function testModelProvider(scopeKey: 'llm' | 'embedding', provider: Api.Admin.ModelProviderItem) {
   const { error, data } = await request<Api.Admin.ConnectivityTestResult>({
     url: `/admin/model-providers/${scopeKey}/test`,
@@ -119,13 +84,13 @@ onMounted(() => {
       <template #header>模型 Provider 配置</template>
       <template #header-extra>
         <div class="flex items-center gap-2">
-          <span class="text-xs text-stone-400">LLM 保存后新请求立即生效，Embedding 暂不允许危险直切</span>
+          <span class="text-xs text-stone-400">当前运行环境配置（只读）</span>
         </div>
       </template>
 
       <NSpin :show="modelProvidersLoading">
         <div class="mb-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
-          这里管理平台代付的模型接入配置。API Key 输入为空时保留现有密钥，不会回显明文。Embedding 如果切换 active provider，后端会拦截需要重嵌入的危险变更。
+          当前值来自后端运行环境，不会回显 API Key 明文。请在 <code>backend/.env</code> 修改模型地址、模型名或密钥后重建 API/Worker 容器；Embedding 模型或维度变更后必须重新索引知识库。
         </div>
 
         <div v-if="modelProviders" class="grid gap-4">
@@ -133,18 +98,9 @@ onMounted(() => {
             <div class="provider-scope-header">
               <div>
                 <div class="provider-scope-title">LLM Provider</div>
-                <div class="provider-scope-sub">聊天请求会按当前 active provider 路由</div>
+                <div class="provider-scope-sub">聊天请求使用当前运行环境中的 active provider</div>
               </div>
-              <div class="flex items-center gap-3">
-                <NSelect
-                  v-model:value="modelProviders.llm.activeProvider"
-                  :options="modelProviders.llm.providers.map(item => ({ label: item.displayName, value: item.provider, disabled: !item.enabled }))"
-                  class="min-w-180px"
-                />
-                <NButton type="primary" size="small" :loading="modelProvidersSaving" @click="submitModelProviders('llm')">
-                  保存 LLM 配置
-                </NButton>
-              </div>
+              <div class="text-xs text-stone-400">{{ modelProviders.llm.activeProvider }}</div>
             </div>
 
             <div class="provider-grid">
@@ -154,24 +110,20 @@ onMounted(() => {
                     <div class="provider-name">{{ item.displayName }}</div>
                     <div class="provider-code">{{ item.provider }} · {{ item.apiStyle }}</div>
                   </div>
-                  <NSwitch v-model:value="item.enabled" size="small" />
+                  <NSwitch :value="item.enabled" size="small" disabled />
                 </div>
                 <div class="limit-grid">
                   <div>
                     <div class="limit-label">API 地址</div>
-                    <NInput v-model:value="item.apiBaseUrl" />
+                    <NInput :value="item.apiBaseUrl" readonly />
                   </div>
                   <div>
                     <div class="limit-label">模型</div>
-                    <NInput v-model:value="item.model" />
+                    <NInput :value="item.model" readonly />
                   </div>
                   <div>
                     <div class="limit-label">现有密钥</div>
                     <div class="provider-mask">{{ item.hasApiKey ? item.maskedApiKey : '未配置' }}</div>
-                  </div>
-                  <div>
-                    <div class="limit-label">新 API Key</div>
-                    <NInput v-model:value="item.apiKeyInput" type="password" show-password-on="click" placeholder="留空则保留现有值" />
                   </div>
                 </div>
                 <div class="mt-3 flex justify-end">
@@ -185,18 +137,9 @@ onMounted(() => {
             <div class="provider-scope-header">
               <div>
                 <div class="provider-scope-title">Embedding Provider</div>
-                <div class="provider-scope-sub">当前版本只支持配置管理；切 active provider 若需要重嵌入会被后端拦截</div>
+                <div class="provider-scope-sub">Embedding 地址、模型和维度在运行期间只读</div>
               </div>
-              <div class="flex items-center gap-3">
-                <NSelect
-                  v-model:value="modelProviders.embedding.activeProvider"
-                  :options="modelProviders.embedding.providers.map(item => ({ label: item.displayName, value: item.provider, disabled: !item.enabled }))"
-                  class="min-w-180px"
-                />
-                <NButton type="primary" size="small" :loading="modelProvidersSaving" @click="submitModelProviders('embedding')">
-                  保存 Embedding 配置
-                </NButton>
-              </div>
+              <div class="text-xs text-stone-400">{{ modelProviders.embedding.activeProvider }}</div>
             </div>
 
             <div class="provider-grid">
@@ -206,28 +149,24 @@ onMounted(() => {
                     <div class="provider-name">{{ item.displayName }}</div>
                     <div class="provider-code">{{ item.provider }} · {{ item.apiStyle }}</div>
                   </div>
-                  <NSwitch v-model:value="item.enabled" size="small" />
+                  <NSwitch :value="item.enabled" size="small" disabled />
                 </div>
                 <div class="limit-grid">
                   <div>
                     <div class="limit-label">API 地址</div>
-                    <NInput v-model:value="item.apiBaseUrl" />
+                    <NInput :value="item.apiBaseUrl" readonly />
                   </div>
                   <div>
                     <div class="limit-label">模型</div>
-                    <NInput v-model:value="item.model" />
+                    <NInput :value="item.model" readonly />
                   </div>
                   <div>
                     <div class="limit-label">维度</div>
-                    <NInputNumber v-model:value="item.dimension" :min="1" class="w-full" />
+                    <NInputNumber :value="item.dimension" :min="1" class="w-full" readonly />
                   </div>
                   <div>
                     <div class="limit-label">现有密钥</div>
                     <div class="provider-mask">{{ item.hasApiKey ? item.maskedApiKey : '未配置' }}</div>
-                  </div>
-                  <div class="sm:col-span-2">
-                    <div class="limit-label">新 API Key</div>
-                    <NInput v-model:value="item.apiKeyInput" type="password" show-password-on="click" placeholder="留空则保留现有值" />
                   </div>
                 </div>
                 <div class="mt-3 flex justify-end">

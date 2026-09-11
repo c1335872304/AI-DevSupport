@@ -50,6 +50,9 @@ class BaseTool(ABC):
     allowed_roles: frozenset[str] = frozenset()
     required_scopes: frozenset[str] = frozenset()
     risk_level: str = "low"
+    # Tool-level dependency metadata consumed by the supervisor scheduler. A
+    # dependency may be satisfied by explicit arguments or by a prior result.
+    dependencies: tuple[str, ...] = ()
 
     def as_llm_tool(self) -> dict[str, Any]:
         return {

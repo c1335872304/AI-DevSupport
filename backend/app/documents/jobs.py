@@ -3,11 +3,10 @@ from __future__ import annotations
 import asyncio
 import json
 import uuid
-from datetime import datetime
-
 from sqlalchemy import select
 
 from app.core.config import get_settings
+from app.core.time import utcnow
 from app.db.models import ProcessingJob
 from app.db.session import SessionLocal
 from app.knowledge.indexer import process_file
@@ -57,7 +56,7 @@ async def run_processing_job(job_id: str) -> None:
             job = await db.get(ProcessingJob, job_id)
             if job:
                 job.status = "COMPLETED"
-                job.completed_at = datetime.utcnow()
+                job.completed_at = utcnow()
                 await db.commit()
         except Exception as exc:
             await db.rollback()

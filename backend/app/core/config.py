@@ -19,6 +19,9 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite+aiosqlite:///./data/paismart.db"
     database_auto_create_dev: bool = True
+    # Run Alembic once from backend/run.py before starting Uvicorn. Keep this
+    # opt-in because direct multi-worker Uvicorn launches must migrate in CI/CD.
+    database_auto_migrate: bool = False
 
     storage_backend: str = "local"
     local_storage_dir: str = "./data/storage"
@@ -36,6 +39,9 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
     redis_enabled: bool = False
+    memory_history_max: int = 20
+    memory_entity_ttl_seconds: int = 21600
+    route_cache_ttl_seconds: int = 86400
 
     kafka_bootstrap_servers: str = "localhost:9092"
     kafka_topic: str = "file-processing-topic1"
@@ -61,37 +67,69 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2000
     llm_stream_include_usage: bool = True
+    llm_request_timeout_seconds: float = 120.0
+    llm_max_retries: int = 2
+    llm_retry_backoff_seconds: float = 0.5
+    llm_circuit_breaker_failures: int = 3
+    llm_circuit_breaker_cooldown_seconds: float = 30.0
+
+    # Retrieval query rewriting is deliberately narrower than answer generation:
+    # it is only used for entity-backed follow-up questions and never retries.
+    rag_query_rewrite_enabled: bool = True
+    rag_query_rewrite_max_tokens: int = 160
+    rag_query_rewrite_timeout_seconds: float = 8.0
+    rag_query_rewrite_cache_seconds: int = 300
 
     embedding_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     embedding_api_key: str = ""
     embedding_model: str = "text-embedding-v4"
     embedding_dimension: int = 256
     embedding_batch_size: int = 10
+    # Optional explicit proxy for containers. Leave empty for direct access.
+    embedding_http_proxy: str = ""
     elasticsearch_bulk_size: int = 100
 
     chat_checkpoint_seconds: float = 1.0
     chat_checkpoint_chars: int = 512
     websocket_auth_timeout_seconds: float = 10.0
-    conversation_history_messages: int = 8
-    conversation_history_chars: int = 6000
+    conversation_history_messages: int = 20
+    conversation_history_chars: int = 12000
 
     # Agent runtime. A model turn may emit multiple independent tool calls; the
     # runtime executes them concurrently and feeds all results back in one batch.
-    agent_enabled: bool = True
     agent_max_steps: int = 6
     agent_max_parallel_tools: int = 6
     agent_tool_timeout_seconds: float = 20.0
     agent_tool_result_max_chars: int = 20000
+    agent_generation_timeout_seconds: float = 180.0
+
+    # The deterministic three-Agent workflow is the only supported customer
+    # service architecture. These limits apply to its shared scheduler.
+    agent_max_concurrency: int = 3
+    agent_tool_global_concurrency: int = 6
+    # A generation has one shared read-Tool budget across all specialists and
+    # replanning rounds. This is a hard stop against accidental tool loops.
+    agent_max_tool_calls: int = 8
+
+    # Billing is the only external MCP integration. Its three stable read Tool
+    # contracts are query_plan/query_usage/query_bill.
+    billing_mcp_enabled: bool = False
+    billing_mcp_url: str = ""
+    billing_mcp_bearer_token_env: str = "BILLING_MCP_TOKEN"
+    billing_mcp_timeout_seconds: float = 30.0
 
     # Skill layer. Only selected SKILL.md instructions are injected; detailed
     # references/scripts are loaded on demand through controlled tools.
     skills_enabled: bool = True
+    skills_semantic_routing_enabled: bool = True
+    skills_routing_timeout_seconds: float = 20.0
     skills_dir: str = str(Path(__file__).resolve().parents[2] / "skills")
-    skills_max_active: int = 2
+    skills_max_active: int = 3
     skills_max_instruction_chars: int = 12000
     skills_reference_max_chars: int = 12000
     skills_script_input_max_chars: int = 20000
     skills_script_output_max_chars: int = 20000
+    skills_script_timeout_seconds: float = 10.0
 
     # MCP server/client. Streamable HTTP should use bearer auth; stdio keeps an
     # explicit service user because pipes do not carry HTTP Authorization headers.
@@ -99,15 +137,6 @@ class Settings(BaseSettings):
     mcp_auth_issuer_url: str = "http://127.0.0.1:8000"
     mcp_resource_server_url: str = "http://127.0.0.1:8011/mcp"
     mcp_required_scope: str = "tools:read"
-    mcp_remote_servers_json: str = "{}"
-
-    # Business Tool backend. "local" uses PaiSmart demo/domain tables. "mcp" keeps
-    # the same stable Tool names while delegating execution to a configured remote MCP
-    # business service, so Agent/Skill/LangGraph code does not change.
-    business_tool_backend: str = "local"  # local | mcp
-    business_mcp_server: str = ""
-    business_mcp_tool_map_json: str = "{}"
-    business_mcp_default_user_argument: str = "customer_id"
 
     # Standalone MCP wrapper for the same internal tools. The service user is
     # intentionally explicit; never default an external MCP client to admin.
@@ -120,6 +149,15 @@ class Settings(BaseSettings):
     rate_limit_register_window_seconds: int = 600
     rate_limit_login_max: int = 30
     rate_limit_login_window_seconds: int = 60
+    rate_limit_chat_max: int = 20
+    rate_limit_chat_window_seconds: int = 60
+    chat_max_input_chars: int = 8000
+    chat_max_connections_per_user: int = 3
+    chat_connection_ttl_seconds: int = 7200
+    privacy_history_retention_days: int = 180
+    privacy_trace_retention_days: int = 90
+    privacy_auto_maintenance_enabled: bool = True
+    privacy_maintenance_interval_seconds: int = 86400
     metrics_enabled: bool = True
     otel_enabled: bool = False
     otel_service_name: str = "paismart-backend"
@@ -135,14 +173,6 @@ class Settings(BaseSettings):
     rag_context_char_budget: int = 12000
     rag_parent_context_max_chars: int = 2600
     rag_max_results_per_file: int = 4
-
-    @field_validator("business_tool_backend")
-    @classmethod
-    def validate_business_tool_backend(cls, value: str) -> str:
-        normalized = str(value or "local").strip().lower()
-        if normalized not in {"local", "mcp"}:
-            raise ValueError("BUSINESS_TOOL_BACKEND must be local or mcp")
-        return normalized
 
     @field_validator("cors_origins", mode="before")
     @classmethod
@@ -166,8 +196,10 @@ class Settings(BaseSettings):
             raise RuntimeError("Production requires a non-default JWT_SECRET of at least 32 characters")
         if self.bootstrap_admin_enabled and self.bootstrap_admin_password == "admin123":
             raise RuntimeError("Production must change BOOTSTRAP_ADMIN_PASSWORD or disable BOOTSTRAP_ADMIN_ENABLED")
-        if self.business_tool_backend == "mcp" and not self.business_mcp_server.strip():
-            raise RuntimeError("Production BUSINESS_TOOL_BACKEND=mcp requires BUSINESS_MCP_SERVER")
+        if not self.redis_enabled:
+            raise RuntimeError("Production requires REDIS_ENABLED=true for distributed rate limits and WebSocket limits")
+        if self.billing_mcp_enabled and not self.billing_mcp_url.strip():
+            raise RuntimeError("Production BILLING_MCP_ENABLED=true requires BILLING_MCP_URL")
 
 
 @lru_cache

@@ -27,6 +27,13 @@ def is_relevant(result: dict, expected: EvalExpectation) -> bool:
 def evaluate_ranking(results: list[dict], expected: EvalExpectation, k: int) -> dict[str, float]:
     ranked = results[: max(0, k)]
     relevant_flags = [is_relevant(item, expected) for item in ranked]
+    if not expected.chunk_ids:
+        # A file-level expectation represents one relevant document. Parent-child
+        # retrieval can legitimately return several children from that same file;
+        # count the first matching document once so NDCG remains normalized.
+        first_match = next((index for index, flag in enumerate(relevant_flags) if flag), None)
+        if first_match is not None:
+            relevant_flags = [index == first_match for index in range(len(relevant_flags))]
     first_rank = next((idx for idx, flag in enumerate(relevant_flags, start=1) if flag), None)
 
     if expected.chunk_ids:

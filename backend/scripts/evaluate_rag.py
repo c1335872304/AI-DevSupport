@@ -38,49 +38,69 @@ async def main_async(args) -> None:
     from sqlalchemy import select
 
     from app.db.models import User
-    from app.db.session import SessionLocal
+    from app.db.session import SessionLocal, engine
     from app.knowledge.rag import rag_service
+    from app.knowledge.elasticsearch import elasticsearch_service
 
     dataset = load_dataset(Path(args.dataset))
     metric_rows: list[dict[str, float]] = []
+    metric_rows_by_case_type: dict[str, list[dict[str, float]]] = {}
     details: list[dict] = []
-    async with SessionLocal() as db:
-        user = await db.scalar(select(User).where(User.username == args.username))
-        if not user:
-            raise SystemExit(f"User not found: {args.username}")
-        for item in dataset:
-            results = await rag_service.search(db, user, item["question"], args.k, metadata_filters=item.get("filters"))
-            expected = EvalExpectation(
-                file_md5=item.get("expectedFileMd5"),
-                file_name=item.get("expectedFileName"),
-                chunk_ids=frozenset(int(v) for v in item.get("expectedChunkIds", [])),
-            )
-            metrics = evaluate_ranking(results, expected, args.k)
-            metric_rows.append(metrics)
-            details.append(
-                {
-                    "question": item["question"],
-                    "filters": item.get("filters") or {},
-                    "metrics": metrics,
-                    "topResults": [
-                        {
-                            "fileMd5": row.get("fileMd5"),
-                            "fileName": row.get("fileName"),
-                            "chunkId": row.get("chunkId"),
-                            "parentChunkId": row.get("parentChunkId"),
-                            "score": row.get("score"),
-                            "category": row.get("category"),
-                            "product": row.get("product"),
-                            "region": row.get("region"),
-                            "channel": row.get("channel"),
-                            "plan": row.get("plan"),
-                        }
-                        for row in results[: args.k]
-                    ],
-                }
-            )
+    try:
+        async with SessionLocal() as db:
+            user = await db.scalar(select(User).where(User.username == args.username))
+            if not user:
+                raise SystemExit(f"User not found: {args.username}")
+            for item in dataset:
+                results = await rag_service.search(db, user, item["question"], args.k, metadata_filters=item.get("filters"))
+                expected = EvalExpectation(
+                    file_md5=item.get("expectedFileMd5"),
+                    file_name=item.get("expectedFileName"),
+                    chunk_ids=frozenset(int(v) for v in item.get("expectedChunkIds", [])),
+                )
+                metrics = evaluate_ranking(results, expected, args.k)
+                metric_rows.append(metrics)
+                case_type = str(item.get("caseType") or "uncategorized")
+                metric_rows_by_case_type.setdefault(case_type, []).append(metrics)
+                details.append(
+                    {
+                        "id": item.get("id"),
+                        "caseType": case_type,
+                        "expectedBehavior": item.get("expectedBehavior"),
+                        "question": item["question"],
+                        "filters": item.get("filters") or {},
+                        "metrics": metrics,
+                        "topResults": [
+                            {
+                                "fileMd5": row.get("fileMd5"),
+                                "fileName": row.get("fileName"),
+                                "chunkId": row.get("chunkId"),
+                                "parentChunkId": row.get("parentChunkId"),
+                                "score": row.get("score"),
+                                "category": row.get("category"),
+                                "product": row.get("product"),
+                                "region": row.get("region"),
+                                "channel": row.get("channel"),
+                                "plan": row.get("plan"),
+                            }
+                            for row in results[: args.k]
+                        ],
+                    }
+                )
+    finally:
+        await elasticsearch_service.close()
+        await engine.dispose()
 
-    report = {"k": args.k, "summary": aggregate_metrics(metric_rows), "details": details}
+    report = {
+        "k": args.k,
+        "caseCount": len(dataset),
+        "summary": aggregate_metrics(metric_rows),
+        "byCaseType": {
+            case_type: {"caseCount": len(rows), "metrics": aggregate_metrics(rows)}
+            for case_type, rows in sorted(metric_rows_by_case_type.items())
+        },
+        "details": details,
+    }
     output = json.dumps(report, ensure_ascii=False, indent=2)
     print(output)
     if args.output:

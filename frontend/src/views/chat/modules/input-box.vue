@@ -241,6 +241,35 @@ function handleSkillTracePayload(assistant: Api.Chat.Message, payload: Record<st
   assistant.skillTrace = trace as Api.Chat.SkillTrace;
 }
 
+function handleIntentClassifiedPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  if (typeof payload.intent === 'string' && payload.intent.trim()) {
+    assistant.intent = payload.intent.trim();
+  }
+  if (Number.isFinite(Number(payload.confidence))) {
+    assistant.intentConfidence = Number(payload.confidence);
+  }
+  assistant.needsHuman = Boolean(payload.needsHuman);
+  if (payload.entities && typeof payload.entities === 'object') {
+    assistant.entities = Object.fromEntries(
+      Object.entries(payload.entities as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].length > 0
+      )
+    );
+  }
+  if (payload.entitySources && typeof payload.entitySources === 'object') {
+    assistant.entitySources = payload.entitySources as Record<string, string>;
+  }
+}
+
+function handleSpecialistSelectedPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  if (Array.isArray(payload.agents)) {
+    assistant.specialistAgents = payload.agents.filter(
+      (item: unknown): item is string => typeof item === 'string' && item.length > 0
+    );
+  }
+  assistant.status = 'loading';
+}
+
 function handleToolCallPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   const id = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
   const tool = typeof payload.tool === 'string' ? payload.tool : '';
@@ -259,7 +288,9 @@ function handleToolCallPayload(assistant: Api.Chat.Message, payload: Record<stri
     durationMs: Number.isFinite(Number(payload.durationMs)) ? Number(payload.durationMs) : undefined,
     resultStatus: payload.resultStatus as Api.Chat.AgentToolEvent['resultStatus'],
     error: typeof payload.error === 'string' ? payload.error : undefined,
-    agentStep: Number.isFinite(Number(payload.agentStep)) ? Number(payload.agentStep) : undefined
+    agentStep: Number.isFinite(Number(payload.agentStep)) ? Number(payload.agentStep) : undefined,
+    agent: typeof payload.agent === 'string' ? payload.agent : undefined,
+    skill: typeof payload.skill === 'string' ? payload.skill : undefined
   };
 
   const matchEvent = (item: Api.Chat.AgentToolEvent) => {
@@ -314,6 +345,16 @@ watch(wsData, val => {
     return;
   }
 
+  if (payload.type === 'intent_classified') {
+    handleIntentClassifiedPayload(assistant, payload);
+    return;
+  }
+
+  if (payload.type === 'specialist_selected') {
+    handleSpecialistSelectedPayload(assistant, payload);
+    return;
+  }
+
   if (payload.type === 'tool_call') {
     handleToolCallPayload(assistant, payload);
     return;
@@ -356,6 +397,11 @@ const handleSend = async () => {
 
     list.value[list.value.length - 1].status = 'finished';
     if (!latestMessage.value.content) list.value.pop();
+    return;
+  }
+
+  if (connectionStatus.value !== 'OPEN') {
+    window.$message?.warning('聊天连接尚未完成鉴权，请稍候再发送');
     return;
   }
 
@@ -417,7 +463,7 @@ onUnmounted(() => {
       <textarea
         ref="inputRef"
         v-model.trim="input.message"
-        placeholder="给 派聪明 发送消息，Enter 发送，Shift+Enter 换行"
+        placeholder="给 API 助手 发送消息，Enter 发送，Shift+Enter 换行"
         class="max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px color-#333 caret-[rgb(var(--primary-color))] outline-none placeholder:text-#bbb dark:color-#e1e1e1 dark:placeholder:text-#555"
         @keydown="handShortcut"
       />

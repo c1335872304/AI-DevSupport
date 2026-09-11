@@ -8,6 +8,7 @@ from app.agent.runtime import AgentRuntime
 from app.agent.types import AgentToolCall
 from app.db.models import User
 from app.agent.llm import llm_service
+from app.agent.trace_store import trace_store
 from app.tools.base import BaseTool, ToolExecutionContext
 from app.tools.registry import ToolRegistry
 
@@ -46,37 +47,23 @@ async def test_agent_runtime_executes_same_turn_tools_in_parallel(monkeypatch):
     tracker = {"active": 0, "max_active": 0, "started": set(), "gate": asyncio.Event()}
     registry = ToolRegistry([_ParallelProbeTool("tool_a", tracker), _ParallelProbeTool("tool_b", tracker)])
     runtime = AgentRuntime(registry)
-    turn = 0
+    async def no_trace(*_args, **_kwargs):
+        return None
 
-    async def fake_turn(messages, tools):
-        nonlocal turn
-        turn += 1
-        if turn == 1:
-            yield {
-                "type": "tool_calls",
-                "tool_calls": [
-                    AgentToolCall("a", "tool_a", {}),
-                    AgentToolCall("b", "tool_b", {}),
-                ],
-            }
-        else:
-            yield {"type": "content", "content": "done"}
-
-    monkeypatch.setattr(llm_service, "stream_agent_turn", fake_turn)
+    monkeypatch.setattr(trace_store, "tool", no_trace)
     events = []
-    chunks = []
     user = User(id=1, username="tester", password="x", role="USER")
 
-    content, _ = await runtime.run(
+    results = await runtime._execute_parallel(
+        calls=[AgentToolCall("a", "tool_a", {}), AgentToolCall("b", "tool_b", {})],
         user=user,
-        question="test",
-        history=[],
         generation_id="g1",
         send_json=lambda payload: _append(events, payload),
-        on_chunk=lambda chunk: _append(chunks, chunk),
+        step=0,
+        active_skills=frozenset(),
     )
 
-    assert content == "done"
+    assert [result.status for result in results] == ["SUCCESS", "SUCCESS"]
     assert tracker["max_active"] == 2
     assert [event["status"] for event in events if event.get("type") == "tool_call"].count("executing") == 2
     assert [event["status"] for event in events if event.get("type") == "tool_call"].count("success") == 2
@@ -93,33 +80,21 @@ async def test_parallel_batch_keeps_partial_failure(monkeypatch):
     good.execute = good_execute  # type: ignore[method-assign]
     registry = ToolRegistry([good, _FailingTool()])
     runtime = AgentRuntime(registry)
-    turn = 0
+    async def no_trace(*_args, **_kwargs):
+        return None
 
-    async def fake_turn(messages, tools):
-        nonlocal turn
-        turn += 1
-        if turn == 1:
-            yield {
-                "type": "tool_calls",
-                "tool_calls": [AgentToolCall("good-1", "good", {}), AgentToolCall("bad-1", "bad", {})],
-            }
-        else:
-            # The failed tool is returned to the model as data instead of aborting the batch.
-            assert any(item.get("role") == "tool" and '"status": "ERROR"' in item.get("content", "") for item in messages)
-            yield {"type": "content", "content": "partial ok"}
-
-    monkeypatch.setattr(llm_service, "stream_agent_turn", fake_turn)
+    monkeypatch.setattr(trace_store, "tool", no_trace)
     events = []
     user = User(id=1, username="tester", password="x", role="USER")
-    content, _ = await runtime.run(
+    results = await runtime._execute_parallel(
+        calls=[AgentToolCall("good-1", "good", {}), AgentToolCall("bad-1", "bad", {})],
         user=user,
-        question="test",
-        history=[],
         generation_id="g2",
         send_json=lambda payload: _append(events, payload),
-        on_chunk=lambda chunk: _noop(),
+        step=0,
+        active_skills=frozenset(),
     )
-    assert content == "partial ok"
+    assert [result.status for result in results] == ["SUCCESS", "ERROR"]
     final = {event["tool"]: event for event in events if event.get("type") == "tool_call" and event.get("status") in {"success", "failed"}}
     assert final["good"]["status"] == "success"
     assert final["bad"]["status"] == "failed"

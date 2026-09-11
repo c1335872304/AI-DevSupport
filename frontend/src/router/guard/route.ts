@@ -58,6 +58,13 @@ export function createRouteGuard(router: Router) {
 
     // if the user is logged in but does not have authorization, then switch to the 403 page
     if (!hasAuth) {
+      // A protected URL can be retained in the login redirect query from a
+      // previous administrator session.  A normal user who has just signed in
+      // should land on their available home page instead of a dead-end 403.
+      if (from.name === loginRoute) {
+        next({ name: rootRoute });
+        return;
+      }
       next({ name: noAuthorizationRoute });
       return;
     }

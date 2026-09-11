@@ -24,10 +24,14 @@ def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     tables = set(inspector.get_table_names())
+    # Alembic creates its bookkeeping table before running the first revision.
+    # Treat that empty database as a fresh install so the model baseline is
+    # actually created before later revisions add incremental columns.
+    user_tables = tables - {"alembic_version"}
 
     # A fresh install can use model metadata as the baseline; existing installs are
     # upgraded below without dropping user data.
-    if not tables:
+    if not user_tables:
         Base.metadata.create_all(bind=bind)
         return
 

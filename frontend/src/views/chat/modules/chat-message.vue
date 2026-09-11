@@ -96,9 +96,36 @@ const skillNameLabels: Record<string, string> = {
   'troubleshooting': '故障排查',
   'escalation': '人工升级'
 };
+const intentLabels: Record<string, string> = {
+  refund_request: '退款申请',
+  refund_policy: '退款政策咨询',
+  payment_dispute: '支付争议',
+  api_diagnostic: 'API 故障',
+  authentication_error: '认证错误',
+  network_error: '网络错误',
+  upload_error: '上传错误',
+  billing: '账单咨询',
+  order: '订单咨询',
+  product_usage: '产品使用',
+  general: '一般咨询',
+  keyword_fallback: '关键词兜底'
+};
+const specialistLabels: Record<string, string> = {
+  api_diagnostic: 'API诊断 Agent',
+  billing: '账单 Agent',
+  doc_rag: '知识库 Agent'
+};
 
 function getSkillLabel(skill: string) {
   return skillNameLabels[skill] || skill;
+}
+
+function getIntentLabel(intent: string) {
+  return intentLabels[intent] || intent;
+}
+
+function getSpecialistLabel(agent: string) {
+  return specialistLabels[agent] || agent;
 }
 
 function getToolLabel(tool: string) {
@@ -384,16 +411,29 @@ async function handleSourceFileClick(fileInfo: {
     </div>
     <div v-else class="flex items-center gap-4">
       <NAvatar class="bg-primary">
-        <SystemLogo class="text-6 text-white" />
+        <span class="text-10px text-white font-bold">API</span>
       </NAvatar>
       <div class="flex-col gap-1">
-        <NText class="text-4 font-bold">派聪明</NText>
+        <NText class="text-4 font-bold">{{ $t('system.title') }}</NText>
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
     <div v-if="msg.role === 'assistant' && activeSkills.length > 0" class="ml-12 mt-3 flex flex-wrap gap-2">
       <span v-for="skill in activeSkills" :key="skill" class="skill-chip">
         Skill · {{ getSkillLabel(skill) }}
+      </span>
+    </div>
+    <div v-if="msg.role === 'assistant' && msg.intent" class="ml-12 mt-2 flex flex-wrap gap-2">
+      <span class="skill-trace-chip">
+        意图 · {{ getIntentLabel(msg.intent) }}
+        <template v-if="msg.intentConfidence !== undefined"> · {{ Math.round(msg.intentConfidence * 100) }}%</template>
+      </span>
+      <span v-if="msg.needsHuman" class="skill-trace-chip">需人工核验</span>
+      <span v-for="(value, key) in (msg.entities || {})" :key="`entity-${key}`" class="skill-trace-chip">
+        {{ key }} · {{ value }}<template v-if="msg.entitySources?.[key] === 'history'">（历史）</template>
+      </span>
+      <span v-for="agent in (msg.specialistAgents || [])" :key="`agent-${agent}`" class="skill-trace-chip">
+        {{ getSpecialistLabel(agent) }}
       </span>
     </div>
     <div v-if="msg.role === 'assistant' && skillTrace" class="ml-12 mt-2 flex flex-wrap gap-2">
@@ -407,8 +447,17 @@ async function handleSourceFileClick(fileInfo: {
       <span v-if="(skillTrace.qualityGatesRecommended || []).length > 0" class="skill-trace-chip">
         gate · {{ Math.round((skillTrace.qualityGateCoverage || 0) * 100) }}%
       </span>
+      <span v-if="(skillTrace.qualityGatesFailed || []).length > 0" class="skill-trace-chip skill-trace-chip-danger">
+        gate warning · {{ (skillTrace.qualityGatesFailed || []).length }}
+      </span>
       <span v-if="skillTrace.workflowEngine" class="skill-trace-chip">
         LangGraph · {{ (skillTrace.graphPath || []).join(' → ') }}
+      </span>
+      <span v-if="(skillTrace.dependencyBatches || []).length" class="skill-trace-chip">
+        依赖调度 · {{ (skillTrace.dependencyBatches || []).length }} 批
+      </span>
+      <span v-if="(skillTrace.specialistDecisions || []).length" class="skill-trace-chip">
+        专业决策 · {{ (skillTrace.specialistDecisions || []).length }} 次
       </span>
     </div>
     <div v-if="msg.role === 'assistant' && toolEvents.length > 0" class="ml-12 mt-3 flex flex-col gap-2">
@@ -422,6 +471,7 @@ async function handleSourceFileClick(fileInfo: {
         <icon-material-symbols:check-circle-rounded v-else-if="event.status === 'success'" class="text-4" />
         <icon-material-symbols:error-rounded v-else class="text-4" />
         <span class="tool-event__name">{{ getToolLabel(event.tool) }}</span>
+        <span v-if="event.agent" class="tool-event__status">{{ event.agent }}</span>
         <span class="tool-event__status">{{ getToolStatusLabel(event.status) }}</span>
         <span v-if="event.durationMs !== undefined" class="tool-event__status">{{ event.durationMs }} ms</span>
         <span v-if="event.error" class="tool-event__status" :title="event.error">{{ event.resultStatus || 'ERROR' }}</span>

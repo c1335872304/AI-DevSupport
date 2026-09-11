@@ -123,6 +123,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'my-chat-history',
+    path: '/my-chat-history',
+    component: 'layout.base$view.my-chat-history',
+    meta: {
+      title: 'my-chat-history',
+      i18nKey: 'route.my-chat-history',
+      icon: 'solar:history-2-line-duotone',
+      order: 2
+    }
+  },
+  {
     name: 'org-tag',
     path: '/org-tag',
     component: 'layout.base$view.org-tag',
@@ -166,6 +177,18 @@ export const generatedRoutes: GeneratedRoute[] = [
       icon: 'solar:shop-minimalistic-broken',
       roles: ['ADMIN'],
       order: 9
+    }
+  },
+  {
+    name: 'support-handoff',
+    path: '/support-handoff',
+    component: 'layout.base$view.support-handoff',
+    meta: {
+      title: 'support-handoff',
+      i18nKey: 'route.support-handoff',
+      icon: 'solar:ticket-line-duotone',
+      roles: ['ADMIN'],
+      order: 8
     }
   },
   {

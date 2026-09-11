@@ -5,13 +5,14 @@ import asyncio
 import hashlib
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
 # Allow `python scripts/seed_demo_knowledge.py` from backend/.
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from app.core.time import utcnow
 
 DEMO_DIR = ROOT / "demo_knowledge"
 MANIFEST_PATH = DEMO_DIR / "manifest.json"
@@ -173,7 +174,7 @@ async def seed(username: str, *, reset: bool, reindex: bool, is_public: bool, or
                     org_tag=resolved_org,
                     is_public=is_public,
                     storage_key=storage_key,
-                    merged_at=datetime.utcnow(),
+                    merged_at=utcnow(),
                 )
                 apply_metadata_to_file(current, item.get("metadata") or {})
                 db.add(current)
@@ -188,7 +189,7 @@ async def seed(username: str, *, reset: bool, reindex: bool, is_public: bool, or
                 current.org_tag = resolved_org
                 current.is_public = is_public
                 current.storage_key = storage_key
-                current.merged_at = datetime.utcnow()
+                current.merged_at = utcnow()
                 apply_metadata_to_file(current, item.get("metadata") or {})
                 await db.commit()
 

@@ -118,7 +118,22 @@ class SkillRegistry:
             raise ValueError("skill script input exceeds configured limit")
         payload = payload_text.encode("utf-8")
         try:
-            stdout, stderr = await process.communicate(payload)
+            stdout, stderr = await asyncio.wait_for(
+                process.communicate(payload),
+                timeout=max(0.1, self.settings.skills_script_timeout_seconds),
+            )
+        except asyncio.TimeoutError as exc:
+            if process.returncode is None:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+            # Drain stdout/stderr after killing the child. This closes the
+            # Proactor pipe transports cleanly on Windows as well as POSIX.
+            await process.communicate()
+            raise TimeoutError(
+                f"skill script timed out after {self.settings.skills_script_timeout_seconds:g}s"
+            ) from exc
         except BaseException:
             if process.returncode is None:
                 process.kill()

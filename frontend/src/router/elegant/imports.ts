@@ -25,10 +25,12 @@ export const views: Record<LastLevelRouteKey, RouteComponent | (() => Promise<Ro
   "invite-code": () => import("@/views/invite-code/index.vue"),
   "knowledge-base": () => import("@/views/knowledge-base/index.vue"),
   "model-provider": () => import("@/views/model-provider/index.vue"),
+  "my-chat-history": () => import("@/views/my-chat-history/index.vue"),
   "org-tag": () => import("@/views/org-tag/index.vue"),
   "personal-center": () => import("@/views/personal-center/index.vue"),
   "recharge-manage": () => import("@/views/recharge-manage/index.vue"),
   recharge: () => import("@/views/recharge/index.vue"),
+  "support-handoff": () => import("@/views/support-handoff/index.vue"),
   "usage-monitor": () => import("@/views/usage-monitor/index.vue"),
   user: () => import("@/views/user/index.vue"),
 };

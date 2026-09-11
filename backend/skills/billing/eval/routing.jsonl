@@ -1,0 +1,2 @@
+{"id":"billing-route-1","question":"我想申请退款，请转人工客服处理","expectedSkills":["customer-support","billing","escalation"],"forbiddenSkills":["api-diagnostic"]}
+{"id":"billing-route-2","question":"退款政策是什么？","expectedSkills":["customer-support","knowledge"],"forbiddenSkills":["billing","escalation"]}

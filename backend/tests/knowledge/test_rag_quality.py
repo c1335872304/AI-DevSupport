@@ -54,3 +54,15 @@ def test_rag_eval_metrics_are_correct():
     summary = aggregate_metrics([metrics, metrics])
     assert summary["queries"] == 2
     assert summary["mrr"] == pytest.approx(0.5)
+
+
+def test_file_level_rag_eval_deduplicates_parent_child_hits():
+    results = [
+        {"fileName": "handbook.md", "chunkId": 1},
+        {"fileName": "handbook.md", "chunkId": 2},
+        {"fileName": "other.md", "chunkId": 1},
+    ]
+    metrics = evaluate_ranking(results, EvalExpectation(file_name="handbook.md"), 3)
+    assert metrics["hit"] == 1.0
+    assert metrics["mrr"] == 1.0
+    assert metrics["ndcg"] == pytest.approx(1.0)

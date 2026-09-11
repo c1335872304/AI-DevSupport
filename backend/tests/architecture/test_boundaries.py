@@ -21,13 +21,13 @@ def test_langgraph_is_primary_customer_service_orchestrator():
     graph_root = APP_ROOT / "agent" / "graph"
     assert (graph_root / "workflow.py").exists()
     assert (graph_root / "state.py").exists()
-    assert (graph_root / "routes.py").exists()
+    assert (graph_root.parent / "routing_policy.py").exists()
 
     workflow = (graph_root / "workflow.py").read_text(encoding="utf-8")
     runtime = (APP_ROOT / "agent" / "runtime.py").read_text(encoding="utf-8")
     assert "StateGraph(CustomerServiceState)" in workflow
     assert 'graph.add_conditional_edges(' in workflow
-    assert '"execute_tools"' in workflow
-    assert '"handoff"' in workflow
+    assert '"target_execute_tools"' in workflow
+    assert '"target_handoff_decision"' in workflow
     assert "run_customer_service_graph" in runtime
     assert "for step in range" not in runtime

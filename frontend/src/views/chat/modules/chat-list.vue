@@ -53,6 +53,13 @@ watchEffect(() => {
 });
 
 async function getList() {
+  // The backend requires conversationId. The first render happens before a
+  // conversation is selected, so do not request /users/conversation with an
+  // empty query string (that produces a misleading 422 toast).
+  if (!conversationId.value) {
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   const { error, data } = await request<Api.Chat.Message[]>({
     url: 'users/conversation',

@@ -4,6 +4,7 @@ from datetime import timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import SupportApiCallLog, SupportApiKey, SupportErrorCode
+from app.core.time import utcnow
 
 
 async def query_call_log(db: AsyncSession, user_id: str, request_id: str) -> dict:
@@ -29,8 +30,7 @@ async def query_api_key_status(db: AsyncSession, user_id: str, *, app_id: str | 
     rows = list((await db.scalars(stmt)).all())
     if not rows:
         return {"found": False, "reason": "API Key not found for current customer"}
-    from datetime import datetime
-    now = datetime.utcnow()
+    now = utcnow()
     return {"found": True, "keys": [{"apiKeyId": r.id, "appId": r.app_id, "apiKeyMasked": r.key_masked, "status": r.status, "expireAt": r.expire_at.isoformat() if r.expire_at else None, "expired": bool(r.expire_at and r.expire_at < now)} for r in rows]}
 
 
