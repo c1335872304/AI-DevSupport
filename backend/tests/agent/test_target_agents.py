@@ -184,6 +184,7 @@ async def test_agent_planner_skips_a_call_fingerprint_already_executed(monkeypat
         yield {"type": "tool_calls", "tool_calls": [AgentToolCall("planner", "search_knowledge", {"query": "退款政策"})]}
 
     monkeypatch.setattr(llm_service, "stream_agent_turn", fake_stream)
+    monkeypatch.setattr(llm_service.settings, "llm_api_key", "")
     plan = AgentPlan("knowledge", "knowledge", ("search_knowledge",), "retrieve")
     work = await target_specialist_agents.plan_work(
         plans=[plan],

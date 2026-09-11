@@ -344,6 +344,7 @@ class TargetSpecialistAgents:
         ]
         allowed_tools = tool_registry.llm_tools(plan.allowed_tools)
         proposed: list[AgentToolCall] = []
+        skipped_attempted_call = False
         try:
             async for event in llm_service.stream_agent_turn(messages, allowed_tools):
                 if event.get("type") != "tool_calls":
@@ -369,7 +370,12 @@ class TargetSpecialistAgents:
                         source_agent=plan.agent,
                         source_skill=plan.skill,
                     )
-                    if not _call_matches_attempted_fingerprint(call, attempted_call_fingerprints):
+                    if _call_matches_attempted_fingerprint(call, attempted_call_fingerprints):
+                        # The provider did make a valid proposal, but it has
+                        # already been executed. Do not replace it with a
+                        # broader deterministic fallback query in this turn.
+                        skipped_attempted_call = True
+                    else:
                         proposed.append(call)
         except Exception:
             # The target graph stays available without a configured provider. In
@@ -379,7 +385,7 @@ class TargetSpecialistAgents:
             if llm_service.settings.llm_api_key:
                 raise
 
-        if not proposed and not llm_service.settings.llm_api_key and not any(
+        if not proposed and not skipped_attempted_call and not llm_service.settings.llm_api_key and not any(
             name.startswith("mcp__billing__") for name in plan.allowed_tools
         ):
             agent = self._agents[plan.agent]
