@@ -17,6 +17,44 @@ from app.agent.llm import llm_service
 from app.agent.types import AgentEvidence, AgentPlan, AgentToolCall, tool_call_fingerprint
 
 
+def _call_matches_attempted_fingerprint(call: AgentToolCall, attempted: set[str]) -> bool:
+    """Match exact calls and legacy knowledge-search fingerprints.
+
+    Older persisted traces may omit the default ``top_k=6`` argument. Treat
+    that representation as equivalent to the current default so a fallback
+    planner cannot re-issue an already executed read.
+    """
+    fingerprint = tool_call_fingerprint(call)
+    if fingerprint in attempted:
+        return True
+    if call.name != "search_knowledge":
+        return False
+
+    arguments = dict(call.arguments)
+    if arguments.get("top_k", 6) == 6:
+        arguments.pop("top_k", None)
+        legacy = AgentToolCall(
+            id=call.id,
+            name=call.name,
+            arguments=arguments,
+            source_agent=call.source_agent,
+            source_skill=call.source_skill,
+        )
+        if tool_call_fingerprint(legacy) in attempted:
+            return True
+    if "top_k" not in call.arguments:
+        arguments["top_k"] = 6
+        defaulted = AgentToolCall(
+            id=call.id,
+            name=call.name,
+            arguments=arguments,
+            source_agent=call.source_agent,
+            source_skill=call.source_skill,
+        )
+        return tool_call_fingerprint(defaulted) in attempted
+    return False
+
+
 @dataclass(frozen=True, slots=True)
 class TargetAgentWork:
     """A specialist's bounded plan and its first dependency-safe proposals."""
@@ -331,7 +369,7 @@ class TargetSpecialistAgents:
                         source_agent=plan.agent,
                         source_skill=plan.skill,
                     )
-                    if tool_call_fingerprint(call) not in attempted_call_fingerprints:
+                    if not _call_matches_attempted_fingerprint(call, attempted_call_fingerprints):
                         proposed.append(call)
         except Exception:
             # The target graph stays available without a configured provider. In
@@ -346,10 +384,18 @@ class TargetSpecialistAgents:
         ):
             agent = self._agents[plan.agent]
             if fallback_outcomes:
-                proposed.extend(agent.follow_up_calls(plan, fallback_outcomes, attempted_tools))
+                proposed.extend(
+                    call
+                    for call in agent.follow_up_calls(plan, fallback_outcomes, attempted_tools)
+                    if not _call_matches_attempted_fingerprint(call, attempted_call_fingerprints)
+                )
             elif not attempted_tools:
                 tool_question = retrieval_query if plan.agent == "knowledge" and retrieval_query else question
-                proposed.extend(agent.initial_calls(plan, tool_question, entities))
+                proposed.extend(
+                    call
+                    for call in agent.initial_calls(plan, tool_question, entities)
+                    if not _call_matches_attempted_fingerprint(call, attempted_call_fingerprints)
+                )
 
         unique: list[AgentToolCall] = []
         seen: set[str] = set()
