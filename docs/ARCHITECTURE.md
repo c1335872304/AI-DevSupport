@@ -92,4 +92,4 @@ Billing Agent 通过独立只读 MCP 读取套餐、用量和账单。管理员�
 
 审批操作、配置及适用边界见[发布与审批](RELEASING.md#approvals)。工单强状态机、处理审计、审批自动恢复与真实支付接入的剩余工作见[维护](MAINTENANCE.md)。
 
-完整整编前契约集中在[实现参考快照](archive/reference/IMPLEMENTATION_2026-11-19.md)，设计演进从[历史索引](archive/README.md)查阅。
+实现细节以本页列出的代码入口为准，必要的验收与原失败证据见[验收索引](archive/README.md)。

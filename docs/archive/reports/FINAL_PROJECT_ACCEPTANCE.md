@@ -2,7 +2,7 @@
 
 > 本页记录 2026-10-20 的四阶段验收。当前源码候选与 CI 结果见[候选验收](RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
 
-日期：2026-10-20。P4-01～P4-08 已实现和验收；可选 P4-09 截图输入未实施。范围见[四阶段计划](../plans/FOUR_PHASE_ITERATION_PLAN.md)，过程见[第四阶段检查点](../progress/PHASE_FOUR_PROGRESS.md)，操作见[三条演示](../../TESTING.md#demos)和[质量门禁](../../TESTING.md)。
+日期为 2026-10-20。P4-01～P4-08 已实现和验收，可选截图输入未实施。当前职责和复跑入口分别见[架构](../../ARCHITECTURE.md)与[测试](../../TESTING.md)。
 
 本轮没有更新或重新编码当前知识库，没有修改实际 `.env`，没有重建原 Docker Demo。实际改动是冻结评测、轨迹评分、三组对照、停止冗余 API 规划、反馈连续性修复、CI 和交付材料。
 

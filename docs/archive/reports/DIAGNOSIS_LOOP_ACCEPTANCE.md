@@ -1,6 +1,6 @@
 # 第三阶段：诊断闭环与执行恢复验收
 
-日期：2026-10-20。范围：P3-01～P3-11；实现与检查点见[诊断闭环](../reference/IMPLEMENTATION_2026-11-19.md#diagnosis-loop)、[执行进度](../progress/PHASE_THREE_PROGRESS.md)，复现见[运行手册](../reference/OPERATIONS_2026-11-19.md#diagnosis)。
+日期为 2026-10-20，范围 P3-01～P3-11。现行实现见[架构](../../ARCHITECTURE.md#diagnosis)，复现见[运行手册](../../OPERATIONS.md#diagnosis)。
 
 ## 交付内容
 
@@ -53,5 +53,3 @@ HTTP 验收最初使用 revision=0，触发参数校验422；改用合法过时 
 第三阶段按固定场景验收完成；当时第四阶段尚未开始，后续交付见[四阶段最终验收](FINAL_PROJECT_ACCEPTANCE.md)，当前源码见[候选验收](RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。原因矩阵只适用于独立 Demo API，不证明三家厂商真实账户状态。历史日志未记录请求时观测时保留不确定性，不推造回填。
 
 恢复只覆盖结构化工具与交接任务，不自动续跑付费模型或模型内部推理。没有执行生产滚动发布、高可用/负载测试或原 Docker Demo 重建。验收服务及专用 MySQL 在验证后停止，数据与证据保留。
-
-![复查后界面](../../artifacts/assets/phase3-ui-resolved.png)

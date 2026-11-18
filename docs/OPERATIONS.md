@@ -126,4 +126,4 @@ python scripts/observe_rollout.py --state probe.sqlite hold --reason duplicate_c
 
 宿主机与容器分别核对可达的代理地址。Provider 故障使用单条受控请求验证，再核对实际用量。离线替身验证工程流程，真实检索和模型效果沿用有版本的评测证据。
 
-更多协议与旧操作背景见[运维参考快照](archive/reference/OPERATIONS_2026-11-19.md)。
+专用工具的参数由[脚本说明](../backend/scripts/README.md)和各命令的 `--help` 提供。

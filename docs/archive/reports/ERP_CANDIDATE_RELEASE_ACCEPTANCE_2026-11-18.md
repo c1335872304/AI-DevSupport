@@ -63,6 +63,6 @@
 
 [迁移与恢复](../../../backend/data/erp-stage-3-4-20261118/staging-migration.json) · [影子、白名单和回滚历史](../../../backend/data/erp-stage-3-4-20261118/rehearsal-context.json) · [Billing MCP 回执](../../../backend/data/erp-stage-3-4-20261118/rehearsal-billing.json) · [依赖故障逐轮](../../../backend/data/erp-stage-3-4-20261118/staging-dependencies.jsonl) · [告警门禁](../../../backend/data/erp-stage-3-4-20261118/rehearsal-rollout.json) · [回滚计时与镜像](../../../backend/data/erp-stage-3-4-20261118/rehearsal-rollback.json)
 
-候选还复验了探测记录时效，290 秒的健康记录允许继续，310 秒的记录阻断。正式指标预算沿用已有建议，首段 P95 在 30 分钟内至少有 30 次有效生成、连续两个窗口超过七天基线 50% 时触发调查。阈值和接入由目标环境发布负责人确认。[时效复核](../../../backend/data/erp-stage-3-4-20261118/rehearsal-probe-freshness.json) · [指标口径](../plans/PRODUCTION_READINESS_PLAN.md)
+候选还复验了探测记录时效，290 秒的健康记录允许继续，310 秒的记录阻断。正式指标预算沿用已有建议，首段 P95 在 30 分钟内至少有 30 次有效生成、连续两个窗口超过七天基线 50% 时触发调查。阈值和接入由目标环境发布负责人确认。[时效复核](../../../backend/data/erp-stage-3-4-20261118/rehearsal-probe-freshness.json) · [指标口径](../../RELEASING.md)
 
-目标环境签验需确认发布仓库摘要、目标依赖和实际告警渠道、真实值守接手、流量控制器接线及目标流量下的阈值。负载阈值继续沿用计划的样本门槛与七天基线方法。此次使用隔离 HTTP 接收器与演练值守身份，外部流量为零。[预发布手册及签字项](../reference/OPERATIONS_2026-11-19.md#staging)
+目标环境签验需确认发布仓库摘要、目标依赖和实际告警渠道、真实值守接手、流量控制器接线及目标流量下的阈值。负载阈值继续沿用计划的样本门槛与七天基线方法。此次使用隔离 HTTP 接收器与演练值守身份，外部流量为零。[预发布手册及签字项](../../RELEASING.md)

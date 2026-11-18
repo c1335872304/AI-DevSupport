@@ -47,7 +47,7 @@ docker compose ps -a
 4. 在实际 Langfuse 查询根追踪，通知实际渠道并由当班人员确认接手，演练暂停、恢复及回滚。
 5. 记录配置回滚、镜像回滚和数据库恢复各自的适用条件、耗时与数据核对结果，再完成签验。
 
-本机演练和真实模型对照保存在[候选性能报告](archive/reports/ERP_CANDIDATE_RELEASE_ACCEPTANCE_2026-11-18.md)，详细原流程见[发布预演记录](archive/reports/CONTEXT_RELEASE_ACCEPTANCE.md)。
+本机演练和真实模型对照保存在[候选性能报告](archive/reports/ERP_CANDIDATE_RELEASE_ACCEPTANCE_2026-11-18.md)。
 
 ## 放量与回滚
 
@@ -82,4 +82,4 @@ REFUND_SANDBOX_URL=<synthetic-service-root>/sandbox
 
 批准退款时，合成支付适配器通过查单核对金额、币种和退款 ID，再返回 `SANDBOX_REFUNDED`，结果未知时保持核对状态。服务只识别合成支付 `sandbox-paid-1`、人民币 15.00 元。未配置沙箱的普通申请批准后为 `APPROVED_PREVIEW`。批准关闭工单则更新原工单，并在同一事务保存关闭结果。
 
-真实渠道、资格与金额快照、独立审批权限、自动对账及回调验签的设计保存在[退款规划记录](archive/plans/REFUND_APPROVAL_EXECUTION_PLAN.md)，验收入口见[测试](TESTING.md#demos)。
+真实渠道、资格与金额快照、独立审批权限、自动对账及回调验签由[维护台账](MAINTENANCE.md)跟踪。验收入口见[测试](TESTING.md#demos)。

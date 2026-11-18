@@ -12,7 +12,7 @@ from report_evidence_budget import amount, read_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data/checkpoints/stable-prefix-20261020"
-DOCS = ROOT.parent / "docs/artifacts/2026-10-20"
+REPORTS = ROOT / "data/reports/2026-10-20"
 
 
 def verify_review(folder):
@@ -26,6 +26,7 @@ def verify_review(folder):
 
 
 def main():
+    REPORTS.mkdir(parents=True, exist_ok=True)
     requests, usage = read_usage(OUT / "provider-usage.jsonl")
     assert set(requests) == set(usage), "Missing provider usage"
     assert all(r["caseId"] != "unattributed" for r in requests.values())
@@ -94,7 +95,7 @@ def main():
             (folder / "provider-usage.jsonl").write_bytes((OUT / "provider-usage.jsonl").read_bytes())
         reviews = verify_review(folder)
         answers.OUT, answers.DATASET, answers.REVIEW = folder, folder / "cases.json", folder / "review.json"
-        answers.REPORT = DOCS / f"STABLE_PREFIX_{phase.upper()}_CASES_2026-10-20.md"
+        answers.REPORT = REPORTS / f"STABLE_PREFIX_{phase.upper()}_CASES_2026-10-20.md"
         answers.main()
         metrics = json.loads((folder / "metrics.json").read_text(encoding="utf-8"))
         natural = []
@@ -183,7 +184,7 @@ def main():
         "estimatedCny": sum(amount(requests[rid], event) for rid, event in usage.items()),
     }
     (OUT / "comparison.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    (DOCS / "STABLE_PREFIX_CACHE_PROBE_CASES_2026-10-20.md").write_text(
+    (REPORTS / "STABLE_PREFIX_CACHE_PROBE_CASES_2026-10-20.md").write_text(
         "\n".join(transcript), encoding="utf-8"
     )
     print(

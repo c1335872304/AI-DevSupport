@@ -7,6 +7,6 @@
 - [开发](docs/DEVELOPMENT.md) · [架构](docs/ARCHITECTURE.md) · [运维](docs/OPERATIONS.md)
 - [测试](docs/TESTING.md) · [发布](docs/RELEASING.md) · [维护与技术债务](docs/MAINTENANCE.md)
 
-历史设计和验收从[归档索引](docs/archive/README.md)查阅，逐题回答及截图见[产物索引](docs/artifacts/README.md)。源码候选范围见[验收记录](docs/archive/reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
+当前验收与必要追溯见[精简索引](docs/archive/README.md)，源码候选范围见[验收记录](docs/archive/reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
 
 内部包、数据库与 Compose 中的 `PaiSmart` 为保留的技术标识。

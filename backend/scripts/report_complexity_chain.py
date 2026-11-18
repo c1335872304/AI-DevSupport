@@ -8,7 +8,7 @@ import summarize_independent_answers as summary
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'data/checkpoints/complexity-chain-20261020'
-DOCS = ROOT.parent / 'docs/artifacts/2026-10-20'
+REPORTS = ROOT / 'data/reports/2026-10-20'
 NOTES = {
     'C01': 'json_object、prompt 包含 json、格式示例与截断提醒正确；代码为片段，messages 需调用方定义。',
     'C02': '北京兼容地址、同地域及同计费方案匹配正确；未冒充查询个人账户。',
@@ -26,6 +26,7 @@ NOTES = {
 
 
 def main():
+    REPORTS.mkdir(parents=True, exist_ok=True)
     phases = {}
     for phase in ('baseline', 'final'):
         folder = OUT / phase
@@ -38,7 +39,7 @@ def main():
         summary.OUT = folder
         summary.DATASET = folder / 'cases.json'
         summary.REVIEW = review_path
-        summary.REPORT = DOCS / f'COMPLEXITY_CHAIN_{phase.upper()}_CASES_2026-10-20.md'
+        summary.REPORT = REPORTS / f'COMPLEXITY_CHAIN_{phase.upper()}_CASES_2026-10-20.md'
         summary.main()
         phases[phase] = json.loads((folder / 'metrics.json').read_text(encoding='utf-8'))
     groups = {}

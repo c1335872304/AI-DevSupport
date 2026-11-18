@@ -10,7 +10,7 @@ import summarize_independent_answers as summary
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data/checkpoints/evidence-budget-20261020"
-DOCS = ROOT.parent / "docs/artifacts/2026-10-20"
+REPORTS = ROOT / "data/reports/2026-10-20"
 
 
 def read_usage(path):
@@ -39,6 +39,7 @@ def amount(request, event, *, cache=True):
 
 
 def main():
+    REPORTS.mkdir(parents=True, exist_ok=True)
     requests, usages = read_usage(OUT / "provider-usage.jsonl")
     assert set(requests) == set(usages), "Every paid request must have observed usage"
     result = {"groups": {}, "cases": {}}
@@ -53,7 +54,7 @@ def main():
                 == reviewed["artifactSha256"]
             ), "Answer changed after manual review"
         summary.OUT, summary.DATASET, summary.REVIEW = folder, folder / "cases.json", folder / "review.json"
-        summary.REPORT = DOCS / f"EVIDENCE_BUDGET_{phase.upper()}_CASES_2026-10-20.md"
+        summary.REPORT = REPORTS / f"EVIDENCE_BUDGET_{phase.upper()}_CASES_2026-10-20.md"
         summary.main()
         metrics = json.loads((folder / "metrics.json").read_text(encoding="utf-8"))
         rows = []

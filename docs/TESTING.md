@@ -59,10 +59,24 @@ gh run view <run-id> --repo c1335872304/AI-DevSupport --log-failed
 
 先核对 `headSha`，push 与 pull request 可能各触发一轮。失败修复后以最新提交为准。跳过项随结果披露，隔离集成与离线替身的范围分别解释。
 
+## 题库
+
+| 测试输入 | 位置与范围 |
+| --- | --- |
+| 当前成对题集 | `backend/eval/customer_service/phase_a_regression.jsonl` 48 条、`phase_a_release.jsonl` 12 条，原清单固定哈希 |
+| 扩展客服题 | `backend/eval/customer_service/benchmark.jsonl` 与 `benchmark_extended.jsonl` |
+| 检索题 | `backend/eval/vendor_full_rag.jsonl`、`advanced_rag*.jsonl` |
+| 诊断机制题 | `backend/eval/phase4/diagnosis.jsonl`，由冻结清单约束 |
+| 回答质量与复杂度 | `backend/eval/independent_answers_v1.json`、`answer_quality_new_v1.json`、`complexity_chain_v1.json` |
+| 手工问法候选 | [manual_question_candidates.json](../backend/eval/customer_service/manual_question_candidates.json)，从旧文档提取的 60 条未复核输入 |
+| 回归与夹具 | `backend/tests`，沿用已有用例和测试数据 |
+
+候选问法保留原预期边界，需对照当前实现复核后再纳入正式题集。它们的保存与执行结果分别记录，默认 CI 沿用现有冻结题集。
+
 ## 冻结与产物
 
 Phase 4 校验四份冻结输入及机制任务，Phase A 和官方知识快照由各自回归核验原 SHA-256。`.gitattributes` 保留受哈希约束的文件字节，普通文档整理沿用既有清单。
 
-逐题回答存放于 [artifacts](artifacts/README.md)，发布和阶段报告存放于 [archive](archive/README.md)。供应商请求流水、大体量运行结果和模型缓存保留在各自的 `backend/data` 目录，报告记录其生成入口和适用版本。
+[验收索引](archive/README.md)保留当前代码、真实模型性能及核心机制的最终结论。供应商请求流水和原始运行结果按报告指向的 `backend/data` 路径核对。
 
-历史回答产物的生成器默认输出到 `docs/artifacts/2026-10-20`。真实模型评测使用单独明确的预算和输出目录，比较时固定问法、语料、模型、配置和判分规则。六层评测的详细定义保留在[评测参考快照](archive/reference/EVALUATION_2026-11-19.md)。
+历史汇总脚本的默认输出为 `backend/data/reports/2026-10-20`，按需生成。比较时固定问法、语料、模型、配置和判分规则，披露引用、事实范围、失败及用量。默认 CI 使用离线模型和工具替身，真实模型由显式入口和受控预算运行。
