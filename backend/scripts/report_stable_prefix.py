@@ -12,7 +12,7 @@ from report_evidence_budget import amount, read_usage
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data/checkpoints/stable-prefix-20261020"
-DOCS = ROOT.parent / "docs/04-testing"
+DOCS = ROOT.parent / "docs/artifacts/2026-10-20"
 
 
 def verify_review(folder):

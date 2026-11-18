@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data/checkpoints/independent-answer-eval-20261020"
 DATASET = ROOT / "eval/independent_answers_v1.json"
 REVIEW = ROOT / "eval/independent_answers_review_20261020.json"
-REPORT = ROOT.parent / "docs/04-testing/INDEPENDENT_ANSWER_CASES_2026-10-20.md"
+REPORT = ROOT.parent / "docs/artifacts/2026-10-20/INDEPENDENT_ANSWER_CASES_2026-10-20.md"
 
 
 def main():

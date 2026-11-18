@@ -1,33 +1,29 @@
-# API 助手文档入口
+# API 助手文档
 
-更新于 2026-11-19。当前源码候选已完成会话隔离、多副本生成恢复与结算、审批接手续办修复。源码与 CI 的验收以[当前候选验收](04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)为准，生产发布环境的签验按[预发布手册](03-operations/CONTEXT_STAGING_ACCEPTANCE_RUNBOOK.md)执行。
+API 助手用于 API 文档问答、鉴权与限流诊断、只读账单核实及人工交接。聊天使用 FastAPI / WebSocket 与 LangGraph，管理界面使用 Vue。DeepSeek、Qwen、GPT 官方快照用于通用知识，账号事实由授权业务工具核实。
 
-## 当前入口
+## 日常阅读
 
-| 目的 | 文档 |
+| 文档 | 用途 |
 | --- | --- |
-| 了解能力与范围 | [项目简介](PROJECT_INTRO.md) |
-| 启动与更新 | [本地启动](01-getting-started/GETTING_STARTED.md) · [Docker 操作](03-operations/DOCKER_OPERATIONS.md) |
-| 查看代码职责 | [架构总览](02-architecture/README.md) · [客服运行时](02-architecture/CUSTOMER_SERVICE_ARCHITECTURE.md) |
-| 理解检索与入库 | [知识流水线](02-architecture/KNOWLEDGE_PIPELINE.md) · [官方语料](01-getting-started/VENDOR_KNOWLEDGE.md) · [RAG 运维](03-operations/RAG_OPERATIONS.md) |
-| 理解会话与诊断 | [上下文系统](02-architecture/CONTEXT_SYSTEM.md) · [诊断闭环](02-architecture/DIAGNOSIS_LOOP.md) · [诊断恢复](03-operations/DIAGNOSIS_OPERATIONS.md) |
-| 查看工单与审批 | [管理员工单台](02-architecture/ADMIN_TICKET_CONSOLE.md) · [退款与关单审批](REFUND_APPROVAL_EXECUTION_PLAN.md) |
-| 运行演示 | [三条演示](03-operations/PROJECT_DEMOS.md) · [客服正式入口演示](03-operations/CUSTOMER_SERVICE_DEMO.md) |
-| 查看当前验证 | [源码候选验收](04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md) · [真实模型与性能对照](04-testing/ERP_CANDIDATE_RELEASE_ACCEPTANCE_2026-11-18.md) |
-| Git 与持续集成 | [仓库与 PR 操作](03-operations/GIT_AND_FAST_CI.md) · [现行 CI 门禁](03-operations/CI_PLAN.md) |
-| 发布与观测 | [生产运行边界](03-operations/PRODUCTION.md) · [预发布签验](03-operations/CONTEXT_STAGING_ACCEPTANCE_RUNBOOK.md) · [Langfuse](03-operations/LANGFUSE.md) |
-| 排查环境问题 | [网络与 Provider](03-operations/NETWORK_TROUBLESHOOTING.md) · [Billing MCP](03-operations/DOCKER_AND_LOCAL_BILLING_MCP_PLAN.md) |
-| 查看剩余工作 | [技术债务台账](MAINTENANCE.md) · [客服工程改进](ERP_AGENT_PRACTICES_ADOPTION_PLAN.md) |
-| 复跑评测 | [六层评测规范](04-testing/EVALUATION.md) · [评测样本库](04-testing/USER_QUESTION_SIMULATION.md) · [脚本说明](../backend/scripts/README.md) |
+| [本页](README.md) | 项目能力、当前交付与阅读入口 |
+| [开发](DEVELOPMENT.md) | 环境、配置、启动、Git 与提交 |
+| [架构](ARCHITECTURE.md) | 数据流、模块职责、状态与授权契约 |
+| [运维](OPERATIONS.md) | Docker、知识库、诊断恢复、追踪和排障 |
+| [测试](TESTING.md) | 本地检查、演示、CI 与评测产物 |
+| [发布](RELEASING.md) | 候选验证、迁移、回滚、放量及审批配置 |
+| [维护](MAINTENANCE.md) | 六项剩余技术债务及后续功能范围 |
 
-## 历史设计与执行记录
+## 当前交付
 
-[四阶段计划](FOUR_PHASE_ITERATION_PLAN.md)及其[最终验收](04-testing/FINAL_PROJECT_ACCEPTANCE.md)记录四阶段核心交付。[RAG 演进设计](02-architecture/RAG_EVOLUTION_DESIGN.md)和[开源参考](02-architecture/RAG_UPSTREAM_REVIEW.md)保留设计依据。上下文实施过程见[上下文计划](CONTEXT_SYSTEM_PLAN.md)。
+四阶段核心、持久化上下文、会话显式绑定、生成心跳回收与结算保护、管理员审批恢复均已有对应验证。源码基线 `99e7485` 的范围与成绩见[候选验收](archive/reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。后续文档整理沿用该代码基线。项目交付在 [PR #1](https://github.com/c1335872304/AI-DevSupport/pull/1)，运行镜像与目标环境状态按[发布手册](RELEASING.md)核对。
 
-2026-10-20 的 Docker 升级、语料替换、回答质量、上下文预算、缓存和流式报告属于各自执行日期的验证记录。旧题失败、历史成绩和当时的镜像信息应连同原条件阅读。较早的测试与语料演进从[历史索引](04-testing/history/README.md)进入，真实模型历史记录见[测试计划](05-live-tests/DEEPSEEK_LIVE_TEST_PLAN.md)与[执行报告](05-live-tests/DEEPSEEK_LIVE_TEST_REPORT.md)。
+当前退款执行使用合成支付沙箱，关闭工单操作更新原业务记录。PDF/DOCX 使用独立 Docling 环境，扫描 OCR、截图输入和真实支付接入由维护台账跟踪。
 
-## 维护方式
+## 归档
 
-架构文档描述代码行为，运维手册提供操作，计划跟踪未完成事项，验收报告保留具体版本和执行证据。当前测试数字集中在候选验收中维护。知识快照、运行时 Skill、业务数据和历史验收原文各自保留其输入或证据用途。
+- [历史索引](archive/README.md)按设计、报告、进度和早期记录查阅，保留原版本、失败和复测条件。
+- [产物索引](artifacts/README.md)收录逐题回答和截图，并说明生成脚本与原始运行数据位置。
+- 详细实现和运维资料分别合并为[实现快照](archive/reference/IMPLEMENTATION_2026-11-19.md)与[运维快照](archive/reference/OPERATIONS_2026-11-19.md)，用于追溯原契约和操作背景。
 
-修改路径后从项目根目录运行 `python backend/scripts/check_docs.py`。干净 Git 检出使用 `--checkout`，允许缺少留在本地的 `backend/data` 验收产物。文档整理沿用既有知识向量和配置。
+`docs/` 根目录维护这七份日常手册。新结果写入归档或产物目录，日常手册同步有效操作和当前边界。脚本的专门参数见[脚本说明](../backend/scripts/README.md)。

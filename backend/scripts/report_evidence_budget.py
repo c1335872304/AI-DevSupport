@@ -10,7 +10,7 @@ import summarize_independent_answers as summary
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data/checkpoints/evidence-budget-20261020"
-DOCS = ROOT.parent / "docs/04-testing"
+DOCS = ROOT.parent / "docs/artifacts/2026-10-20"
 
 
 def read_usage(path):

@@ -32,7 +32,7 @@
 
 专用脚本保留原位置，避免破坏报告、测试和人工运维引用。复用能力放入 `app/`；应用不导入这些验收脚本。
 
-[文档导航](../../docs/README.md) · [RAG 运行手册](../../docs/03-operations/RAG_OPERATIONS.md) · [第一阶段验收](../../docs/04-testing/RAG_PHASE_ONE_ACCEPTANCE.md)
+[文档导航](../../docs/README.md) · [RAG 运行手册](../../docs/OPERATIONS.md#knowledge) · [第一阶段验收](../../docs/archive/reports/RAG_PHASE_ONE_ACCEPTANCE.md)
 
 ## 第二阶段验收
 
@@ -41,7 +41,7 @@
 - `verify_phase2_api.py`：仅访问上述本地夹具，验证登录、诊断读取、历史/generation 关联及未授权拒绝。
 - 诊断测试支持 `PHASE2_TEST_MYSQL_URL` 指向专用验收库，禁止指向已有应用库。
 
-设计与验证见 [诊断架构](../../docs/02-architecture/DIAGNOSIS_STATE.md) 和 [第二阶段验收](../../docs/04-testing/DIAGNOSIS_STATE_ACCEPTANCE.md)。
+设计与验证见 [诊断架构](../../docs/ARCHITECTURE.md#diagnosis) 和 [第二阶段验收](../../docs/archive/reports/DIAGNOSIS_STATE_ACCEPTANCE.md)。
 
 ## 第三阶段验收
 
@@ -51,7 +51,7 @@
 - `PHASE3_TEST_MYSQL_URL`：只允许专用测试库，用于 `tests/agent/test_diagnosis_loop.py`。
 - `verify_phase3_delivery.py`：比较起点知识/配置指纹，保存交付源码与数据库副本，排除实际 `.env` 和依赖目录。
 
-步骤与限制见[诊断运行手册](../../docs/03-operations/DIAGNOSIS_OPERATIONS.md)和[第三阶段验收](../../docs/04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md)。
+步骤与限制见[诊断运行手册](../../docs/OPERATIONS.md#diagnosis)和[第三阶段验收](../../docs/archive/reports/DIAGNOSIS_LOOP_ACCEPTANCE.md)。
 
 ## 第四阶段评测与交付
 
@@ -66,7 +66,7 @@
 | `phase4_demo_server.py`、`verify_phase4_demos.py` | 独立端口18046、三条HTTP演示，实际配置不变 |
 | `verify_phase4_delivery.py` | 比较第四阶段起点知识/配置指纹，保存最终源码和数据库副本，排除实际 `.env` |
 
-对照脚本依赖本机 checkpoints 中受保护的起点源码、知识副本与查询向量；缺失即失败，不能伪造基线。普通CI只跑无需这些大快照的最终轨迹门禁。结果和费用口径见[最终验收](../../docs/04-testing/FINAL_PROJECT_ACCEPTANCE.md)，演示见[启动材料](../../docs/03-operations/PROJECT_DEMOS.md)。
+对照脚本依赖本机 checkpoints 中受保护的起点源码、知识副本与查询向量；缺失即失败，不能伪造基线。普通CI只跑无需这些大快照的最终轨迹门禁。结果和费用口径见[最终验收](../../docs/archive/reports/FINAL_PROJECT_ACCEPTANCE.md)，演示见[启动材料](../../docs/TESTING.md#demos)。
 
 ## Docker 原地升级验收
 
@@ -76,9 +76,9 @@
 - `docker_demo_fixture.py prepare/cleanup`：仅创建、清理带唯一前缀且ID匹配的临时验收账号及其资料；凭据留在容器`/tmp/docker_demo_acceptance.json`，不可公开。`grant-upload-quota`仅补充该测试账号的DOCX字节数预检额度。
 - `verify_docker_demo.py`：通过9527的真实HTTP/WS验证诊断、Billing MCP与文档生命周期；使用检查点private夹具，不可用真实客户账号。成功的WS轨迹可复用以控制付费调用，失败不记为通过。
 
-本次执行与回滚说明见 [Docker升级验收](../../docs/04-testing/DOCKER_DEMO_UPGRADE_2026-10-20.md)。
+本次执行与回滚说明见 [Docker升级验收](../../docs/archive/reports/DOCKER_DEMO_UPGRADE_2026-10-20.md)。
 
-官方语料替换使用`export_vendor_vectors.py`只读导出清单内60份原文和现有Qwen向量，`migrate_vendor_vectors.py`核对包摘要及精确旧文档清单，完整暂存后发布、定向清理。两者不调用编码，不复制用户/配置/计费台账；要求停写及备份，默认预检，`--apply`才迁移。见[迁移验收](../../docs/04-testing/DOCKER_VENDOR_KNOWLEDGE_MIGRATION_2026-10-20.md)。`verify_docker_demo.py`可用`DOCKER_DEMO_ACCEPTANCE_DIR`选择独立检查点，`DOCKER_DEMO_BILLING_QUESTION`指定有界重测问题；原失败轨迹必须保留。
+官方语料替换使用`export_vendor_vectors.py`只读导出清单内60份原文和现有Qwen向量，`migrate_vendor_vectors.py`核对包摘要及精确旧文档清单，完整暂存后发布、定向清理。两者不调用编码，不复制用户/配置/计费台账；要求停写及备份，默认预检，`--apply`才迁移。见[迁移验收](../../docs/archive/reports/DOCKER_VENDOR_KNOWLEDGE_MIGRATION_2026-10-20.md)。`verify_docker_demo.py`可用`DOCKER_DEMO_ACCEPTANCE_DIR`选择独立检查点，`DOCKER_DEMO_BILLING_QUESTION`指定有界重测问题；原失败轨迹必须保留。
 
 ## 独立回答评测（有真实 Provider 费用）
 
@@ -87,16 +87,18 @@
 - `answer_eval_identity.py prepare/cleanup`：仅创建临时USER、不写知识及厂商账户事实；清理前核对账号ID/前缀、无自有文档、无运行生成或未结算预留，定向移除该账号及其轨迹。
 - `summarize_independent_answers.py`：只读原始结果和用量，核对冻结摘要，汇总延迟/公开价费用与引用映射，生成逐题证据；不调用模型、不自动冒充事实裁判。
 
-本批账号和容器已清理。复测须另建有预算、独立冻结输入和检查点的运行，不覆盖本批证据。private配置、登录凭据不得进入源码包。结果、运行步骤及边界见[评测报告](../../docs/04-testing/INDEPENDENT_ANSWER_EVALUATION_2026-10-20.md)。
+本批账号和容器已清理。复测须另建有预算、独立冻结输入和检查点的运行，不覆盖本批证据。private配置、登录凭据不得进入源码包。结果、运行步骤及边界见[评测报告](../../docs/archive/reports/INDEPENDENT_ANSWER_EVALUATION_2026-10-20.md)。
 
-修复重验通过`--checkpoint`与`--dataset`选择新的冻结组合；汇总器支持`--review`、`--report`，按每题起止时间隔离同一流水中的多轮用量。首轮与最终结果分目录保留。`replay_vendor_retrieval.py`在容器`/evaluation`读取现有query-vectors.json，只读重放120条ES检索，不重新编码，不将其当作回答生成评测。见[本次修复验收](../../docs/04-testing/ANSWER_QUALITY_FIX_2026-10-20.md)。
+修复重验通过`--checkpoint`与`--dataset`选择新的冻结组合；汇总器支持`--review`、`--report`，按每题起止时间隔离同一流水中的多轮用量。首轮与最终结果分目录保留。`replay_vendor_retrieval.py`在容器`/evaluation`读取现有query-vectors.json，只读重放120条ES检索，不重新编码，不将其当作回答生成评测。见[本次修复验收](../../docs/archive/reports/ANSWER_QUALITY_FIX_2026-10-20.md)。
 # 复杂度调用链评测（2026-10-20）
 
 `probe_stable_prefix.py`：从自然验收已授权证据冻结固定选材，使用真实Provider对照“问题在前”和“稳定证据在前”；独立固定实验标记仅用于测试，不写生产配置。与ASGI observer共用累计预算文件时必须串行，格式实验后重启observer再做任何Provider调用，避免独立进程请求编号冲突。完整映射、来源和旧编号在private/原始证据内，报告不公开签名。
 
-`report_stable_prefix.py`：离线复算自然题与独立格式实验的Token加权缓存命中率、耗时及费用，要求已有审阅和原始答复哈希，禁止自动给修改后的答复判通过。参见 `docs/04-testing/STABLE_PREFIX_OPTIMIZATION_2026-10-20.md`。
+`report_stable_prefix.py`：离线复算自然题与独立格式实验的Token加权缓存命中率、耗时及费用，要求已有审阅和原始答复哈希，禁止自动给修改后的答复判通过。参见 [STABLE_PREFIX_OPTIMIZATION_2026-10-20.md](../../docs/archive/reports/STABLE_PREFIX_OPTIMIZATION_2026-10-20.md)。
 
-`report_evidence_budget.py` 离线复算后续上下文压缩评测；人工review必须存在且绑定回答产物哈希，脚本不自动给新答案判分。原始失败及全部usage保留，实测缓存成本与全部未命中的归一化成本分列，详见 `docs/04-testing/EVIDENCE_BUDGET_OPTIMIZATION_2026-10-20.md`。
+`report_evidence_budget.py` 离线复算后续上下文压缩评测；人工review必须存在且绑定回答产物哈希，脚本不自动给新答案判分。原始失败及全部usage保留，实测缓存成本与全部未命中的归一化成本分列，详见 [EVIDENCE_BUDGET_OPTIMIZATION_2026-10-20.md](../../docs/archive/reports/EVIDENCE_BUDGET_OPTIMIZATION_2026-10-20.md)。
 
-`report_complexity_chain.py` 从已冻结的本地证据复算旧链路/优化后质量、调用量、耗时与费用，无模型调用。`complexity_eval_fixture.py` 仅为临时评测用户准备Demo请求和诊断后新建的复查请求；`eval_route_cache.py` 仅备份、重置、恢复冻结题目的缓存键。必须保留失败尝试及费用，评测结束恢复缓存并清理临时身份。详见 `docs/04-testing/COMPLEXITY_CHAIN_OPTIMIZATION_2026-10-20.md`。
+`report_complexity_chain.py` 从已冻结的本地证据复算旧链路/优化后质量、调用量、耗时与费用，无模型调用。`complexity_eval_fixture.py` 仅为临时评测用户准备Demo请求和诊断后新建的复查请求；`eval_route_cache.py` 仅备份、重置、恢复冻结题目的缓存键。必须保留失败尝试及费用，评测结束恢复缓存并清理临时身份。详见 [COMPLEXITY_CHAIN_OPTIMIZATION_2026-10-20.md](../../docs/archive/reports/COMPLEXITY_CHAIN_OPTIMIZATION_2026-10-20.md)。
 
+
+历史逐题回答的汇总默认输出到 `docs/artifacts/2026-10-20`，索引见[验收产物](../../docs/artifacts/README.md)。日常文档与历史报告分别从[文档入口](../../docs/README.md)和[归档索引](../../docs/archive/README.md)查阅。
