@@ -77,19 +77,21 @@ class AgentRuntime:
         """
         from app.agent.graph.workflow import run_customer_service_graph
 
-        return await run_customer_service_graph(
-            runtime=self,
-            user=user,
-            question=question,
-            history=history,
-            conversation_id=conversation_id,
-            entity_memory=entity_memory,
-            turn_context=turn_context,
-            shadow_context=shadow_context,
-            generation_id=generation_id,
-            send_json=send_json,
-            on_chunk=on_chunk,
-        )
+        from app.accounting.provider_ledger import provider_scope
+        with provider_scope(user.id, generation_id):
+            return await run_customer_service_graph(
+                runtime=self,
+                user=user,
+                question=question,
+                history=history,
+                conversation_id=conversation_id,
+                entity_memory=entity_memory,
+                turn_context=turn_context,
+                shadow_context=shadow_context,
+                generation_id=generation_id,
+                send_json=send_json,
+                on_chunk=on_chunk,
+            )
 
     def llm_tools_for_skills(self, active_skills: list[str]) -> list[dict]:
         """Return the Tool schemas visible to the LLM for the current Skill set."""

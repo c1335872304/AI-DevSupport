@@ -40,7 +40,7 @@ declare namespace Api {
     interface UserInfo {
       id: number;
       username: string;
-      role: 'USER' | 'ADMIN';
+      role: 'USER' | 'SUPPORT' | 'ADMIN';
       orgTags: string[];
       primaryOrg: string;
     }
@@ -126,6 +126,7 @@ declare namespace Api {
     type Item = {
       userId: string;
       username: string;
+      role?: Api.Auth.UserInfo['role'];
       status: number;
       orgTags: Pick<OrgTag.Item, 'tagId' | 'name'>[];
       primaryOrg: string;
@@ -443,7 +444,6 @@ declare namespace Api {
       agent?: string | null;
       skill?: string | null;
     }
-
 
     interface SkillTrace {
       question?: string;

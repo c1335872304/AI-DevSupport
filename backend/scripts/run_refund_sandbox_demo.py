@@ -66,11 +66,14 @@ async def run(root: Path, listeners: tuple[socket.socket, socket.socket], *, ser
     async with SessionLocal() as db:
         password_hash = hash_password(password)
         owner = User(username="refund-customer", password=password_hash, role="USER")
-        db.add_all([owner, User(username="refund-reviewer", password=password_hash, role="ADMIN")])
+        db.add_all([owner, User(username="refund-reviewer", password=password_hash, role="ADMIN"),
+                    User(username="support-agent", password=password_hash, role="SUPPORT")])
         await db.flush()
         db.add(ConversationSession(conversation_id="demo-support-chat", user_id=str(owner.id), title="客服演示"))
         db.add(SupportHandoff(handoff_id="demo-support-ticket", user_id=str(owner.id),
                              conversation_id="demo-support-chat", reason="合成测试", summary="待确认关闭的演示工单"))
+        db.add(SupportHandoff(handoff_id="demo-support-staff-ticket", user_id=str(owner.id),
+            conversation_id="demo-support-chat", reason="客服状态测试", summary="客服独立权限与处理审计"))
         db.add(SupportInvoice(id="sandbox-paid-1", user_id=str(owner.id), month="2026-11",
                               status="PAID", amount=15))
         await db.commit()

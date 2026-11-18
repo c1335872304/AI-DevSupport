@@ -289,3 +289,8 @@ Provider 回执记录输入 44,887 Token、输出 2,128 Token，Embedding 203 To
 在已配置模型的 backend 环境，显式运行 `python scripts/retest_n12_scope.py --live --output data/checkpoints/n12-fresh-run` 复现，输出目录需为空。这会调用实际供应商并产生费用。
 
 完整后端回归在无本机 .env 的工作副本中完成：**420 passed，2 skipped**（Compose Billing MCP 与 MySQL 专项依赖单独环境，由隔离集成 CI 覆盖）。新增及现有代码通过致命 Ruff 规则、编译、文档链接与冻结输入校验。
+
+
+## 五项债务关闭后的再复验
+
+保持同四题，本轮真实复验再次 4/4 通过，结果保存在 `backend/data/checkpoints/debt-closure-live-20261119/`。新增请求台账记录 12 次 LLM 与 4 次 Embedding，所有请求均有用量及供应商请求 ID，输入 49,464、输出 2,159、Embedding 159 Token，与回执总计一致。详见[当前候选验收](../reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md#本轮五项债务关闭验收)，原始前后失败与回答不覆盖。

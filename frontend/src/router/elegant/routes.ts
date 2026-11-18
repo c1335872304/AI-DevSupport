@@ -175,7 +175,7 @@ export const generatedRoutes: GeneratedRoute[] = [
       title: 'support-handoff',
       i18nKey: 'route.support-handoff',
       icon: 'solar:ticket-line-duotone',
-      roles: ['ADMIN'],
+      roles: ['ADMIN', 'SUPPORT'],
       order: 8
     }
   },

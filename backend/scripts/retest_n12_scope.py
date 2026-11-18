@@ -33,9 +33,11 @@ async def main():
     from app.accounting.embedding_usage import capture_embedding_usage
     from app.agent.runtime import AgentRuntime
     from app.core.config import get_settings
-    from app.db.models import User
+    from app.db.models import User, Base
     from app.db.session import SessionLocal, engine
 
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
     settings = get_settings()
     assert settings.llm_api_key and settings.embedding_api_key
     original = json.loads((ROOT / "eval/answer_quality_new_v1.json").read_text(encoding="utf-8"))

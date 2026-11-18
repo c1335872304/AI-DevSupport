@@ -23,7 +23,8 @@ export function setupLoading() {
     'right-0 bottom-0 animate-delay-1500'
   ];
 
-  const logoWithClass = '<div class="size-128px flex-center rounded-32px bg-primary text-28px text-white font-bold">API</div>';
+  const logoWithClass =
+    '<div class="size-128px flex-center rounded-32px bg-primary text-28px text-white font-bold">API</div>';
 
   const dot = loadingClasses
     .map(item => {

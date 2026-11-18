@@ -20,6 +20,7 @@ export default defineConfig(
       ],
       'unocss/order-attributify': 'off',
       'no-warning-comments': 'off',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       'vue/no-v-html': 'off'
     }
   }

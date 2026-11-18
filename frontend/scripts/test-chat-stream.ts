@@ -1,3 +1,4 @@
+import process from 'node:process';
 import assert from 'node:assert/strict';
 import { applyStreamContent, findStreamMessage } from '../src/utils/chat-stream';
 
@@ -25,4 +26,11 @@ assert.equal(a.content, 'authoritative final');
 a.status = 'error';
 applyStreamContent(a, { type: 'chunk', chunk: 'late' });
 assert.equal(a.content, 'authoritative final');
-console.log('PASS: generation isolation, initial binding, append, correction, missed-event reconciliation and terminal protection');
+process.stdout.write(
+  'PASS: generation isolation, initial binding, append, correction, missed-event reconciliation and terminal protection\n'
+);
+
+const replay: Api.Chat.Message = { ...a, status: 'loading', content: 'A' };
+applyStreamContent(replay, { type: 'chunk', chunk: 'B', content: 'AB' });
+applyStreamContent(replay, { type: 'chunk', chunk: 'B', content: 'AB' });
+assert.equal(replay.content, 'AB');

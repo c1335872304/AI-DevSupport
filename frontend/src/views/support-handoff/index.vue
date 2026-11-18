@@ -1,11 +1,12 @@
 <script setup lang="tsx">
+import { computed, onMounted, reactive, ref } from 'vue';
 import type { DataTableColumns, PaginationProps } from 'naive-ui';
 import { NButton, NEllipsis, NTag } from 'naive-ui';
-import { computed, onMounted, reactive, ref } from 'vue';
 import { request } from '@/service/request';
 import ApprovalQueue from './approval-queue.vue';
 
 const appStore = useAppStore();
+const authStore = useAuthStore();
 
 const loading = ref(false);
 const saving = ref(false);
@@ -13,6 +14,19 @@ const detailLoading = ref(false);
 const drawerVisible = ref(false);
 const selected = ref<Api.Support.HandoffDetail | null>(null);
 const rows = ref<Api.Support.HandoffListItem[]>([]);
+type TicketAudit = {
+  id: number;
+  actorId: string;
+  createdAt: string;
+  before: { status?: string };
+  after: { status?: string; resolutionNote?: string | null };
+};
+const audit = ref<TicketAudit[]>([]);
+async function loadTicketAudit(handoffId: string) {
+  const { data, error } = await request<TicketAudit[]>({ url: `/support/admin/handoffs/${handoffId}/audit` });
+  audit.value = !error && data ? data : [];
+}
+
 const statistics = ref<Api.Support.HandoffStatistics>({ status: {}, priority: {} });
 
 const filters = reactive<Pick<Api.Support.SearchParams, 'status' | 'priority' | 'category' | 'keyword' | 'userId'>>({
@@ -48,6 +62,16 @@ const statusOptions = [
   { label: '已关闭', value: 'CLOSED' }
 ];
 
+const allowedEditStatuses = computed(() => {
+  const current = selected.value?.status || 'OPEN';
+  const next: Record<string, string[]> = {
+    OPEN: ['IN_PROGRESS'],
+    IN_PROGRESS: ['OPEN', 'RESOLVED'],
+    RESOLVED: ['IN_PROGRESS', 'CLOSED'],
+    CLOSED: []
+  };
+  return statusOptions.filter(option => option.value === current || next[current].includes(option.value));
+});
 const priorityOptions = [
   { label: '低', value: 'LOW' },
   { label: '普通', value: 'NORMAL' },
@@ -126,13 +150,21 @@ const columns = computed<DataTableColumns<Api.Support.HandoffListItem>>(() => [
     key: 'priority',
     title: '优先级',
     width: 95,
-    render: row => <NTag size="small" type={priorityType(row.priority)}>{priorityLabel(row.priority)}</NTag>
+    render: row => (
+      <NTag size="small" type={priorityType(row.priority)}>
+        {priorityLabel(row.priority)}
+      </NTag>
+    )
   },
   {
     key: 'status',
     title: '状态',
     width: 100,
-    render: row => <NTag size="small" type={statusType(row.status)}>{statusLabel(row.status)}</NTag>
+    render: row => (
+      <NTag size="small" type={statusType(row.status)}>
+        {statusLabel(row.status)}
+      </NTag>
+    )
   },
   {
     key: 'summary',
@@ -141,7 +173,9 @@ const columns = computed<DataTableColumns<Api.Support.HandoffListItem>>(() => [
     ellipsis: { tooltip: true },
     render: row => (
       <div class="ticket-summary-cell">
-        <NEllipsis line-clamp={2} tooltip>{row.summary}</NEllipsis>
+        <NEllipsis line-clamp={2} tooltip>
+          {row.summary}
+        </NEllipsis>
       </div>
     )
   },
@@ -162,7 +196,11 @@ const columns = computed<DataTableColumns<Api.Support.HandoffListItem>>(() => [
     title: '操作',
     fixed: 'right',
     width: 90,
-    render: row => <NButton size="small" type="primary" ghost onClick={() => openDetail(row.handoffId)}>查看</NButton>
+    render: row => (
+      <NButton size="small" type="primary" ghost onClick={() => openDetail(row.handoffId)}>
+        查看
+      </NButton>
+    )
   }
 ]);
 
@@ -203,6 +241,7 @@ async function openDetail(handoffId: string) {
     const { error, data } = await request<Api.Support.HandoffDetail>({ url: `/support/admin/handoffs/${handoffId}` });
     if (!error && data) {
       selected.value = data;
+      await loadTicketAudit(handoffId);
       editForm.status = data.status;
       editForm.assignedTo = data.assignedTo || '';
       editForm.resolutionNote = data.resolutionNote || '';
@@ -221,6 +260,7 @@ async function saveTicket() {
       method: 'patch',
       data: {
         status: editForm.status,
+        expectedStatus: selected.value.status,
         assignedTo: editForm.assignedTo,
         resolutionNote: editForm.resolutionNote
       }
@@ -232,6 +272,7 @@ async function saveTicket() {
         // list-only username. Preserve the detail's already loaded identity.
         username: data.username ?? selected.value.username
       };
+      await loadTicketAudit(selected.value.handoffId);
       window.$message?.success('工单已更新');
       await getData();
     }
@@ -258,7 +299,7 @@ onMounted(getData);
 </script>
 
 <template>
-  <div class="support-handoff-page min-h-500px flex-col-stretch gap-16px overflow-y-auto overflow-x-hidden">
+  <div class="support-handoff-page min-h-500px flex-col-stretch gap-16px overflow-x-hidden overflow-y-auto">
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <NCard :bordered="false" size="small" class="summary-card">
         <div class="summary-label">待处理</div>
@@ -278,15 +319,20 @@ onMounted(getData);
       </NCard>
     </div>
 
-    <ApprovalQueue />
-    <NCard title="工单管理" :bordered="false" size="small" class="card-wrapper ticket-card">
+    <ApprovalQueue v-if="authStore.isAdmin" />
+    <NCard title="工单管理" :bordered="false" size="small" class="ticket-card card-wrapper">
       <template #header-extra>
         <NButton :loading="loading" @click="getData">刷新</NButton>
       </template>
 
       <NForm :model="filters" inline label-placement="left" :show-feedback="false" class="ticket-filter-form mb-4">
         <NFormItem label="关键词">
-          <NInput v-model:value="filters.keyword" clearable placeholder="工单号、客户、摘要或原因" class="ticket-filter-control" />
+          <NInput
+            v-model:value="filters.keyword"
+            clearable
+            placeholder="工单号、客户、摘要或原因"
+            class="ticket-filter-control"
+          />
         </NFormItem>
         <NFormItem label="客户 ID">
           <NInput v-model:value="filters.userId" clearable placeholder="请输入用户 ID" class="ticket-filter-control" />
@@ -295,7 +341,12 @@ onMounted(getData);
           <NSelect v-model:value="filters.status" :options="statusOptions" clearable class="ticket-filter-control" />
         </NFormItem>
         <NFormItem label="优先级">
-          <NSelect v-model:value="filters.priority" :options="priorityOptions" clearable class="ticket-filter-control" />
+          <NSelect
+            v-model:value="filters.priority"
+            :options="priorityOptions"
+            clearable
+            class="ticket-filter-control"
+          />
         </NFormItem>
         <NFormItem label="分类">
           <NInput v-model:value="filters.category" clearable placeholder="如 BILLING" class="ticket-filter-control" />
@@ -335,21 +386,39 @@ onMounted(getData);
               <NDescriptionsItem label="Agent 摘要">{{ selected.summary }}</NDescriptionsItem>
             </NDescriptions>
 
+            <NDivider>处理历史</NDivider>
+            <NEmpty v-if="!audit.length" description="暂无处理记录" />
+            <div v-for="entry in audit" :key="entry.id" class="mb-3 text-sm">
+              <div>
+                {{ formatDate(entry.createdAt) }} · {{ entry.actorId }} · {{ entry.before.status || '新建' }} →
+                {{ entry.after.status }}
+              </div>
+              <div v-if="entry.after.resolutionNote" class="text-stone-500">{{ entry.after.resolutionNote }}</div>
+            </div>
             <NDivider>处理工单</NDivider>
             <NForm label-placement="top">
               <div class="grid gap-4 sm:grid-cols-2">
                 <NFormItem label="处理状态">
-                  <NSelect v-model:value="editForm.status" :options="statusOptions" />
+                  <NSelect v-model:value="editForm.status" :options="allowedEditStatuses" />
                 </NFormItem>
                 <NFormItem label="处理人">
                   <NInput v-model:value="editForm.assignedTo" placeholder="管理员用户名或标识" clearable />
                 </NFormItem>
               </div>
               <NFormItem label="处理说明">
-                <NInput v-model:value="editForm.resolutionNote" type="textarea" :rows="5" maxlength="6000" show-count placeholder="记录处理结论；客户不会自动看到这段说明。" />
+                <NInput
+                  v-model:value="editForm.resolutionNote"
+                  type="textarea"
+                  :rows="5"
+                  maxlength="6000"
+                  show-count
+                  placeholder="记录处理结论；客户不会自动看到这段说明。"
+                />
               </NFormItem>
               <div class="flex justify-end">
-                <NButton type="primary" :loading="saving" @click="saveTicket">保存处理结果</NButton>
+                <NButton type="primary" :loading="saving" :disabled="selected.status === 'CLOSED'" @click="saveTicket">
+                  保存处理结果
+                </NButton>
               </div>
             </NForm>
           </template>

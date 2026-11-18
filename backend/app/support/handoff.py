@@ -186,6 +186,9 @@ async def create_handoff(
         **replay_input,
     )
     db.add(row)
+    from app.db.models import SupportHandoffAudit
+    db.add(SupportHandoffAudit(handoff_id=row.handoff_id, actor_id=str(user.id), source="agent-create",
+        before_json="{}", after_json=json.dumps({"status": "OPEN", "assignedTo": None, "resolutionNote": None})))
     try:
         await db.commit()
         await db.refresh(row)
@@ -243,23 +246,37 @@ async def get_user_handoff(
 
 
 async def update_handoff(
-    db: AsyncSession,
-    row: SupportHandoff,
-    *,
-    status: str | None = None,
-    assigned_to: str | None = None,
-    resolution_note: str | None = None,
+    db: AsyncSession, row: SupportHandoff, *, status: str | None = None,
+    assigned_to: str | None = None, resolution_note: str | None = None,
+    actor_id: str, source: str = "operator", expected_status: str | None = None,
 ) -> SupportHandoff:
-    if status is not None:
-        normalized = status.strip().upper()
-        if normalized not in VALID_STATUSES:
-            raise ValueError("invalid status")
-        row.status = normalized
-    if assigned_to is not None:
-        row.assigned_to = assigned_to.strip()[:64] or None
-    if resolution_note is not None:
-        row.resolution_note = resolution_note.strip()[:6000] or None
+    from app.db.models import SupportHandoffAudit
+    await db.execute(update(SupportHandoff).where(SupportHandoff.handoff_id == row.handoff_id)
+                     .values(updated_at=SupportHandoff.updated_at))
+    await db.refresh(row)
+    before = {"status": row.status, "assignedTo": row.assigned_to, "resolutionNote": row.resolution_note}
+    if expected_status and expected_status != row.status:
+        raise ValueError("Ticket changed; refresh before editing")
+    target = status.strip().upper() if status is not None else row.status
+    transitions = {"OPEN": {"IN_PROGRESS"}, "IN_PROGRESS": {"OPEN", "RESOLVED"},
+                   "RESOLVED": {"IN_PROGRESS", "CLOSED"}, "CLOSED": set()}
+    approval_close = source == "approval" and target == "CLOSED" and row.status in {"OPEN", "IN_PROGRESS", "RESOLVED"}
+    if target not in VALID_STATUSES or (target != row.status and target not in transitions.get(row.status, set()) and not approval_close):
+        raise ValueError("Invalid ticket status transition")
+    note = resolution_note.strip()[:6000] if resolution_note is not None else row.resolution_note
+    assignment = (assigned_to.strip()[:64] or None) if assigned_to is not None else row.assigned_to
+    after = {"status": target, "assignedTo": assignment, "resolutionNote": note}
+    if before == after:
+        return row
+    if row.status == "CLOSED":
+        raise ValueError("Closed tickets are immutable")
+    if target in {"RESOLVED", "CLOSED"} and not note:
+        raise ValueError("Resolution note required")
+    row.status, row.assigned_to, row.resolution_note = target, assignment, note
     row.updated_at = utcnow()
+    db.add(SupportHandoffAudit(handoff_id=row.handoff_id, actor_id=actor_id, source=source,
+                              before_json=json.dumps(before, ensure_ascii=False),
+                              after_json=json.dumps(after, ensure_ascii=False)))
     await db.commit()
     await db.refresh(row)
     return row

@@ -60,7 +60,7 @@ watch(
       </SimpleScrollbar>
       <MenuToggler
         v-if="!appStore.isMobile"
-        class="shrink-0 w-full"
+        class="w-full shrink-0"
         :collapsed="appStore.siderCollapse"
         @click="appStore.toggleSiderCollapse"
       />

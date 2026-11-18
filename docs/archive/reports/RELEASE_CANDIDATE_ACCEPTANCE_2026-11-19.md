@@ -1,6 +1,6 @@
 # 源码候选验收
 
-验收日期为 2026-11-19，当前源码功能基线为 `7c101b820a4ee70fe0cb90cea9a111d9a8f3b3a4`，交付分支为 `codex/support-demo-rag-ci`。三个 P1 修复起于 `99e7485`，当前基线另完成地域上下文和跨地域检索修复，可按单实例及合成支付范围封源码版本。[当前源码提交](https://github.com/c1335872304/AI-DevSupport/commit/7c101b820a4ee70fe0cb90cea9a111d9a8f3b3a4) · [PR #1](https://github.com/c1335872304/AI-DevSupport/pull/1)
+验收日期为 2026-11-19，前序 P1 与地域修复基线为 `7c101b820a4ee70fe0cb90cea9a111d9a8f3b3a4`，本轮在其后完成下述五项债务关闭，最终交付版本以本 PR 最新提交记录为准，交付分支为 `codex/support-demo-rag-ci`。三个 P1 修复起于 `99e7485`，当前基线另完成地域上下文和跨地域检索修复，可按本页已验证范围及合成支付范围封源码版本。[前序源码提交](https://github.com/c1335872304/AI-DevSupport/commit/7c101b820a4ee70fe0cb90cea9a111d9a8f3b3a4) · [PR #1](https://github.com/c1335872304/AI-DevSupport/pull/1)
 
 ## 修复与回归
 
@@ -14,7 +14,7 @@
 
 同一交付同步了原工作目录已有的去邀请码改动及 `0020` 迁移。冻结评测和官方知识快照按原 SHA-256 清单核对，Git 属性覆盖 Phase A 输入、正文和原始快照。
 
-## 验证结果
+## 前序基线验证
 
 | 验证 | 结果与范围 |
 | --- | --- |
@@ -26,10 +26,32 @@
 | 隔离集成 | 真实 MySQL 迁移、Elasticsearch 跨存储与执行隔离、Billing MCP 协议验收通过 |
 | 工程检查 | 文档目标、冻结数据、关键 Ruff 规则与 Compose 校验通过 |
 
-提交对应的 push、pull request 两轮 Fast CI 和 PR 隔离集成均已完成。[Fast CI](https://github.com/c1335872304/AI-DevSupport/actions/runs/44384682502) · [push 检查](https://github.com/c1335872304/AI-DevSupport/actions/runs/44384665745) · [隔离集成](https://github.com/c1335872304/AI-DevSupport/actions/runs/44384682348)
+前序基线对应的 push、pull request 两轮 Fast CI 和 PR 隔离集成均已完成。[Fast CI](https://github.com/c1335872304/AI-DevSupport/actions/runs/44384682502) · [push 检查](https://github.com/c1335872304/AI-DevSupport/actions/runs/44384665745) · [隔离集成](https://github.com/c1335872304/AI-DevSupport/actions/runs/44384682348)
 
 ## 适用边界
 
 本页确认源码候选和上述自动化验证。2026-11-18 的真实模型、成本与本机预发布对照见[候选性能验收](ERP_CANDIDATE_RELEASE_ACCEPTANCE_2026-11-18.md)，其镜像和样本范围按原报告解释。当前源码对应的目标环境镜像、实际依赖、通知、流量与签验见[预发布手册](../../RELEASING.md)。
 
-审批仍使用单机 SQLite 检查点和合成支付服务。地域范围问题已关闭。跨副本实时事件共享、跨主机审批及外部未知用量对账仍按[技术债务台账](../../MAINTENANCE.md)的升级条件处理，目标环境尚未因源码 CI 通过而自动获准放量。
+本轮审批检查点已共享到 SQL，Redis 提供跨副本事件和取消，Provider 未知消耗有持久请求台账与受控对账入口，原五项债务均已关闭，见[维护台账](../../MAINTENANCE.md)。退款仍为合成支付，真实渠道不属于这批改动。目标环境的实际镜像、依赖、备份、通知和放量签验按发布手册执行。
+
+
+## 本轮五项债务关闭验收
+
+所有实现先在本地完成，再集中上传原 PR。没有更换正式题库或官方知识快照，日常手册仍为七份，docs 共十六份。当前源码增加 `0021_close_runtime_debts` 迁移，共享审批检查点和任务、供应商请求/对账记录、工单及角色审计均在 SQL 持久化。
+
+| 项目 | 本地结果与范围 |
+| --- | --- |
+| 完整后端回归 | 441 passed、2 skipped，启用新专项的真实 MySQL 和 Redis；两项跳过为单独运行的旧集成用例 |
+| 完整隔离集成 | 真实 MySQL / ES / Redis 共 81 passed，包含独立进程领取、诊断恢复、跨副本续流和取消、共享审批及对账/权限；ES 测试端口已可配置 |
+| 原 P1 MySQL | 专用 `p1_release_debts` 库，7 passed |
+| Billing MCP | 独立 HTTP MCP + MySQL，1 passed，读取范围与协议核对通过 |
+| 退款/关单 | HTTP 演示确认同一回执、独立合成支付账本一笔退款、原工单 CLOSED；三账号浏览器 2 passed，客服能处理并查看审计，无法访问审批 |
+| 迁移 | 独立 SQLite、MySQL 全新升级、回退至 0020、再升级 0021 均通过 |
+| 前端工具链 | 全量只读 ESLint 0 errors / 0 warnings，类型与生产构建通过，流式重放/隔离脚本通过；干净目录按冻结锁文件用 Node 20 / pnpm 9.15.5 安装，lint、类型和构建通过。Windows 缩短虚拟依赖路径以避开长路径解析问题 |
+| 真实 API | 同 N12 / REGION / BATCH / FUTURE 四题，首跑 4/4 通过；12 次 LLM 和 4 次 Embedding 请求均有持久用量、供应商请求 ID，汇总与实际回执一致 |
+
+真实 API 回执输入 **49,464 Token**、输出 **2,159 Token**、Embedding **159 Token**，无已记录 Provider 错误，未估算费用。原始回答、事件、请求台账和逐题复核位于 `backend/data/checkpoints/debt-closure-live-20261119/`，该目录中的 `review.json` 校验账本与回执一致。前序真实模型报告仅用于其原样本与版本解释。
+
+新增专项为 [test_debt_closure.py](../../../backend/tests/e2e/test_debt_closure.py) 与 [test_shared_generation_events.py](../../../backend/tests/e2e/test_shared_generation_events.py)。覆盖原决定不变、执行者失联、失败重试、十二次后暂停及换人恢复、未知用量 NULL、供应商收据去重、状态约束与最小权限。默认 CI 使用离线夹具；真实服务在隔离集成跑。Fast CI 保留 PR、主分支与手动入口，开发分支同一提交不再重复跑 push / PR 两轮。
+
+本地原始检查结果另见 `backend/data/debt-seal-integration.log`、`debt-p1-mysql.log`、`debt-billing-protocol.log`、`debt-browser-confirmed.log` 及 Git 工作副本的 `backend/data/debt-seal-all.log`。远端检查以[原 PR Checks](https://github.com/c1335872304/AI-DevSupport/pull/1/checks)中的实际提交为准。

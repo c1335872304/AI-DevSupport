@@ -29,7 +29,9 @@ function cloneModelProviderScope(payload: Api.Admin.ModelProviderScopeSettings):
   };
 }
 
-function cloneModelProviderSettings(payload?: Api.Admin.ModelProviderSettings | null): Api.Admin.ModelProviderSettings | null {
+function cloneModelProviderSettings(
+  payload?: Api.Admin.ModelProviderSettings | null
+): Api.Admin.ModelProviderSettings | null {
   if (!payload) {
     return null;
   }
@@ -89,8 +91,10 @@ onMounted(() => {
       </template>
 
       <NSpin :show="modelProvidersLoading">
-        <div class="mb-4 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs text-stone-500">
-          当前值来自后端运行环境，不会回显 API Key 明文。请在 <code>backend/.env</code> 修改模型地址、模型名或密钥后重建 API/Worker 容器；Embedding 模型或维度变更后必须重新索引知识库。
+        <div class="mb-4 border border-stone-200 rounded-2xl bg-stone-50 px-4 py-3 text-xs text-stone-500">
+          当前值来自后端运行环境，不会回显 API Key 明文。请在
+          <code>backend/.env</code>
+          修改模型地址、模型名或密钥后重建 API/Worker 容器；Embedding 模型或维度变更后必须重新索引知识库。
         </div>
 
         <div v-if="modelProviders" class="grid gap-4">
@@ -143,7 +147,11 @@ onMounted(() => {
             </div>
 
             <div class="provider-grid">
-              <div v-for="item in modelProviders.embedding.providers" :key="`embedding-${item.provider}`" class="provider-card">
+              <div
+                v-for="item in modelProviders.embedding.providers"
+                :key="`embedding-${item.provider}`"
+                class="provider-card"
+              >
                 <div class="provider-card-header">
                   <div>
                     <div class="provider-name">{{ item.displayName }}</div>

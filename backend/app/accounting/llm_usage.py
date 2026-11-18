@@ -35,6 +35,8 @@ def capture_llm_usage():
 
 
 def record_provider_usage(usage: dict | None) -> None:
+    from app.accounting.provider_ledger import observe_usage
+    observe_usage(usage)
     meter = _current_meter.get()
     if meter is None or not isinstance(usage, dict):
         return

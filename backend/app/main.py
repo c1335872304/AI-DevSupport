@@ -42,6 +42,10 @@ async def lifespan(app: FastAPI):
     from app.diagnosis.execution import recovery_loop
     diagnostic_task = asyncio.create_task(recovery_loop(), name="diagnosis-recovery")
     app.state.resumed_processing_jobs = []
+    from app.support.approval_execution import recovery_loop as approval_recovery_loop
+    approval_task = asyncio.create_task(approval_recovery_loop(), name="approval-recovery")
+    from app.accounting.provider_ledger import recovery_loop as provider_usage_recovery_loop
+    provider_task = asyncio.create_task(provider_usage_recovery_loop(), name="provider-usage-recovery")
     privacy_task = None
     if settings.privacy_auto_maintenance_enabled:
         from app.privacy.maintenance import run_once
@@ -59,6 +63,11 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        provider_task.cancel()
+        await asyncio.gather(provider_task, return_exceptions=True)
+        approval_task.cancel()
+        await asyncio.gather(approval_task, return_exceptions=True)
+        await generation_runtime.close()
         generation_recovery_task.cancel()
         try:
             await generation_recovery_task

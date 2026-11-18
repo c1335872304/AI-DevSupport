@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import admin_user
@@ -455,3 +455,35 @@ async def delete_package(package_id: int, admin: User = Depends(admin_user), db:
         item.enabled = False
         await db.commit()
     return ok(message="Deleted")
+
+
+from typing import Literal
+
+
+class UserRoleUpdate(BaseModel):
+    role: Literal["USER", "SUPPORT", "ADMIN"]
+
+
+@router.patch("/users/{user_id}/role")
+async def change_user_role(user_id: int, body: UserRoleUpdate, admin: User = Depends(admin_user),
+                           db: AsyncSession = Depends(get_db)):
+    from app.db.models import UserRoleAudit
+    if db.bind.dialect.name == "sqlite":
+        await db.execute(update(User).where(User.id == admin.id).values(token_version=User.token_version))
+    admins = (await db.scalars(select(User).where(User.role == "ADMIN").order_by(User.id).with_for_update())).all()
+    actor = await db.get(User, admin.id, populate_existing=True)
+    if not actor or actor.role != "ADMIN":
+        raise HTTPException(403, "Administrator role changed")
+    row = await db.get(User, user_id, populate_existing=True)
+    if not row:
+        raise HTTPException(404, "User not found")
+    if row.role == "ADMIN" and body.role != "ADMIN" and len(admins) <= 1:
+        raise HTTPException(409, "At least one administrator is required")
+    if row.id == admin.id and body.role != "ADMIN":
+        raise HTTPException(409, "Cannot demote your own administrator account")
+    if row.role != body.role:
+        db.add(UserRoleAudit(user_id=str(row.id), actor_id=str(admin.id), previous_role=row.role, new_role=body.role))
+        row.role = body.role
+        row.token_version += 1
+        await db.commit()
+    return ok({"userId": row.id, "role": row.role})

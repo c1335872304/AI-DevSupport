@@ -12,6 +12,9 @@ from app.api.v1.refund_preview import router as refund_preview_router
 
 api_router = APIRouter()
 
+from app.api.v1.provider_usage import router as provider_usage_router
+api_router.include_router(provider_usage_router)
+
 from app.api.v1.diagnoses import router as diagnosis_router
 api_router.include_router(diagnosis_router)
 

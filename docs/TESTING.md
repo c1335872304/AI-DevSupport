@@ -16,7 +16,7 @@ python scripts/check_phase4_inputs.py
 
 已有本地证据时可省略文档检查的 `--checkout`，检查全部目标。干净检出通过该选项允许缺少 `backend/data` 生成证据，源码、日常手册和已归档文档仍需完整。
 
-在 `frontend` 运行 `pnpm typecheck`、`pnpm build`。现行门禁使用类型和生产构建，ESLint 的依赖及存量规则问题见[维护](MAINTENANCE.md)。从仓库根目录运行 `docker compose config --quiet` 校验编排。
+在 `frontend` 使用 Node 20、pnpm 9.15.5，运行 `pnpm lint`、`pnpm typecheck`、`pnpm test:stream`、`pnpm build`。lint 为只读且要求零警告，显式修复使用 `pnpm lint:fix`。`.npmrc` 缩短 Windows 虚拟依赖路径。从仓库根目录运行 `docker compose config --quiet` 校验编排。
 
 针对会话、结算和审批的专项回归为以下文件。
 
@@ -47,8 +47,8 @@ Windows 浏览器演示可设置 `REFUND_DEMO_PYTHON` 为实际 Python 解释器
 
 | 工作流 | 触发与覆盖 |
 | --- | --- |
-| [Fast CI](../.github/workflows/ci-fast.yml) | push / pull request，后端编译、离线回归、文档、Ruff、冻结输入、业务演示与轨迹评分，前端类型、构建和浏览器，Compose |
-| [隔离集成](../.github/workflows/ci-integration.yml) | 相关 PR 路径或手动触发，真实 MySQL / Elasticsearch、跨进程领取与诊断恢复、Billing MCP 协议，保存 JUnit |
+| [Fast CI](../.github/workflows/ci-fast.yml) | 主分支 push / pull request / 手动，后端编译、离线回归、文档、Ruff、冻结输入、业务演示与轨迹评分，前端零警告 lint、类型、流式重放、构建和浏览器，Compose |
+| [隔离集成](../.github/workflows/ci-integration.yml) | 相关 PR 路径或手动触发，真实 MySQL / Elasticsearch / Redis、跨进程领取与诊断恢复、共享审批、事件与用量对账、Billing MCP 协议，保存 JUnit |
 | 真实模型 | 显式 CLI 和受控预算运行，记录模型配置、题集、Provider 用量及失败 |
 
 ```powershell
@@ -57,7 +57,13 @@ gh run list --repo c1335872304/AI-DevSupport --branch codex/support-demo-rag-ci 
 gh run view <run-id> --repo c1335872304/AI-DevSupport --log-failed
 ```
 
-先核对 `headSha`，push 与 pull request 可能各触发一轮。失败修复后以最新提交为准。跳过项随结果披露，隔离集成与离线替身的范围分别解释。
+先核对 `headSha`，开发分支通过 PR 跑完整检查，主分支 push 与手动入口保留，避免同一 PR 提交重复跑 push 和 PR 两轮。失败修复后以最新提交为准。跳过项随结果披露，隔离集成与离线替身的范围分别解释。
+
+## 债务关闭回归
+
+`tests/e2e/test_debt_closure.py` 覆盖共享检查点、审批自动恢复、重试暂停、Provider 未知用量与收据去重、工单状态及角色权限。默认跑 SQLite，`DEBT_MYSQL_TEST_URL` 指向独立 `/rag_acceptance` 库时同时跑真实 MySQL。`tests/e2e/test_shared_generation_events.py` 通过 `GENERATION_TEST_REDIS_URL` 验证真实 Redis 与独立进程接收及取消。
+
+集成用例有创建合成业务数据的行为，只能指向专用测试实例。ES 集成通过 `ELASTICSEARCH_URL` 指定测试实例。实际 API 复验需显式 `--live`，本轮用量和原回答见候选验收，默认 CI 不调用供应商模型。
 
 ## 题库
 

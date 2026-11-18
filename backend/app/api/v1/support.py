@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import admin_user, current_user
+from app.core.deps import support_user, current_user
 from app.core.response import ok
 from app.db.models import SupportHandoff, User
 from app.db.session import get_db
@@ -15,6 +15,7 @@ router = APIRouter(prefix="/support", tags=["support"])
 
 
 class HandoffUpdate(BaseModel):
+    expectedStatus: str | None = None
     status: str | None = None
     assignedTo: str | None = None
     resolutionNote: str | None = None
@@ -60,7 +61,7 @@ async def admin_handoffs(
     category: str | None = None,
     keyword: str | None = Query(None, max_length=200),
     user_id: str | None = Query(None, alias="userId", max_length=64),
-    admin: User = Depends(admin_user),
+    admin: User = Depends(support_user),
     db: AsyncSession = Depends(get_db),
 ):
     filters = []
@@ -116,7 +117,7 @@ async def admin_handoffs(
 @router.get("/admin/handoffs/{handoff_id}")
 async def admin_handoff(
     handoff_id: str,
-    admin: User = Depends(admin_user),
+    admin: User = Depends(support_user),
     db: AsyncSession = Depends(get_db),
 ):
     row = await db.get(SupportHandoff, handoff_id)
@@ -132,7 +133,7 @@ async def admin_handoff(
 async def admin_update_handoff(
     handoff_id: str,
     payload: HandoffUpdate,
-    admin: User = Depends(admin_user),
+    admin: User = Depends(support_user),
     db: AsyncSession = Depends(get_db),
 ):
     row = await db.get(SupportHandoff, handoff_id)
@@ -144,8 +145,23 @@ async def admin_update_handoff(
             row,
             status=payload.status,
             assigned_to=payload.assignedTo,
-            resolution_note=payload.resolutionNote,
+            resolution_note=payload.resolutionNote, actor_id=str(admin.id),
+            expected_status=payload.expectedStatus,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return ok(serialize_handoff(row))
+
+
+@router.get("/admin/handoffs/{handoff_id}/audit")
+async def ticket_audit(handoff_id: str, limit: int = Query(100, ge=1, le=500), offset: int = Query(0, ge=0),
+                       operator: User = Depends(support_user), db: AsyncSession = Depends(get_db)):
+    import json
+    from app.db.models import SupportHandoffAudit
+    if not await db.get(SupportHandoff, handoff_id):
+        raise HTTPException(404, "Support handoff not found")
+    rows = (await db.scalars(select(SupportHandoffAudit).where(
+        SupportHandoffAudit.handoff_id == handoff_id).order_by(SupportHandoffAudit.id.desc()).offset(offset).limit(limit))).all()
+    return ok([{"id": row.id, "actorId": row.actor_id, "source": row.source,
+                "before": json.loads(row.before_json), "after": json.loads(row.after_json),
+                "createdAt": row.created_at.isoformat()} for row in rows])

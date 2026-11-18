@@ -12,6 +12,9 @@ export interface ApprovalItem {
 }
 
 export interface ApprovalReview extends ApprovalItem {
+  executionStatus?: string;
+  executionAttempts?: number;
+  executionLastError?: string | null;
   userId: string;
   reason: string;
   decision: 'approve' | 'reject' | null;
@@ -54,5 +57,9 @@ export const approvalApi = {
   queue: (offset = 0) => request<ApprovalReview[]>({ url: '/support/admin/refund-requests', params: { offset } }),
   resume: (id: string) => request<ApprovalItem>({ url: `/support/admin/refund-requests/${id}/resume`, method: 'post' }),
   decide: (id: string, decision: 'approve' | 'reject', note: string) =>
-    request<ApprovalItem>({ url: `/support/admin/refund-requests/${id}/decision`, method: 'post', data: { decision, note } })
+    request<ApprovalItem>({
+      url: `/support/admin/refund-requests/${id}/decision`,
+      method: 'post',
+      data: { decision, note }
+    })
 };

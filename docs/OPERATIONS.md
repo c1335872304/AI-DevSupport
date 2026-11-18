@@ -127,3 +127,20 @@ python scripts/observe_rollout.py --state probe.sqlite hold --reason duplicate_c
 宿主机与容器分别核对可达的代理地址。Provider 故障使用单条受控请求验证，再核对实际用量。离线替身验证工程流程，真实检索和模型效果沿用有版本的评测证据。
 
 专用工具的参数由[脚本说明](../backend/scripts/README.md)和各命令的 `--help` 提供。
+
+
+<a id="provider-usage"></a>
+
+## 供应商用量核对
+
+管理员通过 `/api/v1/admin/provider-usage?status=UNKNOWN` 分页查看请求尝试，包含本地尝试 ID、供应商请求 ID、模型、时间、所有者与用量。请求正文和凭据不进入台账，未知 Token 为 NULL。失去执行者的 IN_FLIGHT 超过十分钟转 UNKNOWN。
+
+取得供应商账单或导出明细后，向 `/api/v1/admin/provider-usage/{attemptId}/reconcile` 提交 `kind`（LLM / EMBEDDING）、`model`、`promptTokens`、`completionTokens`、`providerRequestId`、`evidenceRef`。`evidenceRef` 应定位不可变账单及具体条目，例如文件 SHA-256 与行号。Embedding 的 completionTokens 必须为零。保留原供应商证据，不能仅凭请求超时填写零。
+
+模型、类型和请求 ID 必须匹配；重复相同输入返回原结果，不同输入或重复分配同一收据被拒绝。记录前后值、证据和操作管理员。该入口不直接改用户 Token 余额；客服角色无权限访问。
+
+## 审批恢复与工单权限
+
+审批队列显示执行次数和暂停状态。后台按共享 SQL 租约恢复，十二次失败后转 NEEDS_REVIEW，先核查依赖与供应商回执，再用管理员恢复接口继续原决定。新主机只需相同数据库和配置，不复制旧 SQLite 检查点。
+
+管理员在用户页授予 SUPPORT 角色，或调用 `PATCH /api/v1/admin/users/{id}/role`。角色变化记录审计并撤销旧 Token，不允许移除最后管理员或自行降权。客服可查看及更新工单，不能审批、对账或修改用户角色。工单详情展示处理历史；审计接口支持 limit / offset，数据库保留完整记录。

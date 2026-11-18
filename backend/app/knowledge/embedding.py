@@ -7,6 +7,7 @@ import httpx
 import numpy as np
 
 from app.accounting.embedding_usage import record_embedding_usage
+from app.accounting.provider_ledger import provider_attempt
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,8 @@ class EmbeddingService:
             client_kwargs = {"timeout": 90, "trust_env": False}
             if self.settings.embedding_http_proxy:
                 client_kwargs["proxy"] = self.settings.embedding_http_proxy
-            async with httpx.AsyncClient(**client_kwargs) as client:
+            async with provider_attempt("EMBEDDING", self.settings.embedding_model, payload) as attempt_id, httpx.AsyncClient(**client_kwargs) as client:
+                headers = {**headers, **({"X-Client-Request-Id": attempt_id} if attempt_id else {})}
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 payload = response.json()

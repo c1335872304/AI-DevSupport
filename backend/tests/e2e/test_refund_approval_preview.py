@@ -53,7 +53,11 @@ async def test_refund_approval_resumes_saved_checkpoint_after_app_recreation(tmp
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
             created = (await client.post("/support/refund-requests", json=request)).json()["data"]
             assert created["status"] == "PENDING_APPROVAL"
-            assert checkpoint.is_file()
+            assert not checkpoint.exists()
+            from app.db.models import ApprovalCheckpoint
+            async with sessions() as shared:
+                assert await shared.scalar(select(ApprovalCheckpoint).where(
+                    ApprovalCheckpoint.thread_id == "refund-preview:" + created["requestId"]))
             assert (await client.post("/support/refund-requests", json=request)).json()["data"] == created
             assert (await client.post("/support/refund-requests", json={**request, "reason": "Changed"})).status_code == 409
     finally:

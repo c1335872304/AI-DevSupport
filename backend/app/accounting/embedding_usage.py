@@ -36,6 +36,8 @@ def capture_embedding_usage():
 
 
 def record_embedding_usage(usage: dict | None, request_id: str | None = None) -> None:
+    from app.accounting.provider_ledger import observe_usage
+    observe_usage(usage, kind="EMBEDDING", request_id=request_id)
     meter = _current.get()
     if meter is None or not isinstance(usage, dict):
         return

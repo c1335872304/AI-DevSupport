@@ -61,19 +61,37 @@ onMounted(async () => {
     </template>
     <NEmpty v-if="!rows.length && !loading" description="暂无审批申请" />
     <div v-else class="max-h-64 overflow-y-auto">
-      <div v-for="item in rows" :key="item.requestId"
-        class="flex items-center justify-between gap-3 border-b border-stone-200 py-2 last:border-0">
+      <div
+        v-for="item in rows"
+        :key="item.requestId"
+        class="flex items-center justify-between gap-3 border-b border-stone-200 py-2 last:border-0"
+      >
         <div class="min-w-0">
           <div>{{ item.handoffId ? '关闭工单' : '申请退款' }} · {{ approvalLabel(item.status) }}</div>
-          <div class="break-all text-xs text-stone-500">{{ item.handoffId || item.invoiceId }} · 用户 {{ item.userId }}</div>
+          <div class="break-all text-xs text-stone-500">
+            {{ item.handoffId || item.invoiceId }} · 用户 {{ item.userId }}
+          </div>
+          <div v-if="item.executionStatus === 'NEEDS_REVIEW'" class="text-amber-700">自动重试已暂停，请核查后恢复</div>
+          <div v-else-if="['PENDING', 'RUNNING'].includes(item.executionStatus || '')" class="text-stone-500">
+            自动恢复处理中 · 已尝试 {{ item.executionAttempts || 0 }} 次
+          </div>
           <div v-if="item.receipt" class="break-all text-xs">退款编号 {{ item.receipt.refundId }}</div>
         </div>
         <NButton size="small" @click="open(item)">{{ item.decision ? '查看' : '审阅' }}</NButton>
       </div>
     </div>
     <NButton v-if="hasMore" :loading="loading" @click="refresh(true)">加载更多申请</NButton>
-    <NModal :show="!!selected" preset="card" title="审阅业务申请" class="w-[min(92vw,510px)]"
-      @update:show="value => { if (!value && !saving) selected = null; }">
+    <NModal
+      :show="!!selected"
+      preset="card"
+      title="审阅业务申请"
+      class="w-[min(92vw,510px)]"
+      @update:show="
+        value => {
+          if (!value && !saving) selected = null;
+        }
+      "
+    >
       <div v-if="selected" class="flex flex-col gap-3">
         <NDescriptions :column="1" bordered size="small">
           <NDescriptionsItem label="操作">{{ selected.handoffId ? '关闭工单' : '申请退款' }}</NDescriptionsItem>
@@ -85,14 +103,28 @@ onMounted(async () => {
           <NDescriptionsItem label="原因">{{ selected.reason }}</NDescriptionsItem>
           <NDescriptionsItem label="当前状态">{{ approvalLabel(selected.status) }}</NDescriptionsItem>
         </NDescriptions>
-        <NInput v-model:value="note" type="textarea" placeholder="审批说明" :maxlength="500"
-          :readonly="!!selected.decision || saving" />
+        <NInput
+          v-model:value="note"
+          type="textarea"
+          placeholder="审批说明"
+          :maxlength="500"
+          :readonly="!!selected.decision || saving"
+        />
         <div v-if="!selected.decision" class="flex justify-end gap-2">
           <NButton :loading="saving" :disabled="!note.trim()" @click="decide('reject')">拒绝</NButton>
-          <NButton type="primary" :loading="saving" :disabled="!note.trim()" @click="decide('approve')">批准执行</NButton>
+          <NButton type="primary" :loading="saving" :disabled="!note.trim()" @click="decide('approve')">
+            批准执行
+          </NButton>
         </div>
-        <NButton v-else-if="selected.decision === 'approve' && ['REFUND_RECONCILING', 'APPROVED_PREVIEW'].includes(selected.status)"
-          :loading="saving" @click="decide('approve')">重试恢复或核对</NButton>
+        <NButton
+          v-else-if="
+            selected.decision === 'approve' && ['REFUND_RECONCILING', 'APPROVED_PREVIEW'].includes(selected.status)
+          "
+          :loading="saving"
+          @click="decide('approve')"
+        >
+          重试恢复或核对
+        </NButton>
       </div>
     </NModal>
   </NCard>

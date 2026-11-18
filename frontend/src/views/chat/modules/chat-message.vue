@@ -9,28 +9,45 @@ import DiagnosisPanel from './diagnosis-panel.vue';
 defineOptions({ name: 'ChatMessage' });
 
 const props = defineProps<{
-  msg: Api.Chat.Message,
-  sessionId?: string,
-  retrievalQueryFallback?: string
+  msg: Api.Chat.Message;
+  sessionId?: string;
+  retrievalQueryFallback?: string;
 }>();
 
 const authStore = useAuthStore();
 const progressNow = ref(Date.now());
 let progressTimer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => { progressTimer = setInterval(() => { progressNow.value = Date.now(); }, 1000); });
-onUnmounted(() => { if (progressTimer) clearInterval(progressTimer); });
+onMounted(() => {
+  progressTimer = setInterval(() => {
+    progressNow.value = Date.now();
+  }, 1000);
+});
+onUnmounted(() => {
+  if (progressTimer) clearInterval(progressTimer);
+});
 const running = computed(() => ['pending', 'loading'].includes(props.msg.status || ''));
-const progressText = computed(() => ({
-  load_context: '正在读取会话上下文', extract_entities: '正在理解你的问题',
-  routing_policy: '正在选择处理流程', target_specialist_dispatch: '正在核查处理步骤',
-  target_execute_tools: '正在查询资料或业务记录', target_evidence_join: '正在汇总查询证据',
-  target_handoff_decision: '正在确认后续处理方式', target_create_handoff: '正在创建人工工单',
-  target_generate_response: props.msg.content ? '正在继续生成回答' : '正在根据证据生成回答',
-  safety: '正在完成最终检查', emit_final: '正在整理最终引用', persist_trace: '正在保存结果'
-} as Record<string, string>)[props.msg.workflowStage || ''] || '正在处理你的问题');
-const stageSeconds = computed(() => Math.max(0, Math.floor(
-  (progressNow.value - (props.msg.workflowStageStartedAt || progressNow.value)) / 1000
-)));
+const progressText = computed(
+  () =>
+    (
+      ({
+        load_context: '正在读取会话上下文',
+        extract_entities: '正在理解你的问题',
+        routing_policy: '正在选择处理流程',
+        target_specialist_dispatch: '正在核查处理步骤',
+        target_execute_tools: '正在查询资料或业务记录',
+        target_evidence_join: '正在汇总查询证据',
+        target_handoff_decision: '正在确认后续处理方式',
+        target_create_handoff: '正在创建人工工单',
+        target_generate_response: props.msg.content ? '正在继续生成回答' : '正在根据证据生成回答',
+        safety: '正在完成最终检查',
+        emit_final: '正在整理最终引用',
+        persist_trace: '正在保存结果'
+      }) as Record<string, string>
+    )[props.msg.workflowStage || ''] || '正在处理你的问题'
+);
+const stageSeconds = computed(() =>
+  Math.max(0, Math.floor((progressNow.value - (props.msg.workflowStageStartedAt || progressNow.value)) / 1000))
+);
 
 function handleCopy(content: string) {
   navigator.clipboard.writeText(content);
@@ -85,8 +102,10 @@ async function handleFeedback(message: Api.Chat.Message, rating: 'good' | 'bad')
 }
 
 // 存储文件名和对应的事件处理
-const sourceFiles = ref<Array<{fileName: string, id: string, referenceNumber: number, fileMd5?: string, pageNumber?: number}>>([]);
-const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
+const sourceFiles = ref<
+  Array<{ fileName: string; id: string; referenceNumber: number; fileMd5?: string; pageNumber?: number }>
+>([]);
+const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/g;
 const toolNameLabels: Record<string, string> = {
   search_knowledge: '查询客服知识库',
   list_documents: '读取文档列表',
@@ -110,8 +129,8 @@ const activeSkills = computed(() => props.msg.activeSkills || []);
 const skillTrace = computed(() => props.msg.skillTrace);
 const skillNameLabels: Record<string, string> = {
   'customer-support': '客服应答',
-  'troubleshooting': '故障排查',
-  'escalation': '人工升级'
+  troubleshooting: '故障排查',
+  escalation: '人工升级'
 };
 const intentLabels: Record<string, string> = {
   refund_request: '退款申请',
@@ -164,6 +183,7 @@ function splitTrailingUrlPunctuation(rawUrl: string) {
     if (/[，。！？；：、,.!?;:]/.test(lastChar)) {
       trailing = `${lastChar}${trailing}`;
       url = url.slice(0, -1);
+      // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
       continue;
     }
 
@@ -176,6 +196,7 @@ function splitTrailingUrlPunctuation(rawUrl: string) {
       if (closingCount > openingCount) {
         trailing = `${lastChar}${trailing}`;
         url = url.slice(0, -1);
+        // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
         continue;
       }
     }
@@ -209,7 +230,7 @@ function createSourceLink(
   const linkClass = 'source-file-link';
   const trimmedFileName = fileName.trim();
   const fileId = `source-file-${sourceFiles.value.length}`;
-  const referenceNumber = parseInt(sourceNum, 10);
+  const referenceNumber = Number.parseInt(sourceNum, 10);
 
   sourceFiles.value.push({
     fileName: trimmedFileName,
@@ -238,19 +259,18 @@ function processSourceLinks(text: string): string {
     `来源#(\\d+):\\s*([^|;；,，、。！？!?\\n\\r]+?)\\s*\\|\\s*MD5:\\s*([a-fA-F0-9]+)${entryBoundary}`,
     'g'
   );
-  const simplePattern = new RegExp(
-    `来源#(\\d+):\\s*([^<>\\n\\r|;；,，、。！？!?]+?)${entryBoundary}`,
-    'g'
-  );
+  const simplePattern = new RegExp(`来源#(\\d+):\\s*([^<>\\n\\r|;；,，、。！？!?]+?)${entryBoundary}`, 'g');
 
-  let processedText = text.replace(pagePattern, (_match, sourceNum, fileName, pageNum) => {
+  let processedText = text.replace(pagePattern, (...args: [string, string, string, string]) => {
+    const [_match, sourceNum, fileName, pageNum] = args;
     return createSourceLink(sourceNum, fileName, {
-      pageNumber: parseInt(pageNum, 10),
+      pageNumber: Number.parseInt(pageNum, 10),
       displayName: `${fileName.trim()} (第${pageNum}页)`
     });
   });
 
-  processedText = processedText.replace(md5Pattern, (_match, sourceNum, fileName, fileMd5) => {
+  processedText = processedText.replace(md5Pattern, (...args: [string, string, string, string]) => {
+    const [_match, sourceNum, fileName, fileMd5] = args;
     return createSourceLink(sourceNum, fileName, {
       fileMd5: fileMd5.trim()
     });
@@ -341,82 +361,48 @@ function handleContentClick(event: MouseEvent) {
   }
 }
 
-// 处理来源文件点击事件
-async function handleSourceFileClick(fileInfo: {
-  fileName: string;
-  referenceNumber: number;
-  fileMd5?: string;
-  anchorText?: string;
-}) {
-  const { fileName, referenceNumber, fileMd5: extractedMd5, anchorText: clickedAnchorText } = fileInfo;
-  const persistedDetail = props.msg.referenceMappings?.[String(referenceNumber)] || props.msg.referenceMappings?.[referenceNumber];
-  const referenceSessionId = props.msg.generationId || props.msg.conversationId || props.sessionId;
-  console.log('点击了来源文件:', fileName, '引用编号:', referenceNumber, '提取的MD5:', extractedMd5, '会话ID:', referenceSessionId);
+type SourceFileClick = { fileName: string; referenceNumber: number; fileMd5?: string; anchorText?: string };
 
+async function loadSourceDetail(sessionId: string | undefined, referenceNumber: number) {
+  if (!sessionId) return null;
   try {
-    let detail: Api.Document.ReferenceDetailResponse | null = null;
-    const fallbackRetrievalQuery = props.retrievalQueryFallback || '';
-
-    if (referenceSessionId && (!persistedDetail?.retrievalQuery || !persistedDetail?.matchedChunkText || !persistedDetail?.evidenceSnippet)) {
-      try {
-        const { error: detailError, data: detailData } = await request<Api.Document.ReferenceDetailResponse>({
-          url: 'documents/reference-detail',
-          params: {
-            sessionId: referenceSessionId,
-            referenceNumber: referenceNumber.toString()
-          }
-        });
-
-        if (!detailError && detailData?.fileMd5) {
-          detail = detailData;
-        }
-      } catch (detailErr) {
-        console.warn('通过API查询引用详情失败:', detailErr);
-      }
-    }
-
-    if (persistedDetail?.fileMd5 && !detail) {
-      openReferencePreviewPage({
-        citationId: persistedDetail.citationId,
-        indexVersion: persistedDetail.indexVersion,
-        fileName: persistedDetail.fileName || fileName,
-        fileMd5: persistedDetail.fileMd5,
-        pageNumber: persistedDetail.pageNumber,
-        anchorText: clickedAnchorText || persistedDetail.anchorText || '',
-        retrievalMode: persistedDetail.retrievalMode,
-        retrievalLabel: persistedDetail.retrievalLabel,
-        retrievalQuery: persistedDetail.retrievalQuery || fallbackRetrievalQuery,
-        evidenceSnippet: persistedDetail.evidenceSnippet,
-        matchedChunkText: persistedDetail.matchedChunkText,
-        score: persistedDetail.score,
-        chunkId: persistedDetail.chunkId,
-        sessionId: referenceSessionId,
-        referenceNumber
-      });
-      return;
-    }
-
-    const targetMd5 = detail?.fileMd5 || extractedMd5 || null;
-    openReferencePreviewPage({
-      citationId: detail?.citationId,
-      indexVersion: detail?.indexVersion,
-      fileName: detail?.fileName || fileName,
-      fileMd5: targetMd5,
-      pageNumber: detail?.pageNumber,
-      anchorText: clickedAnchorText || detail?.anchorText || '',
-      retrievalMode: detail?.retrievalMode,
-      retrievalLabel: detail?.retrievalLabel,
-      retrievalQuery: detail?.retrievalQuery || fallbackRetrievalQuery,
-      evidenceSnippet: detail?.evidenceSnippet,
-      matchedChunkText: detail?.matchedChunkText,
-      score: detail?.score,
-      chunkId: detail?.chunkId,
-      sessionId: referenceSessionId,
-      referenceNumber
+    const { error, data } = await request<Api.Document.ReferenceDetailResponse>({
+      url: 'documents/reference-detail',
+      params: { sessionId, referenceNumber: String(referenceNumber) }
     });
-  } catch (err) {
-    console.error('文件下载失败:', err);
-    window.$message?.error(`文件下载失败: ${fileName}`);
+    return !error && data?.fileMd5 ? data : null;
+  } catch (error) {
+    console.warn('通过API查询引用详情失败:', error);
+    return null;
+  }
+}
+
+function openSourceDetail(
+  file: SourceFileClick,
+  detail: Api.Chat.ReferenceEvidence | null | undefined,
+  sessionId?: string
+) {
+  openReferencePreviewPage({
+    ...detail,
+    fileName: detail?.fileName || file.fileName,
+    fileMd5: detail?.fileMd5 || file.fileMd5 || null,
+    anchorText: file.anchorText || detail?.anchorText || '',
+    retrievalQuery: detail?.retrievalQuery || props.retrievalQueryFallback || '',
+    sessionId,
+    referenceNumber: file.referenceNumber
+  });
+}
+
+async function handleSourceFileClick(file: SourceFileClick) {
+  const persisted = props.msg.referenceMappings?.[String(file.referenceNumber)];
+  const sessionId = props.msg.generationId || props.msg.conversationId || props.sessionId;
+  const needsDetails = !persisted?.retrievalQuery || !persisted?.matchedChunkText || !persisted?.evidenceSnippet;
+  try {
+    const detail = needsDetails ? await loadSourceDetail(sessionId, file.referenceNumber) : null;
+    openSourceDetail(file, detail || persisted, sessionId);
+  } catch (error) {
+    console.error('引用预览失败:', error);
+    window.$message?.error(`引用预览失败: ${file.fileName}`);
   }
 }
 </script>
@@ -441,34 +427,42 @@ async function handleSourceFileClick(fileInfo: {
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
-    <div v-if="msg.role === 'assistant' && running" class="ml-12 mt-3 flex items-center gap-2 text-12px color-gray-500" aria-live="polite">
+    <div
+      v-if="msg.role === 'assistant' && running"
+      class="ml-12 mt-3 flex items-center gap-2 text-12px color-gray-500"
+      aria-live="polite"
+    >
       <icon-eos-icons:three-dots-loading class="text-4" />
-      <span>{{ progressText }}</span><span v-if="stageSeconds > 0">· {{ stageSeconds }} 秒</span>
+      <span>{{ progressText }}</span>
+      <span v-if="stageSeconds > 0">· {{ stageSeconds }} 秒</span>
     </div>
-    <DiagnosisPanel v-if="msg.role === 'assistant' && (msg.diagnosisId || msg.diagnosis)" class="mt-3 sm:ml-12"
-      :diagnosis-id="msg.diagnosisId || msg.diagnosis?.diagnosisId" :snapshot="msg.diagnosis" />
+    <DiagnosisPanel
+      v-if="msg.role === 'assistant' && (msg.diagnosisId || msg.diagnosis)"
+      class="mt-3 sm:ml-12"
+      :diagnosis-id="msg.diagnosisId || msg.diagnosis?.diagnosisId"
+      :snapshot="msg.diagnosis"
+    />
     <div v-if="msg.role === 'assistant' && activeSkills.length > 0" class="ml-12 mt-3 flex flex-wrap gap-2">
-      <span v-for="skill in activeSkills" :key="skill" class="skill-chip">
-        Skill · {{ getSkillLabel(skill) }}
-      </span>
+      <span v-for="skill in activeSkills" :key="skill" class="skill-chip">Skill · {{ getSkillLabel(skill) }}</span>
     </div>
     <div v-if="msg.role === 'assistant' && msg.intent" class="ml-12 mt-2 flex flex-wrap gap-2">
       <span class="skill-trace-chip">
         意图 · {{ getIntentLabel(msg.intent) }}
-        <template v-if="msg.intentConfidence !== undefined"> · {{ Math.round(msg.intentConfidence * 100) }}%</template>
+        <template v-if="msg.intentConfidence !== undefined">· {{ Math.round(msg.intentConfidence * 100) }}%</template>
       </span>
       <span v-if="msg.needsHuman" class="skill-trace-chip">需人工核验</span>
-      <span v-for="(value, key) in (msg.entities || {})" :key="`entity-${key}`" class="skill-trace-chip">
-        {{ key }} · {{ value }}<template v-if="msg.entitySources?.[key] === 'history'">（历史）</template>
+      <span v-for="(value, key) in msg.entities || {}" :key="`entity-${key}`" class="skill-trace-chip">
+        {{ key }} · {{ value }}
+        <template v-if="msg.entitySources?.[key] === 'history'">（历史）</template>
       </span>
-      <span v-for="agent in (msg.specialistAgents || [])" :key="`agent-${agent}`" class="skill-trace-chip">
+      <span v-for="agent in msg.specialistAgents || []" :key="`agent-${agent}`" class="skill-trace-chip">
         {{ getSpecialistLabel(agent) }}
       </span>
     </div>
     <div v-if="msg.role === 'assistant' && skillTrace" class="ml-12 mt-2 flex flex-wrap gap-2">
       <span class="skill-trace-chip">
         Trace · {{ skillTrace.stepsUsed || 0 }} steps · {{ skillTrace.totalToolCalls || 0 }} tools
-        <template v-if="(skillTrace.maxParallelWidth || 0) > 1"> · parallel {{ skillTrace.maxParallelWidth }}</template>
+        <template v-if="(skillTrace.maxParallelWidth || 0) > 1">· parallel {{ skillTrace.maxParallelWidth }}</template>
       </span>
       <span v-if="(skillTrace.scriptsUsed || []).length > 0" class="skill-trace-chip">
         scripts · {{ (skillTrace.scriptsUsed || []).join(', ') }}
@@ -503,13 +497,19 @@ async function handleSourceFileClick(fileInfo: {
         <span v-if="event.agent" class="tool-event__status">{{ event.agent }}</span>
         <span class="tool-event__status">{{ getToolStatusLabel(event.status) }}</span>
         <span v-if="event.durationMs !== undefined" class="tool-event__status">{{ event.durationMs }} ms</span>
-        <span v-if="event.error" class="tool-event__status" :title="event.error">{{ event.resultStatus || 'ERROR' }}</span>
+        <span v-if="event.error" class="tool-event__status" :title="event.error">
+          {{ event.resultStatus || 'ERROR' }}
+        </span>
       </div>
     </div>
-    <NText v-if="msg.status === 'error'" class="ml-12 mt-2 italic color-#d03050">
+    <NText v-if="msg.status === 'error'" class="ml-12 mt-2 color-#d03050 italic">
       {{ msg.errorMessage || msg.content || '服务器繁忙，请稍后再试' }}
     </NText>
-    <div v-if="msg.role === 'assistant' && msg.content && (msg.status !== 'error' || msg.errorMessage)" class="mt-2 pl-12" @click="handleContentClick">
+    <div
+      v-if="msg.role === 'assistant' && msg.content && (msg.status !== 'error' || msg.errorMessage)"
+      class="mt-2 pl-12"
+      @click="handleContentClick"
+    >
       <VueMarkdownIt :content="content" />
     </div>
     <NText v-else-if="msg.role === 'user'" class="ml-12 mt-2 text-4">{{ content }}</NText>

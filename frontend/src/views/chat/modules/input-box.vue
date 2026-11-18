@@ -329,43 +329,19 @@ watch(wsData, val => {
     return;
   }
 
-  if (payload.type === 'start') {
-    handleStartPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'completion') {
-    handleCompletionPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'skill_selected') {
-    handleSkillSelectedPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'skill_trace') {
-    handleSkillTracePayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'intent_classified') {
-    handleIntentClassifiedPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'specialist_selected') {
-    handleSpecialistSelectedPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'tool_call') {
-    handleToolCallPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'stop') {
-    handleStopPayload(assistant);
+  const handlers: Record<string, (message: Api.Chat.Message, event: Record<string, any>) => void> = {
+    start: handleStartPayload,
+    completion: handleCompletionPayload,
+    skill_selected: handleSkillSelectedPayload,
+    skill_trace: handleSkillTracePayload,
+    intent_classified: handleIntentClassifiedPayload,
+    specialist_selected: handleSpecialistSelectedPayload,
+    tool_call: handleToolCallPayload,
+    stop: handleStopPayload
+  };
+  const handler = handlers[payload.type];
+  if (handler) {
+    handler(assistant, payload);
     return;
   }
 
@@ -423,11 +399,13 @@ const handleSend = async () => {
     activeSkills: [],
     skillTrace: undefined
   });
-  chatStore.wsSend(JSON.stringify({
-    type: 'message',
-    question: input.value.message,
-    conversationId: chatStore.conversationId
-  }));
+  chatStore.wsSend(
+    JSON.stringify({
+      type: 'message',
+      question: input.value.message,
+      conversationId: chatStore.conversationId
+    })
+  );
   input.value.message = '';
   startGenerationStatusMonitor();
 };

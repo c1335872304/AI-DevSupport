@@ -265,7 +265,9 @@ async def _build(sessions, lease, build_id, lost):
         try:
             embedding_started = time.monotonic()
             with capture_embedding_usage() as usage:
-                vectors = await embedding_service.embed([c.text for c in batch])
+                from app.accounting.provider_ledger import provider_scope
+                with provider_scope(file.user_id, "build:" + build_id, sessions=sessions):
+                    vectors = await embedding_service.embed([c.text for c in batch])
             timings["embeddingMs"] += (time.monotonic() - embedding_started) * 1000
             if len(vectors) != len(batch) or any(len(v) != settings.embedding_dimension for v in vectors):
                 raise ValueError("Embedding output does not match batch shape")

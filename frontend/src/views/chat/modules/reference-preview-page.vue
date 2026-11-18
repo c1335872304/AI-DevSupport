@@ -80,28 +80,53 @@ function syncFromStorage() {
   }
 }
 
+function applyReferenceDetail(data: Api.Document.ReferenceDetailResponse) {
+  fileName.value = data.fileName || fileName.value;
+  fileMd5.value = data.fileMd5 || fileMd5.value;
+  pageNumber.value = data.pageNumber || pageNumber.value;
+  anchorText.value = data.anchorText || anchorText.value;
+  retrievalMode.value = data.retrievalMode ?? null;
+  retrievalLabel.value = data.retrievalLabel || '';
+  retrievalQuery.value = data.retrievalQuery || '';
+  evidenceSnippet.value = data.evidenceSnippet || '';
+  matchedChunkText.value = data.matchedChunkText || '';
+  score.value = data.score ?? null;
+  chunkId.value = data.chunkId ?? null;
+}
+
+async function loadSignedCitation() {
+  const { error, data } = await request<Api.Document.ReferenceDetailResponse>({
+    url: 'documents/citation',
+    params: { citationId: citationId.value }
+  });
+  if (error || !data) {
+    loadError.value = error?.message || '引用已失效或无权访问';
+    fileName.value = '';
+    fileMd5.value = '';
+    matchedChunkText.value = '';
+    evidenceSnippet.value = '';
+    return;
+  }
+  matchedChunkText.value = data.contextText || data.textContent || matchedChunkText.value;
+  pageNumber.value = data.pageNumber || pageNumber.value;
+}
+
 async function loadReferenceDetail() {
   syncFallbackFromQuery();
   const restoredFromStorage = syncFromStorage();
   loadError.value = '';
 
   if (citationId.value) {
-    const { error, data } = await request<Api.Document.ReferenceDetailResponse>({
-      url: 'documents/citation', params: { citationId: citationId.value }
-    });
-    if (error || !data) {
-      loadError.value = error?.message || '引用已失效或无权访问';
-      fileName.value = ''; fileMd5.value = ''; matchedChunkText.value = ''; evidenceSnippet.value = '';
-      return;
-    }
-    matchedChunkText.value = data.contextText || data.textContent || matchedChunkText.value;
-    pageNumber.value = data.pageNumber || pageNumber.value;
+    await loadSignedCitation();
     return;
   }
   if (restoredFromStorage && (fileMd5.value || matchedChunkText.value || evidenceSnippet.value)) {
     // Historical references lack a build identity; do not silently read a new version.
     loadError.value = '此历史引用未记录知识版本，请重新检索后查看';
-    fileName.value = ''; fileMd5.value = ''; matchedChunkText.value = ''; evidenceSnippet.value = '';
+    fileName.value = '';
+    fileMd5.value = '';
+    matchedChunkText.value = '';
+    evidenceSnippet.value = '';
     return;
   }
 
@@ -125,17 +150,7 @@ async function loadReferenceDetail() {
       return;
     }
 
-    fileName.value = data.fileName || fileName.value;
-    fileMd5.value = data.fileMd5 || fileMd5.value;
-    pageNumber.value = data.pageNumber || pageNumber.value;
-    anchorText.value = data.anchorText || anchorText.value;
-    retrievalMode.value = data.retrievalMode ?? null;
-    retrievalLabel.value = data.retrievalLabel || '';
-    retrievalQuery.value = data.retrievalQuery || '';
-    evidenceSnippet.value = data.evidenceSnippet || '';
-    matchedChunkText.value = data.matchedChunkText || '';
-    score.value = data.score ?? null;
-    chunkId.value = data.chunkId ?? null;
+    applyReferenceDetail(data);
   } catch (error: any) {
     loadError.value = error?.message || '引用详情加载失败';
   } finally {
@@ -155,7 +170,7 @@ function handleBack() {
 watch(
   () => route.query,
   () => {
-    void loadReferenceDetail();
+    loadReferenceDetail().catch(console.error);
   },
   { immediate: true }
 );

@@ -4,15 +4,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TypedDict
 
-import aiosqlite
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import RefundApprovalPreview
+from app.support.sql_checkpoint import SQLApprovalSaver
 
 
 class RefundState(TypedDict, total=False):
@@ -48,21 +46,19 @@ async def advance(db: AsyncSession, request_id: str, checkpoint_path: Path) -> s
     graph.add_edge("await_approval", "resolve")
     graph.add_edge("resolve", END)
     config = {"configurable": {"thread_id": f"refund-preview:{request_id}"}}
-    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
-    # The persisted values are plain strings and mappings.
-    serializer = JsonPlusSerializer(allowed_msgpack_modules=[])
-    async with aiosqlite.connect(checkpoint_path) as connection:
-        saver = AsyncSqliteSaver(connection, serde=serializer)
-        workflow = graph.compile(checkpointer=saver)
+    # Decisions are the durable authority; old local checkpoint files are not
+    # needed to reconstruct this identifier-only graph after an upgrade.
+    saver = SQLApprovalSaver(db)
+    workflow = graph.compile(checkpointer=saver)
+    state = await workflow.aget_state(config)
+    if not state.values:
+        await workflow.ainvoke({"request_id": request_id}, config, durability="sync")
+    elif state.next and not any(task.interrupts for task in state.tasks):
+        await workflow.ainvoke(None, config, durability="sync")
+    state = await workflow.aget_state(config)
+    if row.decision_id and any(task.interrupts for task in state.tasks):
+        await workflow.ainvoke(Command(resume={"decision_id": row.decision_id}), config, durability="sync")
         state = await workflow.aget_state(config)
-        if not state.values:
-            await workflow.ainvoke({"request_id": request_id}, config, durability="sync")
-        elif state.next and not any(task.interrupts for task in state.tasks):
-            await workflow.ainvoke(None, config, durability="sync")
-        state = await workflow.aget_state(config)
-        if row.decision_id and any(task.interrupts for task in state.tasks):
-            await workflow.ainvoke(Command(resume={"decision_id": row.decision_id}), config, durability="sync")
-            state = await workflow.aget_state(config)
-        outcome = state.values.get("outcome", "PENDING_APPROVAL")
+    outcome = state.values.get("outcome", "PENDING_APPROVAL")
     await db.commit()
     return outcome

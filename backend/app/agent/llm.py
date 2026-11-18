@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.accounting.provider_ledger import provider_attempt, observe_identity
+
 import json
 import asyncio
 import logging
@@ -167,24 +169,28 @@ class LLMService:
         timeout = max(0.1, timeout_seconds or self.settings.llm_request_timeout_seconds)
         for attempt in range(attempts + 1):
             try:
-                with langfuse_span(
-                    "routing.model", kind="generation",
-                    attributes={"langfuse.observation.model.name": getattr(self.settings, "llm_model", "")},
-                ):
-                    async with asyncio.timeout(timeout):
-                        async with httpx.AsyncClient(
-                            timeout=timeout, trust_env=False
-                        ) as client:
-                            response = await client.post(url, headers=headers, json=payload)
-                            response.raise_for_status()
-                            raw = response.json()
-                    if isinstance(raw, dict):
-                        record_provider_usage(raw.get("usage"))
-                        for choice in raw.get("choices") or ():
-                            record_provider_finish(label, choice.get("finish_reason"))
-                        record_model_usage(raw.get("usage"))
-                self._record_provider_success()
-                return raw
+                async with provider_attempt("LLM", self.settings.llm_model, payload) as attempt_id:
+                    headers = {**headers, **({"X-Client-Request-Id": attempt_id} if attempt_id else {})}
+                    with langfuse_span(
+                        "routing.model", kind="generation",
+                        attributes={"langfuse.observation.model.name": getattr(self.settings, "llm_model", "")},
+                    ):
+                        async with asyncio.timeout(timeout):
+                            async with httpx.AsyncClient(
+                                timeout=timeout, trust_env=False
+                            ) as client:
+                                response = await client.post(url, headers=headers, json=payload)
+                                observe_identity(response.headers.get("x-request-id"))
+                                response.raise_for_status()
+                                raw = response.json()
+                                observe_identity(response.headers.get("x-request-id") or (raw.get("id") if isinstance(raw, dict) else None))
+                        if isinstance(raw, dict):
+                            record_provider_usage(raw.get("usage"))
+                            for choice in raw.get("choices") or ():
+                                record_provider_finish(label, choice.get("finish_reason"))
+                            record_model_usage(raw.get("usage"))
+                    self._record_provider_success()
+                    return raw
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -346,8 +352,10 @@ class LLMService:
                 async with asyncio.timeout(timeout):
                     async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
                         response = await client.post(url, headers=headers, json=payload)
+                        observe_identity(response.headers.get("x-request-id"))
                         response.raise_for_status()
                         raw = response.json()
+                        observe_identity(response.headers.get("x-request-id") or (raw.get("id") if isinstance(raw, dict) else None))
                 if isinstance(raw, dict):
                     record_model_usage(raw.get("usage"))
             record_provider_usage(raw.get("usage"))
@@ -455,52 +463,56 @@ class LLMService:
 
         # Use a direct connection in the local setup. An invalid system HTTPS
         # proxy can leave the streaming request pending until the full timeout.
-        async with httpx.AsyncClient(timeout=self.settings.llm_request_timeout_seconds, trust_env=False) as client:
-            async with client.stream("POST", url, headers=headers, json=payload) as response:
-                logger.info("[LLM] agent response status=%d", response.status_code)
-                _console(f"[LLM] agent_response status={response.status_code}")
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    data = line[6:]
-                    if data == "[DONE]":
-                        break
-                    event_count += 1
-                    try:
-                        obj = json.loads(data)
-                        record_provider_usage(obj.get("usage"))
-                        record_model_usage(obj.get("usage"))
-                        choices = obj.get("choices") or []
-                        if not choices:
+        async with provider_attempt("LLM", self.settings.llm_model, payload) as attempt_id:
+            headers = {**headers, **({"X-Client-Request-Id": attempt_id} if attempt_id else {})}
+            async with httpx.AsyncClient(timeout=self.settings.llm_request_timeout_seconds, trust_env=False) as client:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    logger.info("[LLM] agent response status=%d", response.status_code)
+                    _console(f"[LLM] agent_response status={response.status_code}")
+                    observe_identity(response.headers.get("x-request-id"))
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
                             continue
-                        if reason := choices[0].get("finish_reason"):
-                            finish_reason = reason
-                            record_provider_finish("specialist", reason)
-                        delta = choices[0].get("delta") or {}
-                    except Exception:
-                        continue
+                        data = line[6:]
+                        if data == "[DONE]":
+                            break
+                        event_count += 1
+                        try:
+                            obj = json.loads(data)
+                            observe_identity(obj.get("id"))
+                            record_provider_usage(obj.get("usage"))
+                            record_model_usage(obj.get("usage"))
+                            choices = obj.get("choices") or []
+                            if not choices:
+                                continue
+                            if reason := choices[0].get("finish_reason"):
+                                finish_reason = reason
+                                record_provider_finish("specialist", reason)
+                            delta = choices[0].get("delta") or {}
+                        except Exception:
+                            continue
 
-                    delta_calls = delta.get("tool_calls") or []
-                    if delta_calls:
-                        mode = "tools"
-                        for raw in delta_calls:
-                            index = int(raw.get("index") or 0)
-                            part = call_parts.setdefault(index, {"id": "", "name": "", "arguments": ""})
-                            if raw.get("id"):
-                                part["id"] = raw["id"]
-                            function = raw.get("function") or {}
-                            if function.get("name"):
-                                part["name"] += str(function["name"])
-                            if function.get("arguments"):
-                                part["arguments"] += str(function["arguments"])
-                        continue
+                        delta_calls = delta.get("tool_calls") or []
+                        if delta_calls:
+                            mode = "tools"
+                            for raw in delta_calls:
+                                index = int(raw.get("index") or 0)
+                                part = call_parts.setdefault(index, {"id": "", "name": "", "arguments": ""})
+                                if raw.get("id"):
+                                    part["id"] = raw["id"]
+                                function = raw.get("function") or {}
+                                if function.get("name"):
+                                    part["name"] += str(function["name"])
+                                if function.get("arguments"):
+                                    part["arguments"] += str(function["arguments"])
+                            continue
 
-                    content = delta.get("content")
-                    if content and mode != "tools":
-                        mode = "content"
-                        content_chars += len(str(content))
-                        yield {"type": "content", "content": str(content)}
+                        content = delta.get("content")
+                        if content and mode != "tools":
+                            mode = "content"
+                            content_chars += len(str(content))
+                            yield {"type": "content", "content": str(content)}
 
         logger.info("[LLM] agent stream finished events=%d content_chars=%d tool_calls=%d duration_ms=%d", event_count, content_chars, len(call_parts), int((time.monotonic() - started) * 1000))
         _console(f"[LLM] agent_stream_finished events={event_count} content_chars={content_chars} tool_calls={len(call_parts)} duration_ms={int((time.monotonic() - started) * 1000)}")
@@ -604,38 +616,42 @@ class LLMService:
         _console(f"[LLM] answer_request model={self.settings.llm_model} messages={len(messages)} force_no_tools={force_no_tools}")
         event_count = 0
         content_chars = 0
-        async with httpx.AsyncClient(timeout=self.settings.llm_request_timeout_seconds, trust_env=False) as client:
-            async with client.stream("POST", url, headers=headers, json=payload) as response:
-                logger.info("[LLM] answer response status=%d", response.status_code)
-                _console(f"[LLM] answer_response status={response.status_code}")
-                response.raise_for_status()
-                terminal_received = False
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    data = line[6:]
-                    if data == "[DONE]":
-                        terminal_received = True
-                        break
-                    event_count += 1
-                    try:
-                        obj = json.loads(data)
-                        record_provider_usage(obj.get("usage"))
-                        record_model_usage(obj.get("usage"))
-                        choices = obj.get("choices") or []
-                        if not choices:
+        async with provider_attempt("LLM", self.settings.llm_model, payload) as attempt_id:
+            headers = {**headers, **({"X-Client-Request-Id": attempt_id} if attempt_id else {})}
+            async with httpx.AsyncClient(timeout=self.settings.llm_request_timeout_seconds, trust_env=False) as client:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    logger.info("[LLM] answer response status=%d", response.status_code)
+                    _console(f"[LLM] answer_response status={response.status_code}")
+                    observe_identity(response.headers.get("x-request-id"))
+                    response.raise_for_status()
+                    terminal_received = False
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data: "):
                             continue
-                        if reason := choices[0].get("finish_reason"):
+                        data = line[6:]
+                        if data == "[DONE]":
                             terminal_received = True
-                            record_provider_finish("answer", reason)
-                        delta = choices[0].get("delta", {}).get("content")
-                        if delta:
-                            content_chars += len(delta)
-                            yield delta
-                    except Exception:
-                        continue
-                if not terminal_received:
-                    raise httpx.RemoteProtocolError("Model answer stream ended without a terminal event")
+                            break
+                        event_count += 1
+                        try:
+                            obj = json.loads(data)
+                            observe_identity(obj.get("id"))
+                            record_provider_usage(obj.get("usage"))
+                            record_model_usage(obj.get("usage"))
+                            choices = obj.get("choices") or []
+                            if not choices:
+                                continue
+                            if reason := choices[0].get("finish_reason"):
+                                terminal_received = True
+                                record_provider_finish("answer", reason)
+                            delta = choices[0].get("delta", {}).get("content")
+                            if delta:
+                                content_chars += len(delta)
+                                yield delta
+                        except Exception:
+                            continue
+                    if not terminal_received:
+                        raise httpx.RemoteProtocolError("Model answer stream ended without a terminal event")
         logger.info("[LLM] answer stream finished events=%d content_chars=%d duration_ms=%d", event_count, content_chars, int((time.monotonic() - started) * 1000))
         _console(f"[LLM] answer_stream_finished events={event_count} content_chars={content_chars} duration_ms={int((time.monotonic() - started) * 1000)}")
 

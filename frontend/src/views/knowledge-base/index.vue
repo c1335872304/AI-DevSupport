@@ -152,9 +152,15 @@ const { columns, columnChecks, data, getData, loading, mobilePagination } = useT
         const values = [meta.category, meta.product, meta.plan, meta.region].filter(Boolean) as string[];
         return values.length ? (
           <div class="flex flex-wrap gap-4px">
-            {values.map(value => <NTag size="small" bordered={false}>{value}</NTag>)}
+            {values.map(value => (
+              <NTag size="small" bordered={false}>
+                {value}
+              </NTag>
+            ))}
           </div>
-        ) : '-';
+        ) : (
+          '-'
+        );
       }
     },
     {
@@ -358,7 +364,10 @@ function renderActualEmbeddingUsage(row: Api.KnowledgeBase.UploadTask) {
     return <span class="text-xs text-stone-400">-</span>;
   }
 
-  if (hasActualVectorizationUsage(row) && !['PENDING', 'PROCESSING', 'FAILED'].includes(row.vectorizationStatus || '')) {
+  if (
+    hasActualVectorizationUsage(row) &&
+    !['PENDING', 'PROCESSING', 'FAILED'].includes(row.vectorizationStatus || '')
+  ) {
     const actualTokenLabel = Number(row.actualEmbeddingTokens).toLocaleString();
     const actualChunkLabel = Number(row.actualChunkCount || 0).toLocaleString();
     return (

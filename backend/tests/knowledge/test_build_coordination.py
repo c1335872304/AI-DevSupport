@@ -49,7 +49,7 @@ async def setup_build(tmp_path, monkeypatch):
     else:
         from elasticsearch import AsyncElasticsearch
 
-        monkeypatch.setattr(elasticsearch_service, "client", AsyncElasticsearch("http://127.0.0.1:19216"))
+        monkeypatch.setattr(elasticsearch_service, "client", AsyncElasticsearch(os.environ.get("ELASTICSEARCH_URL", "http://127.0.0.1:19216")))
         monkeypatch.setattr(settings, "elasticsearch_index", "rag-acceptance-test")
     calls = []
 

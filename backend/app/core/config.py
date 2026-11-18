@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     # opt-in because direct multi-worker Uvicorn launches must migrate in CI/CD.
     database_auto_migrate: bool = False
     refund_preview_enabled: bool = False
+    # Legacy environment compatibility only; approval checkpoints now use SQL.
     refund_checkpoint_path: Path = Path("data/refund-checkpoints.sqlite")
     refund_sandbox_url: str = ""
 

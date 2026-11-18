@@ -101,7 +101,9 @@ class RagService:
         top_k = top_k or self.settings.top_k
         candidate_k = max(top_k, top_k * max(1, self.settings.rag_candidate_multiplier))
         if self.settings.search_backend.lower() == "elasticsearch":
-            qvec = await embedding_service.embed_one(query)
+            from app.accounting.provider_ledger import provider_scope
+            with provider_scope(user.id):
+                qvec = await embedding_service.embed_one(query)
             raw_candidates = await elasticsearch_service.search(
                 user,
                 query,
@@ -259,7 +261,9 @@ class RagService:
             .execution_options(yield_per=256)
         )
 
-        qvec = await embedding_service.embed_one(query)
+        from app.accounting.provider_ledger import provider_scope
+        with provider_scope(user.id):
+            qvec = await embedding_service.embed_one(query)
         query_terms = self._terms(query)
         heap: list[tuple[float, int, DocumentVector, str]] = []
 

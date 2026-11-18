@@ -27,7 +27,7 @@ alembic upgrade head
 alembic current
 ```
 
-当前源码包含 `0020_remove_invite_codes`，以候选镜像的 `heads` 核对目标 revision。`0020` 移除邀请码表，降级只能重建空表，旧邀请码数据由备份恢复。切回旧镜像前确认其与当前结构兼容，并按恢复点核对新增业务记录。
+当前源码包含 `0021_close_runtime_debts`，以候选镜像的 `heads` 核对目标 revision。`0020` 移除邀请码表，降级只能重建空表，旧邀请码数据由备份恢复。`0021` 新建共享审批、执行及审计表，升级前备份旧 SQL 和本机检查点。既有 SQL 申请可据原决定重建流程，不依赖原主机文件。降级会删除新增表，含检查点和审计，已有业务环境优先回滚镜像并保留数据库；实际降级须先导出这些记录。切回旧镜像前确认结构兼容，再核对新增业务记录。
 
 已有 Demo 更新可按以下顺序操作，备份由目标环境的数据库和存储策略完成。
 
@@ -61,11 +61,10 @@ docker compose ps -a
 
 ## 审批与合成支付沙箱
 
-启用 `REFUND_PREVIEW_ENABLED=true` 后，聊天页可以发起退款或关闭工单申请，管理员工单台展示审批队列。当前检查点使用持久化 SQLite 文件，跨主机共享检查点和自动恢复由维护台账跟踪。
+启用 `REFUND_PREVIEW_ENABLED=true` 后，聊天页可以发起退款或关闭工单申请，管理员工单台展示审批队列。检查点与执行任务使用应用 SQL 数据库，跨主机共享。后台每五秒扫描，租约六十秒，失败退避最多五分钟；十二次后暂停，由管理员核查并恢复。原决定和审批人不变。
 
 ```dotenv
 REFUND_PREVIEW_ENABLED=true
-REFUND_CHECKPOINT_PATH=data/refund-checkpoints.sqlite
 REFUND_SANDBOX_URL=<synthetic-service-root>/sandbox
 ```
 
@@ -82,4 +81,4 @@ REFUND_SANDBOX_URL=<synthetic-service-root>/sandbox
 
 批准退款时，合成支付适配器通过查单核对金额、币种和退款 ID，再返回 `SANDBOX_REFUNDED`，结果未知时保持核对状态。服务只识别合成支付 `sandbox-paid-1`、人民币 15.00 元。未配置沙箱的普通申请批准后为 `APPROVED_PREVIEW`。批准关闭工单则更新原工单，并在同一事务保存关闭结果。
 
-真实渠道、资格与金额快照、独立审批权限、自动对账及回调验签由[维护台账](MAINTENANCE.md)跟踪。验收入口见[测试](TESTING.md#demos)。
+审批执行、回执核对及工单审计已实现，SUPPORT 角色无审批权限。旧 `REFUND_CHECKPOINT_PATH` 仅兼容环境文件，不再控制新流程。真实渠道、资格与金额快照、回调验签及资金对账由[维护台账](MAINTENANCE.md)跟踪。验收入口见[测试](TESTING.md#demos)。

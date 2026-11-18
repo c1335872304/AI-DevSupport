@@ -19,14 +19,18 @@ let revision = 0;
 
 const targets = computed(() =>
   action.value === 'refund'
-    ? options.value.invoices.map(item => ({ label: `${item.month} · ${item.id} · ${item.amount.toFixed(2)}`, value: item.id }))
+    ? options.value.invoices.map(item => ({
+        label: `${item.month} · ${item.id} · ${item.amount.toFixed(2)}`,
+        value: item.id
+      }))
     : options.value.tickets.map(item => ({ label: `${item.id} · ${item.summary}`, value: item.id }))
 );
 
 async function refresh() {
   if (!enabled.value || !chat.conversationId) return;
   const conversationId = chat.conversationId;
-  const requestRevision = ++revision;
+  revision += 1;
+  const requestRevision = revision;
   const { data } = await approvalApi.list(conversationId);
   if (!data || requestRevision !== revision) return;
   if (requestRevision === revision && chat.conversationId === conversationId) {
@@ -56,7 +60,9 @@ async function submit() {
   const fingerprint = JSON.stringify(fields);
   if (fingerprint !== draftPayload) {
     draftPayload = fingerprint;
-    draftKey = Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('');
+    draftKey = Array.from(crypto.getRandomValues(new Uint8Array(16)), value =>
+      value.toString(16).padStart(2, '0')
+    ).join('');
   }
   loading.value = true;
   try {
@@ -73,15 +79,20 @@ async function submit() {
   }
 }
 
-watch(action, () => { target.value = null; });
-watch(() => chat.conversationId, () => {
-  revision += 1;
-  items.value = [];
-  visible.value = false;
+watch(action, () => {
   target.value = null;
-  reason.value = '';
-  void refresh();
 });
+watch(
+  () => chat.conversationId,
+  () => {
+    revision += 1;
+    items.value = [];
+    visible.value = false;
+    target.value = null;
+    reason.value = '';
+    refresh().catch(console.error);
+  }
+);
 onMounted(async () => {
   window.addEventListener('focus', refresh);
   const { data } = await approvalApi.capabilities();
@@ -101,10 +112,17 @@ onBeforeUnmount(() => {
       <NButton v-if="items.length" text size="small" @click="refresh">刷新申请状态</NButton>
     </div>
     <div v-if="items.length" class="max-h-36 overflow-y-auto">
-      <div v-for="item in items" :key="item.requestId" class="my-1 rounded-lg border border-stone-200 px-3 py-2 text-sm">
-        <span class="font-medium">{{ item.handoffId ? '关闭工单' : '申请退款' }} · {{ approvalLabel(item.status) }}</span>
+      <div
+        v-for="item in items"
+        :key="item.requestId"
+        class="my-1 border border-stone-200 rounded-lg px-3 py-2 text-sm"
+      >
+        <span class="font-medium">
+          {{ item.handoffId ? '关闭工单' : '申请退款' }} · {{ approvalLabel(item.status) }}
+        </span>
         <div v-if="item.receipt" class="break-all">
-          退款编号 {{ item.receipt.refundId }} · {{ (item.receipt.amountMinor / 100).toFixed(2) }} {{ item.receipt.currency }}
+          退款编号 {{ item.receipt.refundId }} · {{ (item.receipt.amountMinor / 100).toFixed(2) }}
+          {{ item.receipt.currency }}
         </div>
         <div v-else-if="item.handoffId">工单 {{ item.handoffId }}</div>
       </div>

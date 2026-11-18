@@ -178,17 +178,36 @@ async def chat_socket(websocket: WebSocket):
         nonlocal subscription_generation, subscription_queue, pump_task
         await detach()
         subscription_generation = generation_id
-        subscription_queue = generation_runtime.subscribe(generation_id)
+        subscription_queue, stream_snapshot = await generation_runtime.subscribe_shared(generation_id)
         logger.info("[WS] subscribed generation=%s", _gid(generation_id))
 
         async def pump() -> None:
             assert subscription_queue is not None
+            last_content = stream_snapshot.get("streamContent", "") if stream_snapshot else ""
             while True:
-                payload = await subscription_queue.get()
-                if not await socket_send(payload):
+                try:
+                    payload = await asyncio.wait_for(subscription_queue.get(), timeout=1)
+                except asyncio.TimeoutError:
+                    async with SessionLocal() as db:
+                        state = await db.get(GenerationState, generation_id)
+                    if state and state.user_id == str(user.id):
+                        if state.status in {"PENDING", "STREAMING"} and len(state.content or "") <= len(last_content):
+                            continue
+                        payload = {"type": "answer_replace", "generationId": generation_id, "content": state.content}
+                        if state.status not in {"PENDING", "STREAMING"}:
+                            payload.update(type="completion", status="finished" if state.status == "COMPLETED" else ("cancelled" if state.status == "CANCELLED" else "error"),
+                                           referenceMappings=json.loads(state.reference_mappings_json or '{}'))
+                    else:
+                        continue
+                if isinstance(payload.get("content"), str):
+                    last_content = payload["content"]
+                elif payload.get("type") == "chunk":
+                    last_content += payload.get("chunk", "")
+                if not await socket_send(payload) or payload.get("type") == "completion":
                     return
 
         pump_task = asyncio.create_task(pump(), name=f"ws-pump:{generation_id}")
+        return stream_snapshot
 
     await socket_send({"type": "connection", "sessionId": uuid.uuid4().hex})
 
@@ -201,10 +220,10 @@ async def chat_socket(websocket: WebSocket):
             .order_by(GenerationState.updated_at.desc())
         )
     if active:
-        await attach(active.generation_id)
+        latest_stream = await attach(active.generation_id)
         await socket_send({
             "type": "resume", "generationId": active.generation_id,
-            "conversationId": active.conversation_id, "content": active.content,
+            "conversationId": active.conversation_id, "content": latest_stream.get("streamContent", active.content) if latest_stream else active.content,
             "status": active.status,
         })
 

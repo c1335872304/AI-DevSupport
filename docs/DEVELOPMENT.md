@@ -90,3 +90,5 @@ gh pr checks 1 --repo c1335872304/AI-DevSupport --watch
 多行 PR 说明写入临时文件，通过 `gh pr edit --body-file <file>` 提交。推送后按提交 SHA 核对两轮 Fast CI 和隔离集成，具体覆盖见[测试](TESTING.md#ci)。
 
 `.gitattributes` 对冻结评测和知识快照使用 `-text`。发生哈希失败时，从可信清单对应的 Git blob 恢复原字节，再验证清单。日志、数据库、密钥、依赖和模型缓存按现有忽略规则留在各自环境中。
+
+前端工具链固定 Node 20（见 `frontend/.nvmrc`）和 pnpm 9.15.5，先执行冻结安装，再跑只读 lint、类型和构建。Windows 使用项目内的虚拟路径长度设置；已有不同 pnpm 版本的依赖目录可在独立目录按锁文件重新安装验证。

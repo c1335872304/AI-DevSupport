@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
-from sqlalchemy import case, select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
@@ -14,7 +14,8 @@ from app.core.response import ok
 from app.db.models import ConversationSession, RefundApprovalPreview, RefundSandboxIntent, SupportHandoff, SupportInvoice, User
 from app.db.session import get_db
 from app.support.refund_preview import advance
-from app.support.refund_sandbox import minor_units, reconcile
+from app.support.refund_sandbox import minor_units
+from app.support.approval_execution import execute, enqueue
 
 
 def enabled() -> None:
@@ -92,29 +93,12 @@ async def require_conversation(db: AsyncSession, conversation_id: str, user_id: 
         raise HTTPException(404, "Conversation not found")
 
 
-async def close_ticket(db: AsyncSession, request_id: str) -> str:
-    await db.execute(update(RefundApprovalPreview).where(RefundApprovalPreview.request_id == request_id)
-                     .values(updated_at=RefundApprovalPreview.updated_at))
-    row = await db.get(RefundApprovalPreview, request_id, populate_existing=True)
-    if not row.closure_status:
-        applied = await db.execute(update(SupportHandoff).where(
-            SupportHandoff.handoff_id == row.handoff_id, SupportHandoff.user_id == row.user_id,
-            SupportHandoff.status.in_(("OPEN", "IN_PROGRESS", "RESOLVED")),
-        ).values(status="CLOSED"))
-        row.closure_status = "TICKET_CLOSED" if applied.rowcount else "TICKET_UNAVAILABLE"
-    await db.commit()
-    return row.closure_status
-
-
 async def result(db: AsyncSession, row: RefundApprovalPreview, status: str, *, allow_submit: bool = False):
-    if status == "APPROVED_PREVIEW":
-        if row.handoff_id:
-            outcome = await close_ticket(db, row.request_id) if allow_submit else row.closure_status or status
-            return ok(payload(row, outcome))
-        status, receipt = await reconcile(db, row, get_settings().refund_sandbox_url, allow_submit=allow_submit)
-        if receipt:
-            return ok({**payload(row, status), "receipt": receipt.model_dump()})
-    return ok(payload(row, status))
+    status, receipt = await execute(db, row, status, allow_submit=allow_submit)
+    data = payload(row, status)
+    if receipt:
+        data["receipt"] = receipt.model_dump()
+    return ok(data)
 
 
 @discovery_router.get("/approval-capabilities")
@@ -157,7 +141,14 @@ async def review_queue(admin: User = Depends(admin_user), db: AsyncSession = Dep
             ), (RefundApprovalPreview.decision_id.is_(None), 1), else_=2),
                 RefundApprovalPreview.created_at.desc(), RefundApprovalPreview.request_id)
             .offset(offset).limit(limit))).all()
-    return ok([{**summary(row, intent), "userId": row.user_id, "reason": row.reason,
+    from app.db.models import ApprovalExecution
+    jobs = {job.request_id: job for job in (await db.scalars(select(ApprovalExecution).where(
+        ApprovalExecution.request_id.in_([row.request_id for row, _ in rows])))).all()}
+    def execution_info(request_id):
+        job = jobs.get(request_id)
+        return {"executionStatus": job.status, "executionAttempts": job.attempts,
+                "executionLastError": job.last_error} if job else {}
+    return ok([{**summary(row, intent), **execution_info(row.request_id), "userId": row.user_id, "reason": row.reason,
                 "decision": row.decision, "decidedBy": row.decided_by, "decisionNote": row.decision_note,
                 "createdAt": row.created_at.isoformat()} for row, intent in rows])
 
@@ -248,6 +239,7 @@ async def decide(
     row = await db.get(RefundApprovalPreview, request_id, populate_existing=True)
     if (row.decision, row.decided_by, row.decision_note) != (body.decision, str(admin.id), body.note):
         raise HTTPException(409, "Refund request already decided")
+    await enqueue(db, request_id)
     await db.commit()
     status = await advance(db, request_id, checkpoint)
     return await result(db, row, status, allow_submit=True)
@@ -260,6 +252,11 @@ async def resume(request_id: str, admin: User = Depends(admin_user), db: AsyncSe
         raise HTTPException(404, "Refund request not found")
     if not row.decision_id:
         raise HTTPException(409, "Approval decision required")
+    from app.db.models import ApprovalExecution
+    await enqueue(db, request_id)
+    await db.execute(update(ApprovalExecution).where(ApprovalExecution.request_id == request_id,
+        ApprovalExecution.status == "NEEDS_REVIEW").values(status="PENDING", attempts=0, next_attempt_at=func.current_timestamp()))
+    await db.commit()
     # The existing decision and its author remain the sole execution authority.
     status = await advance(db, request_id, get_settings().refund_checkpoint_path)
     return await result(db, row, status, allow_submit=True)

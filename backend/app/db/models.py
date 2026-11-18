@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -579,3 +579,89 @@ class ProcessingJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ApprovalCheckpoint(Base):
+    __tablename__ = "approval_checkpoints"
+    thread_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    checkpoint_ns: Mapped[str] = mapped_column(String(128), primary_key=True)
+    checkpoint_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    parent_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    value_json: Mapped[str] = mapped_column(Text)
+    metadata_json: Mapped[str] = mapped_column(Text)
+
+
+class ApprovalWrite(Base):
+    __tablename__ = "approval_writes"
+    thread_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    checkpoint_ns: Mapped[str] = mapped_column(String(128), primary_key=True)
+    checkpoint_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    idx: Mapped[int] = mapped_column(Integer, primary_key=True)
+    channel: Mapped[str] = mapped_column(String(128))
+    value_json: Mapped[str] = mapped_column(Text)
+
+
+class ApprovalExecution(Base, TimestampMixin):
+    __tablename__ = "approval_executions"
+    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    status: Mapped[str] = mapped_column(String(24), default="PENDING", index=True)
+    owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    next_attempt_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: utcnow() - timedelta(seconds=1))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    outcome: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class SupportHandoffAudit(Base):
+    __tablename__ = "support_handoff_audits"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    handoff_id: Mapped[str] = mapped_column(String(64), index=True)
+    actor_id: Mapped[str] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(32))
+    before_json: Mapped[str] = mapped_column(Text)
+    after_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class ProviderAttempt(Base, TimestampMixin):
+    __tablename__ = "provider_attempts"
+    attempt_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    generation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(128))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    provider_request_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(24), default="IN_FLIGHT", index=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    total_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    evidence_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    reconciled_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reconciled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class ProviderReconciliation(Base):
+    __tablename__ = "provider_reconciliations"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    attempt_id: Mapped[str] = mapped_column(String(64), unique=True)
+    actor_id: Mapped[str] = mapped_column(String(64))
+    evidence_ref: Mapped[str] = mapped_column(String(500))
+    statement_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    receipt_key: Mapped[str] = mapped_column(String(64), unique=True)
+    before_json: Mapped[str] = mapped_column(Text)
+    after_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class UserRoleAudit(Base):
+    __tablename__ = "user_role_audits"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    actor_id: Mapped[str] = mapped_column(String(64))
+    previous_role: Mapped[str] = mapped_column(String(20))
+    new_role: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

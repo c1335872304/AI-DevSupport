@@ -1,6 +1,6 @@
 <script setup lang="tsx">
 import { ref } from 'vue';
-import { NButton, NTag } from 'naive-ui';
+import { NButton, NSelect, NTag } from 'naive-ui';
 import UserSearch from './modules/user-search.vue';
 import OrgTagSettingDialog from './modules/org-tag-setting-dialog.vue';
 import TokenQuotaDialog from './modules/token-quota-dialog.vue';
@@ -29,6 +29,24 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
       key: 'username',
       title: '用户名',
       minWidth: 100
+    },
+    {
+      key: 'role',
+      title: '角色',
+      width: 150,
+      render: row => (
+        <NSelect
+          size="small"
+          value={row.role || 'USER'}
+          disabled={row.username === authStore.userInfo.username}
+          options={[
+            { label: '用户', value: 'USER' },
+            { label: '客服', value: 'SUPPORT' },
+            { label: '管理员', value: 'ADMIN' }
+          ]}
+          onUpdateValue={(role: string) => changeRole(row, role)}
+        />
+      )
     },
     {
       key: 'orgTags',
@@ -132,6 +150,14 @@ const visible = ref(false);
 const editingData = ref<Api.User.Item | null>(null);
 const tokenVisible = ref(false);
 const tokenEditingData = ref<Api.User.Item | null>(null);
+
+async function changeRole(row: Api.User.Item, role: string) {
+  const { error } = await request({ url: `/admin/users/${row.userId}/role`, method: 'patch', data: { role } });
+  if (!error) {
+    window.$message?.success('角色已更新，该用户需要重新登录');
+    await getData();
+  }
+}
 
 function handleOrgTag(row: Api.User.Item) {
   editingData.value = row;
