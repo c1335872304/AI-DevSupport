@@ -68,7 +68,11 @@ Generation
 
 客户网络断线只取消 socket subscription，不直接取消 LLM/Tool generation。重连后读取 snapshot 并继续订阅。
 
-跨实例 stop 通过 durable `CANCELLED` 状态传播；服务重启后遗留的无法恢复 generation 会被标记为中断。
+新客户端发问时显式提交 `conversationId`，服务端验证所属账号及活动状态。旧纯文本客户端仍按账号最近活动会话选择，多标签页应使用新版结构化消息。
+
+每个活动生成每 10 秒更新心跳。启动与每 30 秒的恢复扫描仅回收超过 120 秒无心跳的 `PENDING` / `STREAMING` 任务。完成、取消和回收用条件更新争用终态，预留结算或释放与相关持久状态在同一事务提交，迟到完成无法覆盖已取消或中断的任务。
+
+跨实例停止通过数据库 `CANCELLED` 状态传播。实时事件队列仍在进程内，连接换到其他副本时需要依赖权威快照校准。共享实时事件传输的剩余工作见[债务台账](../MAINTENANCE.md)，回归见[候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
 
 ## 5. Billing MCP
 

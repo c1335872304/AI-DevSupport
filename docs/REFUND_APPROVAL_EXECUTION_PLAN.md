@@ -22,13 +22,13 @@ pnpm exec playwright test -c approval-demo.playwright.config.ts
 
 Linux 或 macOS 将 Python 环境变量指向 `backend/.venv/bin/python` 的绝对路径。使用 Node 20 与兼容的 pnpm 版本。Playwright 会启动本机回环的临时 API、支付模拟服务和 Vite，准备合成的客户、管理员、会话、发票与工单。Fast CI 包含同一场景及无浏览器的 HTTP 演示，浏览器失败时保存追踪。常规部署需启用 `REFUND_PREVIEW_ENABLED` 并迁移至 `0019_support_approval_actions` 后才显示业务入口。[浏览器场景](../frontend/playwright-approval-demo.spec.ts) · [CI 配置](../.github/workflows/ci-fast.yml)
 
-2026-11-19 本机从隔离 Git 快照 `ae82dbe` 干净克隆，按锁文件重新安装依赖。HTTP 演示和双账号浏览器场景均通过。确认管理员批准后，原会话刷新及重新加载都显示同一个退款编号，支付模拟账本只写入一笔退款，工单最终为 `CLOSED`。远端 CI 记录及独立复核人签验待补充。
+2026-11-19 本机从隔离 Git 快照 `ae82dbe` 干净克隆，按锁文件重新安装依赖。HTTP 演示和双账号浏览器场景均通过。确认管理员批准后，原会话刷新及重新加载都显示同一个退款编号，支付模拟账本只写入一笔退款，工单最终为 `CLOSED`。后续 `99e7485` 的远端 Fast CI、浏览器和隔离集成已通过，见[源码候选验收](04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。独立复核人签验继续跟踪。
 
 ## 一条命令运行退款演示
 
 从 `backend` 运行 `python scripts/run_refund_sandbox_demo.py`。脚本在本机回环启动两个 HTTP 服务，用临时数据库和合成账号走正式登录、申请、管理员审批和用户查询接口。支付模拟服务使用自己的账本，在第一次提交落库后故意返回 503。业务端通过查单恢复同一个 `rf_demo_…` 编号。脚本核对独立查单、重复审批与用户查询取得相同回执，支付账本只有一行。运行结束后清理临时数据。[演示脚本](../backend/scripts/run_refund_sandbox_demo.py) · [支付模拟服务](../backend/app/support/refund_sandbox_server.py)
 
-已有隔离环境可以将 `REFUND_SANDBOX_URL` 指向该模拟服务的 `/sandbox`，并迁移至 `0018_refund_sandbox_intent`。沙箱目前只识别 `sandbox-paid-1` 和人民币 15.00 元的合成支付。未配置沙箱，或申请建立时没有启用沙箱，继续返回审批预览结果。沙箱拒绝返回 `SANDBOX_REJECTED`，未核验的结果返回 `REFUND_RECONCILING`。管理员可通过 `POST /api/v1/support/admin/refund-requests/{id}/resume` 重试核对。恢复读取原审批决定，允许其他管理员接手，原审批人和审批说明继续保存在记录中。演示使用项目内模拟支付服务，真实渠道、凭据和真实账务均未接入。
+已有隔离环境可以将 `REFUND_SANDBOX_URL` 指向该模拟服务的 `/sandbox`，并执行 `alembic upgrade head`。退款意图始于 `0018`，会话与关单字段始于 `0019`。沙箱目前只识别 `sandbox-paid-1` 和人民币 15.00 元的合成支付。未配置沙箱，或申请建立时没有启用沙箱，继续返回审批预览结果。沙箱拒绝返回 `SANDBOX_REJECTED`，未核验的结果返回 `REFUND_RECONCILING`。管理员可通过 `POST /api/v1/support/admin/refund-requests/{id}/resume` 重试核对。恢复读取原审批决定，允许其他管理员接手，原审批人和审批说明继续保存在记录中。演示使用项目内模拟支付服务，真实渠道、凭据和真实账务均未接入。
 
 ## 当前预览怎么运行
 

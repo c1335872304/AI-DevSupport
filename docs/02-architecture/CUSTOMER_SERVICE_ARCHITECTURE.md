@@ -1,6 +1,6 @@
 # API 助手客服 Agent 架构
 
-> 状态：客服架构契约沿用 2026-09-10 基线，2026-10-19 已同步 RAG 边界；当前 RAG 实现见 [知识流水线](KNOWLEDGE_PIPELINE.md)。测试数量和执行结论以 `docs/04-testing/`、`docs/05-live-tests/` 中的报告为准；本文只描述稳定的架构契约。
+> 状态核对至 2026-11-19。客服事实 Agent 契约沿用原设计，会话隔离、心跳恢复、结算与审批接口以[候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)为准，RAG 边界已同步；当前 RAG 实现见 [知识流水线](KNOWLEDGE_PIPELINE.md)。测试数量和执行结论以 `docs/04-testing/`、`docs/05-live-tests/` 中的报告为准；本文只描述稳定的架构契约。
 
 本文是当前客服运行时的主架构说明。目标架构只有一条运行路径，不保留旧 Router、旧 RAG 回答分支、Troubleshooting 专属 Agent 或灰度/双轨路由。
 
@@ -246,7 +246,7 @@ Evidence Summary + Draft Answer
   → active Skill quality-gate scripts
   → 事实范围 / 引用 / 工单 / 凭据校验
   → passed | filtered_unsupported_claims | fail_closed
-  → emit_final + persist_trace
+  → emit_final + Langfuse
 ```
 
 ### 证据类型与可声明范围
@@ -305,7 +305,7 @@ Langfuse 记录 `qualityGateAction`、过滤状态和白名单内的规则编号
 | 证据与工单决策 | `backend/app/agent/evidence.py`、`backend/app/agent/types.py` |
 | 质量门执行与审计 | `backend/app/agent/graph/workflow.py:safety`、`backend/skills/**/scripts/audit_*.py` |
 | Tool 权限和参数校验 | `backend/app/tools/registry.py`、`backend/app/tools/validation.py`、`backend/app/agent/dependencies.py` |
-| Trace 和 WebSocket 事件 | `backend/app/agent/trace_store.py`、`backend/app/skill_runtime/trace.py` |
+| Trace 和 WebSocket 事件 | `backend/app/core/langfuse_observability.py`、`backend/app/agent/generation.py`、`backend/app/skill_runtime/trace.py` |
 
 修改任一架构契约时，必须同时更新本目录对应文档，并在 `docs/04-testing/` 或 `docs/05-live-tests/` 增加/关联测试记录。测试报告中的历史事实保留，不用架构文档覆盖或删除。
 # 简单文档分流补充（2026-10-20）

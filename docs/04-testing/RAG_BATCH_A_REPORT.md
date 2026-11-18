@@ -1,5 +1,7 @@
 # RAG 批次 A：写入安全验收
 
+> 阶段验收记录，按本页执行日期、语料和部署范围阅读。后续源码与发布状态见[候选验收](RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
+
 日期：2026-10-19。实现已完成，真实服务验收证据见总报告。
 
 - 起点归档：`backend/data/checkpoints/phase1-start/source.zip`，411 个源文件；同目录保存 SQLite 一致性备份与文件摘要，未归档 `.env`。

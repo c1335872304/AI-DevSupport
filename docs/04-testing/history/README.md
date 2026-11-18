@@ -2,7 +2,7 @@
 
 这里保留历史测试、修复、语料迁移和已被替代的基线。各报告应按当时的语料、部署与指标口径阅读。
 
-当前状态见 [第一阶段验收](../RAG_PHASE_ONE_ACCEPTANCE.md)；当前评测方法见 [评测规范](../EVALUATION.md)。
+当前源码状态见[候选验收](../RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)，RAG 阶段结果见[第一阶段验收](../RAG_PHASE_ONE_ACCEPTANCE.md)；当前评测方法见 [评测规范](../EVALUATION.md)。
 
 | 历史材料 | 阅读用途 |
 | --- | --- |

@@ -111,14 +111,8 @@ Docker CLI / 服务检查
 
 任何网络失败都不应自动重试整批请求。DeepSeek、Qwen 和 Docker 网络问题分别记录，不能把 Provider 失败误判成 Agent 或 RAG 质量失败。
 
-## 7. 本轮实际问题记录
+## 7. 结果记录
 
-2026-09-09 的本机复验中：
+每轮记录宿主机或容器、Provider 域名、代理方式、失败阶段和实际错误。离线替身测试证明的工程行为与真实 Provider 的连通结果分别记录。历史本地哈希编码已退出运行时，排障完成后通过受控的真实请求核对连接及用量。
 
-- `docker`、`docker compose` 不在当前 PATH，无法运行 Compose 集成测试；
-- `.env` 中 Embedding Key 非空，因此评测尝试访问远端 Qwen；
-- 当前环境无法解析或连接 DashScope，远端 RAG 评测失败；
-- 临时清空 `EMBEDDING_API_KEY` 后，本地 hash embedding 建库和 14 条 RAG 评测全部通过；
-- 这说明本地 RAG 代码可用，剩余问题是 Docker 安装/启动和外部 Provider 网络配置。
-
-相关说明：[本地启动](../01-getting-started/GETTING_STARTED.md)、[Docker 操作](DOCKER_OPERATIONS.md)、[DeepSeek 真实测试方案](../05-live-tests/DEEPSEEK_LIVE_TEST_PLAN.md)。
+[本地启动](../01-getting-started/GETTING_STARTED.md) · [Docker 操作](DOCKER_OPERATIONS.md) · [历史真实模型记录](../05-live-tests/DEEPSEEK_LIVE_TEST_REPORT.md)

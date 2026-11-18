@@ -1,6 +1,6 @@
 # 项目架构总览
 
-状态：2026-10-20 当前源码。四阶段核心范围均已验收，分层评测与规划开销优化见[最终报告](../04-testing/FINAL_PROJECT_ACCEPTANCE.md)；部署环境是否运行该源码须单独确认。内部包名、数据库和 Compose 中的 PaiSmart 是保留的技术标识。
+状态核对日期为 2026-11-19。当前候选包括持久化上下文、会话显式绑定、生成心跳回收、结算保护和人工审批恢复，见[候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。四阶段核心范围均已验收，分层评测与规划开销优化见[最终报告](../04-testing/FINAL_PROJECT_ACCEPTANCE.md)；部署环境是否运行该源码须单独确认。内部包名、数据库和 Compose 中的 PaiSmart 是保留的技术标识。
 
 ## 两条主链路
 

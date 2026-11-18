@@ -1,6 +1,6 @@
 # 客服上下文发布验收与放量门禁
 
-本轮目标为本机生产配置预演，应用以 `APP_ENV=production` 运行，使用独立 MySQL、Redis 和合成账号，通过 HTTP/WebSocket 与本机实际 Langfuse v4 验收。放量决定仍以目标发布环境的证据和授权为准。
+本文记录 2026-11-18 的本机生产配置预演。后续源码与 CI 状态见[候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。本轮预演中，应用以 `APP_ENV=production` 运行，使用独立 MySQL、Redis 和合成账号，通过 HTTP/WebSocket 与本机实际 Langfuse v4 验收。放量决定仍以目标发布环境的证据和授权为准。
 
 固定候选镜像为 `paismart-backend:context-rc-20261118`，确认镜像 ID 为 `sha256:ced4021a0dc3ab114b041f5b521859ca780b0f46d7b6b2d1497727cfbd5e265d`。应用容器直接从该镜像启动。只在独立探测容器挂载演练脚本。[镜像 ID](../../backend/data/context-system/stage4-final-image.txt)
 

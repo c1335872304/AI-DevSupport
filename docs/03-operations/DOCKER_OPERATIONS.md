@@ -110,6 +110,8 @@ Billing MCP 不映射宿主机端口；不要尝试用 `localhost:8011` 调用�
 
 ## 5. 常用维护操作
 
+从待发布源码的根目录执行。当前独立 Git 克隆位置见[Git 操作记录](GIT_AND_FAST_CI.md)。已有部署涉及结构变化时先备份并执行迁移，`alembic upgrade head` 应与待部署源码一致。Worker 或后台恢复未完成的入库任务时，可继续产生 Embedding 请求。
+
 ```powershell
 # 重启一个长期服务，例如 API
 docker compose restart api

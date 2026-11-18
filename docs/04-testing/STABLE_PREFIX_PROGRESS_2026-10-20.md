@@ -1,5 +1,7 @@
 # 稳定证据前缀长任务检查点
 
+> 历史执行检查点。当前源码与剩余工作分别见[候选验收](RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)和[债务台账](../MAINTENANCE.md)。
+
 目标：最终证据稳定排序、来源编号同步固定、文档前置问题后置；补回归、更新Docker、实测缓存/质量/耗时/费用，保留已有知识库和配置。
 
 证据根目录：`backend/data/checkpoints/stable-prefix-20261020/`。实际.env和凭据不写入公开报告。

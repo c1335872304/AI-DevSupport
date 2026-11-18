@@ -1,6 +1,6 @@
 # 本地启动
 
-四阶段交付的独立、无Provider费用演示见[三条演示与交付启动](../03-operations/PROJECT_DEMOS.md)；当前实现和验收范围见[最终报告](../04-testing/FINAL_PROJECT_ACCEPTANCE.md)。已有知识库和 `.env` 不需要为演示清空或覆盖。
+四阶段交付的独立、无Provider费用演示见[三条演示与交付启动](../03-operations/PROJECT_DEMOS.md)；当前源码范围见[候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)，四阶段交付见[阶段最终报告](../04-testing/FINAL_PROJECT_ACCEPTANCE.md)。已有知识库和 `.env` 不需要为演示清空或覆盖。
 
 ## 1. 运行模式
 

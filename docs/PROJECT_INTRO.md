@@ -26,6 +26,6 @@ API 助手面向 API 开发者，协助查阅文档、排查鉴权与限流问�
 
 ## 如何理解项目状态
 
-四阶段核心迭代已完成本地与隔离验收，包括固定机制任务、轨迹评分与可复现演示。当前成绩与适用条件统一见[最终验收](04-testing/FINAL_PROJECT_ACCEPTANCE.md)、[第三阶段验收](04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md)、[第二阶段验收](04-testing/DIAGNOSIS_STATE_ACCEPTANCE.md) 和 [RAG 验收](04-testing/RAG_PHASE_ONE_ACCEPTANCE.md)，不混用旧虚构语料或历史编码的指标。Docker Demo 已原地更新，保留其独立知识库和配置，见[部署验收](04-testing/DOCKER_DEMO_UPGRADE_2026-10-20.md)。
+当前源码候选已完成隔离、生成结算与审批恢复修复，验收版本见[源码候选验收](04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。用户可在会话里申请退款或关闭工单，管理员批准后分别核对合成支付回执或更新原工单。四阶段核心迭代已完成本地与隔离验收，包括固定机制任务、轨迹评分与可复现演示。当前成绩与适用条件统一见[最终验收](04-testing/FINAL_PROJECT_ACCEPTANCE.md)、[第三阶段验收](04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md)、[第二阶段验收](04-testing/DIAGNOSIS_STATE_ACCEPTANCE.md) 和 [RAG 验收](04-testing/RAG_PHASE_ONE_ACCEPTANCE.md)，不混用旧虚构语料或历史编码的指标。Docker Demo 已原地更新，保留其独立知识库和配置，见[部署验收](04-testing/DOCKER_DEMO_UPGRADE_2026-10-20.md)。
 
 [架构与代码地图](02-architecture/README.md) · [启动指南](01-getting-started/GETTING_STARTED.md) · [四阶段计划](FOUR_PHASE_ITERATION_PLAN.md)

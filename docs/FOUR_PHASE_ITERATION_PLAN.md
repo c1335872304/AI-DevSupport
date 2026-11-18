@@ -1,6 +1,6 @@
 # API 助手四阶段迭代计划
 
-长任务执行入口：[执行方案与检查点](LONG_TASK_EXECUTION_PLAN.md)。该文细化第一阶段 A～D 的代码任务、环境、验收与阻塞处理，并安排第二至第四阶段的任务包；状态以实际实现和验收记录为准。
+四阶段核心范围已完成，本页保留原设计与阶段划分。执行结果见[四阶段最终验收](04-testing/FINAL_PROJECT_ACCEPTANCE.md)，当前源码状态见[候选验收](04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)，新增工作由[债务台账](MAINTENANCE.md)跟踪。
 
 制定日期：2026-10-19  
 状态：第一阶段 A～D、第二阶段 P2-01～P2-08 与第三阶段 P3-01～P3-11 已完成；第四阶段 P4-01～P4-08 已完成，见[最终验收](04-testing/FINAL_PROJECT_ACCEPTANCE.md)；P4-09截图为未实施的可选项。第三阶段见 [闭环验收](04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md)。第二阶段见 [验收报告](04-testing/DIAGNOSIS_STATE_ACCEPTANCE.md)。范围与证据见 [第一阶段验收](04-testing/RAG_PHASE_ONE_ACCEPTANCE.md)。

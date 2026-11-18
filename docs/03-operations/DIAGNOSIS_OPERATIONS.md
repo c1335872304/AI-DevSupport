@@ -1,6 +1,6 @@
 # 诊断闭环运行与恢复
 
-适用迁移：`0015_diagnosis_loop`。设计见[诊断闭环](../02-architecture/DIAGNOSIS_LOOP.md)，结果见[第三阶段验收](../04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md)。
+诊断模块对应 `0015_diagnosis_loop`，当前完整应用包含后续迁移至 `0020_remove_invite_codes`，部署统一执行 `alembic upgrade head`。设计见[诊断闭环](../02-architecture/DIAGNOSIS_LOOP.md)，结果见[第三阶段验收](../04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md)。
 
 ## 升级与配置
 

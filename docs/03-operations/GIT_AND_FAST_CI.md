@@ -4,7 +4,7 @@
 
 ## 本机目录核对记录
 
-2026-11-19 核对时，当前源目录为 `C:\codes\AI_DevSupport`，独立 Git 克隆为 `C:\codes\AI-DevSupport-publish`。上个会话的交付位于 [PR #1](https://github.com/c1335872304/AI-DevSupport/pull/1)，分支为 `codex/support-demo-rag-ci`，本轮接续时远端 HEAD 为 `6eacc49`。本地克隆初始停在 `main` 的 `4d5c87b`，随后已切到 PR 分支。
+2026-11-19 核对时，当前源目录为 `C:\codes\AI_DevSupport`，独立 Git 克隆为 `C:\codes\AI-DevSupport-publish`。上个会话的交付位于 [PR #1](https://github.com/c1335872304/AI-DevSupport/pull/1)，分支为 `codex/support-demo-rag-ci`，P1 修复前的远端 HEAD 为 `6eacc49`，修复提交 `99e7485` 已推送，Fast CI 和隔离集成全部通过，见[候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。本地克隆初始停在 `main` 的 `4d5c87b`，随后已切到 PR 分支。
 
 本轮三个 P1 的修复与新增回归先在当前源目录验证，再按文件对照迁入该 PR 分支。同时对照迁入当前源目录已有的注册与邀请码移除改动，包括 `0020` 迁移和对应注册测试。冻结文件按原清单核验字节，并补齐 Phase A 数据集和厂商知识快照的 `-text` 属性。
 

@@ -1,6 +1,6 @@
 # 管理员工单台
 
-> 状态：当前实现基线（2026-09-10）。管理员页面和 API 的执行结果见 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/history/ADMIN_TICKET_CONSOLE_TEST_REPORT.md)。
+> 状态核对至 2026-11-19。工单列表契约沿用原实现，页面已增加退款与关闭工单审批队列，新增验收见[源码候选验收](../04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。历史列表验收基线为 2026-09-10。管理员页面和 API 的执行结果见 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/history/ADMIN_TICKET_CONSOLE_TEST_REPORT.md)。
 
 ## 1. 目标与范围
 
@@ -50,7 +50,7 @@
 | `assigned_to` / `resolution_note` | 处理人和管理员内部处理说明 |
 | `status` | `OPEN`、`IN_PROGRESS`、`RESOLVED`、`CLOSED` |
 
-当前接口允许管理员在上述四种状态间更新。状态机强约束、处理审计时间线和专属客服角色尚未实现；在这些需求确定前，不应假定系统会自动分派或自动关闭工单。
+现有维护接口允许管理员在上述四种状态间更新，强状态机、完整处理审计和专属客服角色仍由[债务台账](../MAINTENANCE.md)跟踪。另有独立的关闭工单审批流程，管理员批准后更新原工单，并在同一事务保存执行结果。审批中断可由其他管理员调用恢复接口接手，保留原审批人和决定，详见[审批方案](../REFUND_APPROVAL_EXECUTION_PLAN.md)。
 
 ## 4. 权限与数据边界
 

@@ -34,15 +34,13 @@ Customer → FastAPI / WebSocket → LangGraph
 
 回答采用实时分段流式：供应商增量到达后，以完整短句或完整代码块为单位执行确定性质量检查，通过后立即经 WebSocket 推送。生成结束后仍进行整篇审计；最终内容发生变化时发送替换事件，完成事件携带权威正文以校准页面。质量门不调用 LLM 重新编写事实。实测与边界见[流式输出验收](docs/04-testing/LIVE_STREAMING_ACCEPTANCE_2026-10-20.md)。
 
-## 文档
+## 交付与文档
 
-- [项目简介](docs/PROJECT_INTRO.md) · [架构与代码地图](docs/02-architecture/README.md)
-- [本地启动](docs/01-getting-started/GETTING_STARTED.md) · [RAG 操作手册](docs/03-operations/RAG_OPERATIONS.md) · [Langfuse 链路追踪](docs/03-operations/LANGFUSE.md)
-- [最终验收](docs/04-testing/FINAL_PROJECT_ACCEPTANCE.md) · [第三阶段验收](docs/04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md) · [第二阶段验收](docs/04-testing/DIAGNOSIS_STATE_ACCEPTANCE.md) · [第一阶段验收](docs/04-testing/RAG_PHASE_ONE_ACCEPTANCE.md) · [四阶段计划](docs/FOUR_PHASE_ITERATION_PLAN.md)
-- [完整文档导航](docs/README.md) · [整理记录与剩余债务](docs/MAINTENANCE.md)
+当前源码候选已完成会话隔离、多副本生成恢复与结算、审批接手续办修复，验证范围见[源码候选验收](docs/04-testing/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。退款与关闭工单通过独立管理员审批入口处理，退款执行使用合成支付沙箱。
 
-当前源码已完成四阶段核心迭代：可靠RAG、诊断状态、诊断闭环与恢复、分层评测及交付。2026-10-20 已更新 Docker Demo 并保留原知识库和配置，镜像包含独立 CPU Docling 环境，见 [Docker升级验收](docs/04-testing/DOCKER_DEMO_UPGRADE_2026-10-20.md)。截图输入、扫描 OCR 尚未纳入。测试结果统一见最新验收报告，历史材料从文档导航进入。
+- [项目简介](docs/PROJECT_INTRO.md) · [架构与代码地图](docs/02-architecture/README.md) · [上下文系统](docs/02-architecture/CONTEXT_SYSTEM.md)
+- [本地启动](docs/01-getting-started/GETTING_STARTED.md) · [Docker 操作](docs/03-operations/DOCKER_OPERATIONS.md) · [RAG 运维](docs/03-operations/RAG_OPERATIONS.md)
+- [Git 与 PR](docs/03-operations/GIT_AND_FAST_CI.md) · [CI 门禁](docs/03-operations/CI_PLAN.md) · [预发布签验](docs/03-operations/CONTEXT_STAGING_ACCEPTANCE_RUNBOOK.md)
+- [技术债务](docs/MAINTENANCE.md) · [完整文档导航](docs/README.md)
 
-后续已按要求将Docker旧知识替换为DeepSeek、Qwen、GPT各20份官方正文，并复用5888条本地千问向量，配置保持不变；见[官方知识库迁移验收与限制](docs/04-testing/DOCKER_VENDOR_KNOWLEDGE_MIGRATION_2026-10-20.md)。
-
-厂商召回与账单安全门不一致已修复并更新Docker，新增回归、检索对照及数据保护证据见[最新修复验收](docs/04-testing/VENDOR_SCOPE_AND_BILLING_GATE_FIX_2026-10-20.md)。
+四阶段核心交付与 2026-10-20 的 Docker、官方知识库、回答质量和流式验收保留在文档索引中。现行 PDF/DOCX 解析使用独立 Docling 环境，扫描 OCR 与截图输入由后续范围跟踪。各报告的模型、镜像和语料结果适用于各自执行条件。

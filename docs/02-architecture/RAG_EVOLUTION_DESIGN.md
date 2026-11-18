@@ -1,6 +1,6 @@
 # API 助手 RAG 演进设计
 
-执行配套：[长任务执行方案](../LONG_TASK_EXECUTION_PLAN.md)，包含当前代码缺口、A～D 任务依赖、环境隔离、检查点及阶段交付门禁。
+本文保留 RAG 演进设计与实施前缺口。当前实现以[知识流水线](KNOWLEDGE_PIPELINE.md)为准，阶段结果见[RAG 验收](../04-testing/RAG_PHASE_ONE_ACCEPTANCE.md)，后续工作由[债务台账](../MAINTENANCE.md)跟踪。
 
 制定日期：2026-10-19  
 状态：第一阶段 A～D 已落地；实际实现、案例与边界以 [验收报告](../04-testing/RAG_PHASE_ONE_ACCEPTANCE.md) 为准，其余契约作为演进目标。  
