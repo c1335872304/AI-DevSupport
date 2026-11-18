@@ -94,10 +94,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install demo API dependencies
+        run: python -m pip install -r ../backend/requirements.txt
       - name: Run browser approval demo
+        timeout-minutes: 3
         run: |
-          python -m pip install -r ../backend/requirements.txt
-          pnpm exec playwright install --with-deps chromium
+          export REFUND_DEMO_BROWSER="$(command -v google-chrome)"
+          "$REFUND_DEMO_BROWSER" --version
           pnpm exec playwright test -c approval-demo.playwright.config.ts
       - uses: actions/upload-artifact@v4
         if: failure()
