@@ -1,9 +1,9 @@
 from typing import Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
-from sqlalchemy import select, update
+from sqlalchemy import case, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import Annotated
@@ -146,10 +146,17 @@ async def list_for_chat(conversationId: Key, user: User = Depends(current_user),
 
 
 @router.get("/admin/refund-requests")
-async def review_queue(admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
+async def review_queue(admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db),
+                       offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
     rows = (await db.execute(with_intents()
-            .order_by(RefundApprovalPreview.decision_id.is_not(None), RefundApprovalPreview.created_at.desc())
-            .limit(50))).all()
+            .order_by(case((
+                (RefundApprovalPreview.decision == "approve") &
+                (RefundApprovalPreview.closure_status.is_(None)) &
+                (RefundSandboxIntent.refund_id.is_(None)) &
+                (RefundSandboxIntent.rejection.is_(None)), 0,
+            ), (RefundApprovalPreview.decision_id.is_(None), 1), else_=2),
+                RefundApprovalPreview.created_at.desc(), RefundApprovalPreview.request_id)
+            .offset(offset).limit(limit))).all()
     return ok([{**summary(row, intent), "userId": row.user_id, "reason": row.reason,
                 "decision": row.decision, "decidedBy": row.decided_by, "decisionNote": row.decision_note,
                 "createdAt": row.created_at.isoformat()} for row, intent in rows])
@@ -243,4 +250,16 @@ async def decide(
         raise HTTPException(409, "Refund request already decided")
     await db.commit()
     status = await advance(db, request_id, checkpoint)
+    return await result(db, row, status, allow_submit=True)
+
+
+@router.post("/admin/refund-requests/{request_id}/resume")
+async def resume(request_id: str, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
+    row = await db.get(RefundApprovalPreview, request_id)
+    if not row:
+        raise HTTPException(404, "Refund request not found")
+    if not row.decision_id:
+        raise HTTPException(409, "Approval decision required")
+    # The existing decision and its author remain the sole execution authority.
+    status = await advance(db, request_id, get_settings().refund_checkpoint_path)
     return await result(db, row, status, allow_submit=True)

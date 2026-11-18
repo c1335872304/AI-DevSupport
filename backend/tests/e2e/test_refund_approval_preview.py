@@ -14,7 +14,7 @@ import app.api.v1.refund_preview as refund_api
 from app.api.v1.refund_preview import router
 from app.core.config import get_settings
 from app.core.deps import admin_user, current_user
-from app.db.models import Base, RefundApprovalPreview, SupportInvoice, User
+from app.db.models import Base, ConversationSession, RefundApprovalPreview, SupportHandoff, SupportInvoice, User
 from app.db.session import get_db
 from app.support.refund_sandbox_server import app as sandbox_app
 
@@ -91,7 +91,9 @@ async def test_refund_approval_resumes_saved_checkpoint_after_app_recreation(tmp
             assert review["decision"] == "approve" and review["decisionId"]
             monkeypatch.setattr(refund_api, "advance", original_advance)
 
-            responses = await asyncio.gather(*(client.post(decision_path, json=decision) for _ in range(2)))
+            app.dependency_overrides[admin_user] = lambda: User(id=11, role="ADMIN")
+            resume_path = decision_path.removesuffix("/decision") + "/resume"
+            responses = await asyncio.gather(*(client.post(resume_path) for _ in range(2)))
             assert all(response.json()["data"]["status"] == "APPROVED_PREVIEW" for response in responses)
             assert (await client.post(decision_path, json={**decision, "decision": "reject"})).status_code == 409
             assert (await client.get(owner_path)).json()["data"]["status"] == "APPROVED_PREVIEW"
@@ -149,7 +151,18 @@ async def test_approved_refund_queries_same_sandbox_receipt(tmp_path, monkeypatc
                 assert (await provider.get(f"refunds/{request_id}")).status_code == 404
                 endpoint_path = f"/support/admin/refund-requests/{request_id}/decision"
                 decision = {"decision": "approve", "note": "Approved for sandbox"}
-                responses = await asyncio.gather(*(business.post(endpoint_path, json=decision) for _ in range(2)))
+                original_result = refund_api.result
+
+                async def execution_interrupted(*args, **kwargs):
+                    raise HTTPException(503, "Crash before payment execution")
+
+                monkeypatch.setattr(refund_api, "result", execution_interrupted)
+                assert (await business.post(endpoint_path, json=decision)).status_code == 503
+                monkeypatch.setattr(refund_api, "result", original_result)
+                assert (await provider.get(f"refunds/{request_id}")).status_code == 404
+                app.dependency_overrides[admin_user] = lambda: User(id=11, role="ADMIN")
+                resume_path = endpoint_path.removesuffix("/decision") + "/resume"
+                responses = await asyncio.gather(*(business.post(resume_path) for _ in range(2)))
                 results = [response.json()["data"] for response in responses]
                 assert results[0] == results[1]
                 assert results[0]["status"] == "SANDBOX_REFUNDED"
@@ -157,6 +170,9 @@ async def test_approved_refund_queries_same_sandbox_receipt(tmp_path, monkeypatc
                 assert results[0]["receipt"] == queried
                 assert (await business.get(f"{request_path}/{request_id}")).json()["data"] == results[0]
                 assert queried["refundId"].startswith("rf_demo_") and queried["amountMinor"] == 1500
+                async with sessions() as db:
+                    approved = await db.get(RefundApprovalPreview, request_id)
+                    assert approved.decided_by == "10" and approved.decision_note == decision["note"]
                 denied = await business.post(request_path, json={
                     "invoiceId": "sandbox-paid-1", "requestKey": "reject-it", "reason": "Demo denial",
                 })
@@ -179,3 +195,66 @@ async def test_approved_refund_queries_same_sandbox_receipt(tmp_path, monkeypatc
             server.should_exit = True
             await running
             await engine.dispose()
+
+
+async def test_different_admin_resumes_interrupted_ticket_close_and_queue_is_pageable(tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "refund_preview_enabled", True)
+    monkeypatch.setattr(settings, "refund_checkpoint_path", tmp_path / "checkpoint.sqlite")
+    engine = create_async_engine(f"sqlite+aiosqlite:///{(tmp_path / 'close.sqlite').as_posix()}")
+    try:
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        async with sessions() as db:
+            db.add(ConversationSession(conversation_id="chat", user_id="1", title="chat"))
+            db.add(SupportHandoff(handoff_id="ticket", conversation_id="chat", user_id="1",
+                                  generation_id="generation", reason="test", summary="test",
+                                  category="general", priority="NORMAL", status="OPEN"))
+            # More pending requests than fit on a single page.
+            db.add_all([RefundApprovalPreview(request_id=f"pending-{i}", user_id="1", invoice_id="invoice",
+                                             request_key=f"key-{i}", reason="pending") for i in range(60)])
+            await db.commit()
+        app = api(sessions)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            request = (await client.post("/support/refund-requests", json={
+                "handoffId": "ticket", "conversationId": "chat", "requestKey": "close", "reason": "Resolved",
+            })).json()["data"]
+            rid = request["requestId"]
+            path = f"/support/admin/refund-requests/{rid}"
+            original_result = refund_api.result
+
+            async def lost_execution(*args, **kwargs):
+                raise HTTPException(503, "Crash after approval persisted")
+
+            monkeypatch.setattr(refund_api, "result", lost_execution)
+            assert (await client.post(path + "/decision", json={"decision": "approve", "note": "Original approval"})).status_code == 503
+            monkeypatch.setattr(refund_api, "result", original_result)
+        # Recreated API has a different authenticated administrator.
+        app = api(sessions)
+        app.dependency_overrides[admin_user] = lambda: User(id=11, role="ADMIN")
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+            first = (await client.get("/support/admin/refund-requests")).json()["data"]
+            second = (await client.get("/support/admin/refund-requests?offset=50")).json()["data"]
+            assert first[0]["requestId"] == rid
+            assert len(first) == 50 and len(second) == 11
+            assert len({item["requestId"] for item in first + second}) == 61
+            pending_id = second[0]["requestId"]
+            assert (await client.post(f"/support/admin/refund-requests/{pending_id}/resume")).status_code == 409
+            assert (await client.post(path + "/decision", json={"decision": "reject", "note": "Changed"})).status_code == 409
+            responses = await asyncio.gather(*(client.post(path + "/resume") for _ in range(2)))
+            assert all(response.json()["data"]["status"] == "TICKET_CLOSED" for response in responses)
+            assert (await client.post(path + "/resume")).json()["data"]["status"] == "TICKET_CLOSED"
+
+            def forbidden():
+                raise HTTPException(403)
+
+            app.dependency_overrides[admin_user] = forbidden
+            assert (await client.post(path + "/resume")).status_code == 403
+        async with sessions() as db:
+            row = await db.get(RefundApprovalPreview, rid)
+            assert row.decided_by == "10" and row.decision_note == "Original approval"
+            assert row.closure_status == "TICKET_CLOSED"
+            assert (await db.get(SupportHandoff, "ticket")).status == "CLOSED"
+    finally:
+        await engine.dispose()

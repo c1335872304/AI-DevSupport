@@ -409,6 +409,8 @@ const handleSend = async () => {
     return;
   }
 
+  if (!chatStore.conversationId && !(await chatStore.createNewSession())) return;
+
   list.value.push({
     content: input.value.message,
     role: 'user'
@@ -421,7 +423,11 @@ const handleSend = async () => {
     activeSkills: [],
     skillTrace: undefined
   });
-  chatStore.wsSend(input.value.message);
+  chatStore.wsSend(JSON.stringify({
+    type: 'message',
+    question: input.value.message,
+    conversationId: chatStore.conversationId
+  }));
   input.value.message = '';
   startGenerationStatusMonitor();
 };

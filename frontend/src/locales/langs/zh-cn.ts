@@ -165,7 +165,6 @@ const local: App.I18n.Schema = {
     chat: '聊天助手',
     'chat-history': '聊天记录',
     'my-chat-history': '我的聊天记录',
-    'invite-code': '邀请码管理',
     'knowledge-base': '知识库',
     'model-provider': '模型配置',
     'org-tag': '组织标签',
@@ -187,7 +186,6 @@ const local: App.I18n.Schema = {
         codePlaceholder: '请输入验证码',
         passwordPlaceholder: '请输入密码',
         confirmPasswordPlaceholder: '请再次输入密码',
-        inviteCodePlaceholder: '请输入邀请码',
         codeLogin: '验证码登录',
         confirm: '确定',
         back: '返回',
@@ -215,11 +213,11 @@ const local: App.I18n.Schema = {
       },
       register: {
         title: '注册账号',
+        success: '注册成功',
         agreement: '注册即代表已阅读并同意我们的',
         protocol: '《用户协议》',
         and: '和',
-        policy: '《隐私权政策》',
-        inviteCodeTip: '当前站点采用邀请码注册。还没有邀请码时，可先关注公众号【沉默王二】，后台回复【聪明】领取。'
+        policy: '《隐私权政策》'
       },
       resetPwd: {
         title: '重置密码'

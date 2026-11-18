@@ -42,6 +42,7 @@
 - RAG：[设计与实施对照](02-architecture/RAG_EVOLUTION_DESIGN.md)、[企业开源参考](02-architecture/RAG_UPSTREAM_REVIEW.md)。当前行为以知识流水线为准，设计文档保留演进背景。
 - 运维：[三条演示](03-operations/PROJECT_DEMOS.md)、[诊断恢复](03-operations/DIAGNOSIS_OPERATIONS.md)、[Docker 操作](03-operations/DOCKER_OPERATIONS.md)、[重启指南](03-operations/PROJECT_RESTART_GUIDE.md)、[网络排障](03-operations/NETWORK_TROUBLESHOOTING.md)、[Billing MCP 拓扑](03-operations/DOCKER_AND_LOCAL_BILLING_MCP_PLAN.md)。
 - 工程规划：[生产边界](03-operations/PRODUCTION.md)、[CI 计划](03-operations/CI_PLAN.md)。这里的待办不视为已经完成的能力。
+- 工程交付：[Git 迁移与 Fast CI 排障](03-operations/GIT_AND_FAST_CI.md)。
 - 评测：[六层评测规范](04-testing/EVALUATION.md)、[用户问题集](04-testing/USER_QUESTION_SIMULATION.md)、[A 写入验收](04-testing/RAG_BATCH_A_REPORT.md)、[B 生命周期验收](04-testing/RAG_BATCH_B_REPORT.md)、[C 解析检索验收](04-testing/RAG_BATCH_C_REPORT.md)。
 - 历史：[旧测试与语料演进索引](04-testing/history/README.md)、[真实模型测试计划](05-live-tests/DEEPSEEK_LIVE_TEST_PLAN.md)、[历史真实模型报告](05-live-tests/DEEPSEEK_LIVE_TEST_REPORT.md)。历史成绩只能按原报告条件解读。
 - 脚本：[用途与运行边界](../backend/scripts/README.md)。

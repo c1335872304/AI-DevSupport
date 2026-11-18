@@ -1,8 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
+from datetime import timedelta
+
+from app.core.time import utcnow
+
+logger = logging.getLogger(__name__)
+HEARTBEAT_INTERVAL_SECONDS = 10
+GENERATION_LEASE_SECONDS = 120
 
 
 class GenerationRuntime:
@@ -83,6 +91,33 @@ class GenerationRuntime:
         if not subscribers:
             self._subscribers.pop(generation_id, None)
 
+    async def heartbeat(self, generation_id: str) -> None:
+        from sqlalchemy import update
+        from app.db.models import GenerationState
+        from app.db.session import SessionLocal
+
+        while True:
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
+            try:
+                async with SessionLocal() as db:
+                    result = await db.execute(update(GenerationState).where(
+                        GenerationState.generation_id == generation_id,
+                        GenerationState.status.in_(("PENDING", "STREAMING")),
+                    ).values(updated_at=utcnow()))
+                    await db.commit()
+                    if not result.rowcount:
+                        return
+            except Exception:
+                logger.exception("Generation heartbeat failed for %s", generation_id)
+
+    async def recovery_loop(self) -> None:
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await self.recover_orphaned_states()
+            except Exception:
+                logger.exception("Generation recovery failed")
+
     async def recover_orphaned_states(self) -> int:
         from sqlalchemy import select, update
         from app.accounting.usage import usage_service
@@ -91,8 +126,9 @@ class GenerationRuntime:
         async with SessionLocal() as db:
             result = await db.execute(
                 update(GenerationState)
-                .where(GenerationState.status.in_(["PENDING", "STREAMING"]))
-                .values(status="INTERRUPTED", error="Server restarted before generation completed")
+                .where(GenerationState.status.in_(["PENDING", "STREAMING"]),
+                       GenerationState.updated_at < utcnow() - timedelta(seconds=GENERATION_LEASE_SECONDS))
+                .values(status="INTERRUPTED", error="Generation heartbeat expired")
             )
             unsettled_ids = (await db.scalars(
                 select(LLMTokenReservation.generation_id)

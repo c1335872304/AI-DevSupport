@@ -323,16 +323,6 @@ class LLMTokenReservation(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 
 
-class InviteCode(Base, TimestampMixin):
-    __tablename__ = "invite_codes"
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    code: Mapped[str] = mapped_column(String(64), unique=True, index=True)
-    max_uses: Mapped[int] = mapped_column(Integer, default=1)
-    used_count: Mapped[int] = mapped_column(Integer, default=0)
-    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-
-
 class RechargePackage(Base, TimestampMixin):
     __tablename__ = "recharge_packages"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

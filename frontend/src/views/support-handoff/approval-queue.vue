@@ -9,12 +9,16 @@ const saving = ref(false);
 const selected = ref<ApprovalReview | null>(null);
 const rows = ref<ApprovalReview[]>([]);
 const note = ref('');
+const hasMore = ref(false);
 
-async function refresh() {
+async function refresh(append = false) {
   loading.value = true;
   try {
-    const { data } = await approvalApi.queue();
-    if (data) rows.value = data;
+    const { data } = await approvalApi.queue(append ? rows.value.length : 0);
+    if (data) {
+      rows.value = append ? [...rows.value, ...data] : data;
+      hasMore.value = data.length === 50;
+    }
   } finally {
     loading.value = false;
   }
@@ -23,10 +27,12 @@ async function refresh() {
 async function decide(decision: 'approve' | 'reject') {
   const item = selected.value;
   const comment = note.value.trim();
-  if (!item || !comment) return;
+  if (!item || (!item.decision && !comment)) return;
   saving.value = true;
   try {
-    const { data } = await approvalApi.decide(item.requestId, decision, comment);
+    const { data } = item.decision
+      ? await approvalApi.resume(item.requestId)
+      : await approvalApi.decide(item.requestId, decision, comment);
     if (data) {
       selected.value = null;
       await refresh();
@@ -51,7 +57,7 @@ onMounted(async () => {
 <template>
   <NCard v-if="enabled" title="业务审批" size="small" :bordered="false">
     <template #header-extra>
-      <NButton size="small" :loading="loading" @click="refresh">刷新审批队列</NButton>
+      <NButton size="small" :loading="loading" @click="refresh()">刷新审批队列</NButton>
     </template>
     <NEmpty v-if="!rows.length && !loading" description="暂无审批申请" />
     <div v-else class="max-h-64 overflow-y-auto">
@@ -65,6 +71,7 @@ onMounted(async () => {
         <NButton size="small" @click="open(item)">{{ item.decision ? '查看' : '审阅' }}</NButton>
       </div>
     </div>
+    <NButton v-if="hasMore" :loading="loading" @click="refresh(true)">加载更多申请</NButton>
     <NModal :show="!!selected" preset="card" title="审阅业务申请" class="w-[min(92vw,510px)]"
       @update:show="value => { if (!value && !saving) selected = null; }">
       <div v-if="selected" class="flex flex-col gap-3">

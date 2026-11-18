@@ -13,24 +13,11 @@ from app.core.deps import admin_user
 from app.core.response import ok
 from app.core.security import hash_password
 from app.core.time import utcnow
-from app.db.models import ConversationMessage, InviteCode, OrganizationTag, RechargePackage, User, UserTokenRecord, MCPAccessToken
+from app.db.models import ConversationMessage, OrganizationTag, RechargePackage, User, UserTokenRecord, MCPAccessToken
 from app.db.session import get_db
 from app.accounting.rate_limit import rate_limit_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-class InviteCreate(BaseModel):
-    code: str | None = None
-    maxUses: int = 1
-    count: int | None = None
-    expiresAt: datetime | None = None
-
-
-class InviteUpdate(BaseModel):
-    code: str
-    maxUses: int
-    expiresAt: datetime | None = None
 
 
 class OrgCreate(BaseModel):
@@ -152,72 +139,6 @@ async def list_users(
         for u in rows
     ]
     return ok({"content": data, "data": data, "number": page, "size": size, "totalElements": total})
-
-
-@router.post("/invite-codes")
-async def create_invite(payload: InviteCreate, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    count = max(1, payload.count or 1)
-    created = []
-    for _ in range(count):
-        code = payload.code if count == 1 and payload.code else secrets.token_urlsafe(8)
-        item = InviteCode(code=code, max_uses=payload.maxUses, expires_at=payload.expiresAt)
-        db.add(item)
-        created.append(item)
-    await db.commit()
-    return ok([{"id": x.id, "code": x.code, "maxUses": x.max_uses} for x in created])
-
-
-@router.get("/invite-codes")
-async def list_invites(
-    page: int = Query(1, ge=1), size: int = Query(10, ge=1), admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)
-):
-    items = list((await db.scalars(select(InviteCode).order_by(InviteCode.id.desc()))).all())
-    total = len(items)
-    rows = items[(page - 1) * size : page * size]
-    data = [
-        {
-            "id": x.id,
-            "code": x.code,
-            "maxUses": x.max_uses,
-            "usedCount": x.used_count,
-            "enabled": x.enabled,
-            "expiresAt": x.expires_at.isoformat() if x.expires_at else None,
-            "createdAt": x.created_at.isoformat(),
-        }
-        for x in rows
-    ]
-    return ok({"content": data, "data": data, "number": page, "size": size, "totalElements": total})
-
-
-@router.patch("/invite-codes/{invite_id}/disable")
-async def disable_invite(invite_id: int, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    item = await db.get(InviteCode, invite_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Invite code not found")
-    item.enabled = False
-    await db.commit()
-    return ok(message="Disabled")
-
-
-@router.delete("/invite-codes/{invite_id}")
-async def delete_invite(invite_id: int, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    item = await db.get(InviteCode, invite_id)
-    if item:
-        await db.delete(item)
-        await db.commit()
-    return ok(message="Deleted")
-
-
-@router.put("/invite-codes/{invite_id}")
-async def update_invite(invite_id: int, payload: InviteUpdate, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    item = await db.get(InviteCode, invite_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Invite code not found")
-    item.code = payload.code
-    item.max_uses = payload.maxUses
-    item.expires_at = payload.expiresAt
-    await db.commit()
-    return ok(message="Updated")
 
 
 @router.get("/conversation")

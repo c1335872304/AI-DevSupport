@@ -7,15 +7,16 @@ import time
 import uuid
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.config import get_settings
 from app.core.redaction import redact_text
 from app.core.deps import websocket_user
 from app.accounting.rate_limit import rate_limit_service
-from app.db.models import GenerationState
+from app.db.models import ConversationSession, GenerationState
 from app.db.session import SessionLocal
 from app.agent.chat import stream_chat
+from app.accounting.usage import usage_service
 from app.agent.generation import generation_runtime
 
 router = APIRouter()
@@ -235,14 +236,35 @@ async def chat_socket(websocket: WebSocket):
                         continue
                     await generation_runtime.cancel(generation_id)
                     async with SessionLocal() as db:
-                        state = await db.get(GenerationState, generation_id)
-                        if state and state.user_id == str(user.id) and state.status in {"PENDING", "STREAMING"}:
-                            state.status = "CANCELLED"
-                            await db.commit()
+                        stopped = await db.execute(update(GenerationState).where(
+                            GenerationState.generation_id == generation_id,
+                            GenerationState.user_id == str(user.id),
+                            GenerationState.status.in_(("PENDING", "STREAMING")),
+                        ).values(status="CANCELLED"))
+                        if stopped.rowcount:
+                            await usage_service.release_llm(db, generation_id, "remote_stop", commit=False)
+                        await db.commit()
                 await socket_send({"type": "stop", "generationId": generation_id or None})
                 continue
 
-            question = text.strip()
+            conversation_id = None
+            if isinstance(payload, dict):
+                if payload.get("type") != "message" or not isinstance(payload.get("question"), str):
+                    await socket_send({"code": 422, "error": "Invalid chat message"})
+                    continue
+                conversation_id = payload.get("conversationId")
+                if not isinstance(conversation_id, str) or not conversation_id.strip():
+                    await socket_send({"code": 422, "error": "conversationId is required"})
+                    continue
+                async with SessionLocal() as db:
+                    conversation = await db.get(ConversationSession, conversation_id)
+                    if not conversation or conversation.user_id != str(user.id) or conversation.status != "ACTIVE":
+                        await socket_send({"code": 404, "error": "Active conversation not found"})
+                        continue
+                question = payload["question"].strip()
+            else:
+                # Older clients send plain text and retain the legacy active-session behavior.
+                question = text.strip()
             if not question:
                 continue
             if len(question) > max(1, settings.chat_max_input_chars):
@@ -284,13 +306,18 @@ async def chat_socket(websocket: WebSocket):
             logger.info("[WS] generation scheduled generation=%s", _gid(generation_id))
             _console(f"[WS] generation scheduled generation={_gid(generation_id)}")
 
-            async def run_generation(gid: str = generation_id, q: str = question) -> None:
+            async def run_generation(gid: str = generation_id, q: str = question, cid: str | None = conversation_id) -> None:
                 async with SessionLocal() as db:
-                    await stream_chat(
-                        db, user, q,
-                        lambda event: generation_runtime.publish(gid, event),
-                        generation_id=gid,
-                    )
+                    try:
+                        await stream_chat(
+                            db, user, q,
+                            lambda event: generation_runtime.publish(gid, event),
+                            generation_id=gid, conversation_id=cid,
+                        )
+                    except HTTPException as exc:
+                        await generation_runtime.publish(gid, {
+                            "code": exc.status_code, "error": str(exc.detail), "generationId": gid,
+                        })
 
             await generation_runtime.start(generation_id, run_generation)
     except WebSocketDisconnect:

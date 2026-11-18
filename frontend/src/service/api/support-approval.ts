@@ -51,7 +51,8 @@ export const approvalApi = {
     invoiceId?: string;
     handoffId?: string;
   }) => request<ApprovalItem>({ url: '/support/refund-requests', method: 'post', data }),
-  queue: () => request<ApprovalReview[]>({ url: '/support/admin/refund-requests' }),
+  queue: (offset = 0) => request<ApprovalReview[]>({ url: '/support/admin/refund-requests', params: { offset } }),
+  resume: (id: string) => request<ApprovalItem>({ url: `/support/admin/refund-requests/${id}/resume`, method: 'post' }),
   decide: (id: string, decision: 'approve' | 'reject', note: string) =>
     request<ApprovalItem>({ url: `/support/admin/refund-requests/${id}/decision`, method: 'post', data: { decision, note } })
 };

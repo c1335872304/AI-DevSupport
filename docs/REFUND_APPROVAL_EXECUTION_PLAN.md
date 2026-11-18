@@ -28,7 +28,7 @@ Linux 或 macOS 将 Python 环境变量指向 `backend/.venv/bin/python` 的绝�
 
 从 `backend` 运行 `python scripts/run_refund_sandbox_demo.py`。脚本在本机回环启动两个 HTTP 服务，用临时数据库和合成账号走正式登录、申请、管理员审批和用户查询接口。支付模拟服务使用自己的账本，在第一次提交落库后故意返回 503。业务端通过查单恢复同一个 `rf_demo_…` 编号。脚本核对独立查单、重复审批与用户查询取得相同回执，支付账本只有一行。运行结束后清理临时数据。[演示脚本](../backend/scripts/run_refund_sandbox_demo.py) · [支付模拟服务](../backend/app/support/refund_sandbox_server.py)
 
-已有隔离环境可以将 `REFUND_SANDBOX_URL` 指向该模拟服务的 `/sandbox`，并迁移至 `0018_refund_sandbox_intent`。沙箱目前只识别 `sandbox-paid-1` 和人民币 15.00 元的合成支付。未配置沙箱，或申请建立时没有启用沙箱，继续返回审批预览结果。沙箱拒绝返回 `SANDBOX_REJECTED`，未核验的结果返回 `REFUND_RECONCILING`。管理员重交同一决定可重试核对。演示使用项目内模拟支付服务，真实渠道、凭据和真实账务均未接入。
+已有隔离环境可以将 `REFUND_SANDBOX_URL` 指向该模拟服务的 `/sandbox`，并迁移至 `0018_refund_sandbox_intent`。沙箱目前只识别 `sandbox-paid-1` 和人民币 15.00 元的合成支付。未配置沙箱，或申请建立时没有启用沙箱，继续返回审批预览结果。沙箱拒绝返回 `SANDBOX_REJECTED`，未核验的结果返回 `REFUND_RECONCILING`。管理员可通过 `POST /api/v1/support/admin/refund-requests/{id}/resume` 重试核对。恢复读取原审批决定，允许其他管理员接手，原审批人和审批说明继续保存在记录中。演示使用项目内模拟支付服务，真实渠道、凭据和真实账务均未接入。
 
 ## 当前预览怎么运行
 
@@ -36,9 +36,9 @@ Linux 或 macOS 将 Python 环境变量指向 `backend/.venv/bin/python` 的绝�
 
 1. 用户登录后发送 `POST /api/v1/support/refund-requests`，请求体为 `{"invoiceId":"<本人已支付发票 ID>","requestKey":"preview-1","reason":"测试审批"}`。成功返回 `requestId` 和 `PENDING_APPROVAL`。
 2. 关闭并重启后端，管理员登录后用 `GET /api/v1/support/admin/refund-requests/{id}` 核对申请，再发送 `POST /api/v1/support/admin/refund-requests/{id}/decision`，请求体为 `{"decision":"approve","note":"通过审批预览"}`。拒绝时将 `decision` 改为 `reject`。
-3. 申请人用 `GET /api/v1/support/refund-requests/{id}` 查看结果。批准显示 `APPROVED_PREVIEW`，拒绝显示 `REJECTED`。相同请求键和载荷返回原申请。重复提交原审批可补做恢复，改写已存在审批会返回冲突。
+3. 申请人用 `GET /api/v1/support/refund-requests/{id}` 查看结果。批准显示 `APPROVED_PREVIEW`，拒绝显示 `REJECTED`。相同请求键和载荷返回原申请。重复提交原审批可补做恢复。其他管理员通过 `POST /api/v1/support/admin/refund-requests/{id}/resume` 接手恢复，执行参数读取已保存决定。改写已存在审批会返回冲突。
 
-预览把审批决定先持久化到业务库，再由审批请求通过原 `thread_id` 恢复 LangGraph。两步之间中断时，管理员重交原决定可继续。正式方案仍需补自动恢复队列、申请版本与金额快照、独立审批权限、支付渠道及账务对账。测试使用临时数据库，重新创建 API 和数据库连接，检查持久化暂停、并发审批、载荷冲突和跨账号隔离。[预览路由](../backend/app/api/v1/refund_preview.py) · [退款图](../backend/app/support/refund_preview.py) · [端到端测试](../backend/tests/e2e/test_refund_approval_preview.py)
+预览把审批决定先持久化到业务库，再由审批请求通过原 `thread_id` 恢复 LangGraph。两步之间中断时，具备审批权限的管理员调用独立恢复接口继续。审批队列优先展示待恢复记录，并支持 `offset` 和 `limit` 分页，前端可加载后续申请。正式方案仍需补自动恢复队列、申请版本与金额快照、独立审批权限、支付渠道及账务对账。测试使用临时数据库，重新创建 API 和数据库连接，检查持久化暂停、并发审批、载荷冲突和跨账号隔离。[预览路由](../backend/app/api/v1/refund_preview.py) · [退款图](../backend/app/support/refund_preview.py) · [端到端测试](../backend/tests/e2e/test_refund_approval_preview.py)
 
 ## 1. 首期交付范围
 

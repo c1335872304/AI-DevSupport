@@ -104,9 +104,12 @@ async def test_restart_releases_legacy_stranded_reservation_once(monkeypatch):
         async with sessions() as db:
             db.add(User(id=105, username="interrupted-user", password="x", llm_token_balance=1000))
             db.add(GenerationState(generation_id=gid, conversation_id="conversation", user_id="105",
-                                   question="test", status="INTERRUPTED"))
+                                   question="test", status="STREAMING"))
             await db.commit()
             await usage_service.reserve_llm(db, 105, gid, 100, "test")
+            generation = await db.get(GenerationState, gid)
+            generation.status = "INTERRUPTED"
+            await db.commit()
         runtime = GenerationRuntime()
         for _ in range(2):
             assert await runtime.recover_orphaned_states() == 0

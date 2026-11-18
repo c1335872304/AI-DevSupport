@@ -36,6 +36,7 @@ async def lifespan(app: FastAPI):
     Path("./data").mkdir(parents=True, exist_ok=True)
     await init_db()
     app.state.interrupted_generations = await generation_runtime.recover_orphaned_states()
+    generation_recovery_task = asyncio.create_task(generation_runtime.recovery_loop(), name="generation-recovery")
     billing_mcp_adapter.validate_configuration()
     index_task = asyncio.create_task(maintenance_loop(), name="index-maintenance")
     from app.diagnosis.execution import recovery_loop
@@ -58,6 +59,11 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        generation_recovery_task.cancel()
+        try:
+            await generation_recovery_task
+        except asyncio.CancelledError:
+            pass
         diagnostic_task.cancel()
         try:
             await diagnostic_task
