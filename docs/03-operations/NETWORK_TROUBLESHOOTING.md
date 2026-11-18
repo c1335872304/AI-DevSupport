@@ -4,14 +4,14 @@
 
 ## 1. 当前结论
 
-项目已经支持两种 Embedding 模式：
+2026-10-19 起，实际建库与检索仅使用远端千问 Embedding，本地哈希编码已移除：
 
 | 模式 | 条件 | 行为 |
 |---|---|---|
-| 本地离线 | `EMBEDDING_API_KEY` 为空 | 使用确定性的 `local-hash-v1`，不访问 DashScope |
+| 未配置 | `EMBEDDING_API_KEY` 为空 | 明确报错，不生成本地向量 |
 | 远端 Provider | `EMBEDDING_API_KEY` 非空 | 访问 `EMBEDDING_BASE_URL/embeddings`，需要 DNS、代理和 Key 均可用 |
 
-不要把“远端请求失败”自动降级为本地向量。两种向量空间可能不同，静默切换会造成索引和查询向量不一致。因此切换模式后应重新建立 Demo 知识库或完整重建索引。
+远端失败不会切换编码方式。切换模型或维度后重新建立索引，禁止新查询混用旧向量。历史报告中的本地哈希结果仅保留为历史工程记录，不能用作千问效果结论。
 
 ## 2. Docker CLI 检查
 
@@ -84,30 +84,17 @@ docker compose run --rm --no-deps api python -c "import socket; print(socket.get
 docker compose run --rm --no-deps api python -c "import socket; s=socket.create_connection(('host.docker.internal',7897),5); print('proxy reachable'); s.close()"
 ```
 
-## 5. 本地离线测试模式
+## 5. 离线验证与 Windows 直连
 
-没有 Docker 或外部 Embedding 网络时，可以显式使用本地向量。下面的环境变量只影响当前 PowerShell 窗口，不修改 `.env`：
-
-```powershell
-$env:EMBEDDING_API_KEY = ""
-$env:SEARCH_BACKEND = "database"
-```
-
-然后重建 Demo 知识库并执行检索评测：
+无外部网络时，只执行文件解析、分块及使用显式测试替身的单测；不能运行真实编码、建库或查询并声称效果通过。
 
 ```powershell
 cd backend
-python scripts/seed_demo_knowledge.py --username admin --reset
-python scripts/evaluate_rag.py eval/demo_knowledge_rag.jsonl --username admin -k 6
+python scripts/seed_demo_knowledge.py --manifest vendor_knowledge/manifest.json --validate-only
+python -m pytest -q tests/knowledge
 ```
 
-输出中应看到：
-
-```text
-embedding: local-hash-v1
-```
-
-如果当前 `.env` 中存在非空 `EMBEDDING_API_KEY`，程序会按远端模式运行，不会自动使用本地 fallback。
+Windows 宿主机不能直接照搬容器专用的 `host.docker.internal` 代理地址。先检查 Provider 直连；可以直连时将宿主机配置的 `EMBEDDING_HTTP_PROXY` 留空，必须走本机代理时使用实际可达的主机地址与端口。容器配置按第 4 节单独设置。
 
 ## 6. 真实 Provider 测试顺序
 

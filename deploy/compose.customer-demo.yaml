@@ -1,0 +1,18 @@
+services:
+  demo:
+    image: ${CUSTOMER_DEMO_IMAGE:-paismart-backend:customer-demo}
+    build:
+      context: ../backend
+      target: runtime
+    network_mode: none
+    user: ${CUSTOMER_DEMO_USER:-paismart}
+    healthcheck:
+      disable: true
+    entrypoint: ["python", "/app/scripts/run_customer_service_demo.py"]
+    command: ["--output", "/evidence"]
+    tmpfs:
+      - /app/data:rw,mode=1777,size=128m
+    volumes:
+      - type: bind
+        source: ${CUSTOMER_DEMO_EVIDENCE:-../backend/data/customer-demo}
+        target: /evidence

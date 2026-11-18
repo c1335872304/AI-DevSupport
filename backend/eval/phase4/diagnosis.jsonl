@@ -1,0 +1,24 @@
+{"id": "dev-auth_missing", "split": "development", "mechanism": "AUTH_MISSING", "cause": "AUTH_MISSING", "expected": {"causes": ["AUTH_MISSING"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-auth_format", "split": "development", "mechanism": "AUTH_FORMAT", "cause": "AUTH_FORMAT", "expected": {"causes": ["AUTH_FORMAT"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-key_invalid", "split": "development", "mechanism": "KEY_INVALID", "cause": "KEY_INVALID", "expected": {"causes": ["KEY_INVALID"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-key_expired", "split": "development", "mechanism": "KEY_EXPIRED", "cause": "KEY_EXPIRED", "expected": {"causes": ["KEY_EXPIRED"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-app_mismatch", "split": "development", "mechanism": "APP_MISMATCH", "cause": "APP_MISMATCH", "expected": {"causes": ["APP_MISMATCH"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-rate_limit", "split": "development", "mechanism": "RATE_LIMIT", "cause": "RATE_LIMIT", "expected": {"causes": ["RATE_LIMIT"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-concurrency_limit", "split": "development", "mechanism": "CONCURRENCY_LIMIT", "cause": "CONCURRENCY_LIMIT", "expected": {"causes": ["CONCURRENCY_LIMIT"], "status": "WAITING_USER_ACTION"}}
+{"id": "dev-quota_limit", "split": "development", "mechanism": "QUOTA_LIMIT", "cause": "QUOTA_LIMIT", "expected": {"causes": ["QUOTA_LIMIT"], "status": "WAITING_USER_ACTION"}}
+{"id": "holdout-missing-observation", "split": "holdout", "mechanism": "missing-observation", "cause": "RATE_LIMIT", "observations": false, "expected": {"causes": [], "status": "WAITING_USER_ACTION"}}
+{"id": "holdout-unknown-version", "split": "holdout", "mechanism": "unknown-version", "cause": "RATE_LIMIT", "version": "unknown", "expected": {"causes": [], "status": "WAITING_USER_ACTION"}}
+{"id": "holdout-success", "split": "holdout", "mechanism": "success", "cause": "RATE_LIMIT", "followup": "SUCCESS", "expected": {"causes": [], "status": "RESOLVED", "recheck": "SUCCEEDED"}}
+{"id": "holdout-failed", "split": "holdout", "mechanism": "failed", "cause": "RATE_LIMIT", "followup": "QUOTA_LIMIT", "expected": {"causes": ["QUOTA_LIMIT"], "status": "WAITING_USER_ACTION", "recheck": "STILL_FAILING"}}
+{"id": "holdout-other-app", "split": "holdout", "mechanism": "other-app", "cause": "RATE_LIMIT", "followup": "SUCCESS", "newApp": "app_other", "expected": {"causes": [], "status": "COLLECTING", "recheck": "REJECTED"}}
+{"id": "holdout-old-recheck", "split": "holdout", "mechanism": "old-recheck", "cause": "RATE_LIMIT", "followup": "SUCCESS", "oldTime": true, "expected": {"causes": [], "status": "COLLECTING", "recheck": "REJECTED"}}
+{"id": "holdout-user-only", "split": "holdout", "mechanism": "user-only", "cause": "RATE_LIMIT", "feedback": true, "expected": {"causes": ["RATE_LIMIT"], "status": "WAITING_RECHECK"}}
+{"id": "holdout-explicit-handoff", "split": "holdout", "mechanism": "explicit-handoff", "cause": "RATE_LIMIT", "handoff": true, "expected": {"causes": ["RATE_LIMIT"], "status": "HANDED_OFF"}}
+{"id": "holdout-no-progress", "split": "holdout", "mechanism": "no-progress", "cause": "RATE_LIMIT", "observations": false, "repeat": true, "expected": {"causes": [], "status": "HANDED_OFF"}}
+{"id": "holdout-timeout-once", "split": "holdout", "mechanism": "timeout-once", "cause": "RATE_LIMIT", "timeout": true, "expected": {"causes": ["RATE_LIMIT"], "status": "WAITING_USER_ACTION"}}
+{"id": "holdout-missing-request", "split": "holdout", "mechanism": "missing-request", "cause": "RATE_LIMIT", "missing": true, "expected": {"causes": [], "status": "COLLECTING"}}
+{"id": "holdout-other-owner", "split": "holdout", "mechanism": "other-owner", "cause": "RATE_LIMIT", "foreign": true, "expected": {"causes": [], "status": "COLLECTING"}}
+{"id": "holdout-endpoint-mismatch", "split": "holdout", "mechanism": "endpoint-mismatch", "cause": "RATE_LIMIT", "followup": "SUCCESS", "newEndpoint": "/v1/other", "expected": {"causes": [], "status": "COLLECTING", "recheck": "REJECTED"}}
+{"id": "holdout-description-conflict", "split": "holdout", "mechanism": "description-conflict", "cause": "RATE_LIMIT", "claimedStatus": 401, "expected": {"causes": [], "status": "COLLECTING"}}
+{"id": "holdout-unknown-key-state", "split": "holdout", "mechanism": "unknown-key-state", "cause": "KEY_EXPIRED", "override": {"authPresent": true, "authSchemeValid": true, "keyStateAtCall": "UNKNOWN"}, "expected": {"causes": [], "status": "WAITING_USER_ACTION"}}
+{"id": "holdout-boolean-counter", "split": "holdout", "mechanism": "boolean-counter", "cause": "RATE_LIMIT", "override": {"limiterKind": "QUOTA", "quotaRemaining": false}, "expected": {"causes": [], "status": "WAITING_USER_ACTION"}}

@@ -58,8 +58,8 @@ class SearchKnowledgeTool(BaseTool):
         # Each parallel tool call gets its own AsyncSession. SQLAlchemy AsyncSession
         # is not safe for concurrent use by multiple tasks.
         async with SessionLocal() as db:
-            results = await rag_service.search(db, context.user, query, top_k, metadata_filters=arguments.get("filters"))
-        return {"query": query, "filters": arguments.get("filters") or {}, "count": len(results), "results": results}
+            evidence = await rag_service.search_evidence(db, context.user, query, top_k, metadata_filters=arguments.get("filters"))
+        return {"query": query, "filters": arguments.get("filters") or {}, **evidence}
 
 
 class ListDocumentsTool(BaseTool):
@@ -83,7 +83,7 @@ class ListDocumentsTool(BaseTool):
 
         keyword = str(arguments.get("keyword") or "").strip()
         limit = max(1, min(50, int(arguments.get("limit") or 20)))
-        stmt = select(FileUpload).where(_access_filter(context.user)).order_by(FileUpload.created_at.desc()).limit(limit)
+        stmt = select(FileUpload).where(_access_filter(context.user), FileUpload.deleted_at.is_(None)).order_by(FileUpload.created_at.desc()).limit(limit)
         if keyword:
             stmt = stmt.where(FileUpload.file_name.ilike(f"%{keyword}%"))
         async with SessionLocal() as db:
@@ -137,7 +137,7 @@ class GetDocumentTool(BaseTool):
         async with SessionLocal() as db:
             file = await db.scalar(
                 select(FileUpload)
-                .where(FileUpload.file_md5 == file_md5, _access_filter(context.user))
+                .where(FileUpload.file_md5 == file_md5, _access_filter(context.user), FileUpload.deleted_at.is_(None))
                 .order_by(FileUpload.id.desc())
             )
             if not file:
@@ -163,12 +163,16 @@ class GetDocumentTool(BaseTool):
                         DocumentParentChunk.vector_version == (file.active_vector_version or "legacy"),
                     )
                 )
-                text = (parent.text_content if parent else child.text_content)[:max_chars]
+                from app.core.config import get_settings
+                text = (parent.text_content if parent else child.text_content)[:min(max_chars,max(500,get_settings().rag_parent_context_max_chars))]
+                from app.knowledge.citations import issue_citation
                 return {
                     "fileMd5": file.file_md5,
                     "fileName": file.file_name,
                     "chunkId": chunk_id,
                     "pageNumber": child.page_number or (parent.page_number if parent else None),
+                    "indexVersion":file.active_vector_version or 'legacy',
+                    "citationId":issue_citation(file.user_id,file.file_md5,file.active_vector_version or 'legacy',chunk_id),
                     "text": text,
                     "knowledgeMetadata": file_metadata(file),
                 }
@@ -199,4 +203,8 @@ class GetDocumentTool(BaseTool):
                     ).all()
                 )
                 text = "\n\n".join(item.text_content for item in children)[:max_chars]
-            return {"fileMd5": file.file_md5, "fileName": file.file_name, "text": text, "knowledgeMetadata": file_metadata(file)}
+            from app.knowledge.citations import issue_citation
+            return {"fileMd5": file.file_md5, "fileName": file.file_name, "text": text,
+                    "indexVersion": file.active_vector_version or "legacy", "chunkId": chunk_id or 0,
+                    "citationId": issue_citation(file.user_id, file.file_md5, file.active_vector_version or "legacy", chunk_id or 0,scope='document',max_chars=max_chars),
+                    "knowledgeMetadata": file_metadata(file)}

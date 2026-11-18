@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-19",
+  "requested": 60,
+  "collected": 60,
+  "totalBodyChars": 2442313,
+  "failures": [],
+  "byProvider": {
+    "gpt": {
+      "documents": 20,
+      "bodyChars": 820086
+    },
+    "qwen": {
+      "documents": 20,
+      "bodyChars": 1532258
+    },
+    "deepseek": {
+      "documents": 20,
+      "bodyChars": 89969
+    }
+  }
+}

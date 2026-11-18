@@ -409,6 +409,29 @@ def evaluate_performance(case: dict[str, Any], artifact: dict[str, Any]) -> Laye
     )
 
 
+def _verified_billing_number_text(artifact: dict[str, Any]) -> str:
+    summary = (artifact.get("trace") or {}).get("evidenceSummary") or {}
+    values = []
+    for fact in summary.get("verifiedFacts") or ():
+        if not fact.get("found"):
+            continue
+        if fact.get("tool") in {"query_usage", "mcp__billing__get_usage"}:
+            for row in fact.get("usage") or ():
+                values.append(str(row.get("month") or ""))
+                values.extend(f"{row[key]} 次" for key in ("callCount", "overageCount") if type(row.get(key)) is int)
+        if fact.get("tool") in {"query_bill", "mcp__billing__get_invoice"}:
+            for row in fact.get("bills") or ():
+                values.append(str(row.get("month") or ""))
+                if type(row.get("amount")) in (int, float):
+                    values.append(str(row["amount"]))
+        if fact.get("tool") in {"query_plan", "mcp__billing__get_plan"}:
+            if type(fact.get("qpsLimit")) in (int, float):
+                values.append(f"{fact['qpsLimit']} QPS")
+            if type(fact.get("monthlyQuota")) is int:
+                values.append(f"{fact['monthlyQuota']} 次")
+    return "\n".join(values)
+
+
 def evaluate_answer_layer(case: dict[str, Any], artifact: dict[str, Any]) -> tuple[LayerResult, AnswerEvalResult]:
     answer_case = {"id": case.get("id"), "skill": case.get("skill") or "customer-support", "question": case.get("question"), "rubric": case.get("rubric") or {}, "evidence": artifact.get("evidence") or case.get("evidence") or []}
     result = evaluate_answer(
@@ -416,6 +439,7 @@ def evaluate_answer_layer(case: dict[str, Any], artifact: dict[str, Any]) -> tup
         answer_case,
         evidence=list(artifact.get("evidence") or case.get("evidence") or []),
         references=artifact.get("references") if isinstance(artifact.get("references"), dict) else None,
+        verified_number_text=_verified_billing_number_text(artifact),
     )
     # Correctness is represented by gold-fact coverage plus absence of forbidden factual claims.
     correctness = 0.65 * result.metrics.get("completeness", 0.0) + 0.35 * result.metrics.get("hallucinationSafety", 0.0)

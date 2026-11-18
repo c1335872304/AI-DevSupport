@@ -28,7 +28,7 @@ class RouteCache:
     @staticmethod
     def _key(question: str) -> str:
         normalized = " ".join((question or "").strip().lower().split())
-        return "routecache:" + hashlib.md5(normalized.encode("utf-8")).hexdigest()
+        return "routecache:v2:" + hashlib.md5(normalized.encode("utf-8")).hexdigest()
 
     async def get(self, question: str) -> dict | None:
         client = await self._redis()
@@ -52,6 +52,7 @@ class RouteCache:
                 "needs_human": bool(result.get("needs_human")),
                 "confidence": result.get("confidence", 0),
                 "is_follow_up": False,
+                "diagnostic_scope": result.get("diagnostic_scope"),
                 "entities": normalize_entities(result.get("entities")),
             }
             await client.set(self._key(question), json.dumps(payload, ensure_ascii=False), ex=max(60, get_settings().route_cache_ttl_seconds))

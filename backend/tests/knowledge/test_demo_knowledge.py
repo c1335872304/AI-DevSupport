@@ -10,6 +10,16 @@ DEMO_DIR = BACKEND_ROOT / "demo_knowledge"
 EVAL_PATH = BACKEND_ROOT / "eval" / "demo_knowledge_rag.jsonl"
 
 
+def test_default_import_uses_official_vendor_corpus():
+    from scripts.seed_demo_knowledge import MANIFEST_PATH, load_manifest
+
+    manifest = load_manifest()
+    assert MANIFEST_PATH == BACKEND_ROOT / "vendor_knowledge" / "manifest.json"
+    assert len(manifest["documents"]) == 60
+    assert {item["provider"] for item in manifest["documents"]} == {"deepseek", "qwen", "gpt"}
+    assert manifest["evaluationDataset"] == "eval/vendor_full_rag.jsonl"
+
+
 def test_demo_knowledge_manifest_is_complete_and_searchable():
     manifest = json.loads((DEMO_DIR / "manifest.json").read_text(encoding="utf-8"))
     names = [item["file"] for item in manifest["documents"]]

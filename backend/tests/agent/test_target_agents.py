@@ -34,6 +34,18 @@ class _ToolRegistry:
         return [{"type": "function", "function": {"name": name}} for name in names]
 
 
+@pytest.mark.parametrize('rewrite',['认证接口','Qwen认证接口'])
+async def test_planner_cannot_lose_or_switch_original_vendor(monkeypatch,rewrite):
+    async def planner(_messages,_tools):
+        yield {'type':'tool_calls','tool_calls':[AgentToolCall('bad','search_knowledge',{'query':rewrite,'filters':{'product':'Qwen API'}})]}
+    monkeypatch.setattr(llm_service,'stream_agent_turn',planner)
+    work=await target_specialist_agents.plan_work(plans=[AgentPlan('knowledge','knowledge',('search_knowledge',),'retrieve')],
+        question='OpenAI的认证方式是什么',retrieval_query=rewrite,entities={},registry=_Registry(),tool_registry=_ToolRegistry())
+    call=work[0].proposed_calls[0]
+    assert call.arguments['query']=='OpenAI的认证方式是什么'
+    assert call.arguments['filters']['product']=='OpenAI API'
+
+
 @pytest.mark.asyncio
 async def test_target_agents_propose_only_their_own_allowlisted_tools(monkeypatch):
     async def fake_stream(_messages, tools):
@@ -120,7 +132,8 @@ def test_api_agent_derives_second_batch_only_from_verified_call_log_fields():
     assert [(call.name, call.arguments) for call in calls] == [
         ("query_api_key_status", {"app_id": "app-1"}),
         ("query_error_code", {"code": "E401"}),
-        ("query_recent_call_stats", {"endpoint": "/v1/chat", "minutes": 60}),
+        ("query_recent_call_stats", {"endpoint": "/v1/chat", "app_id": "app-1", "minutes": 60,
+                                     "window": "incident", "request_id": "req-1"}),
     ]
 
 
@@ -138,6 +151,34 @@ def test_knowledge_agent_reads_one_access_controlled_document_after_search_hit()
     assert len(calls) == 1
     assert calls[0].name == "get_document"
     assert calls[0].arguments == {"file_md5": "a" * 32, "chunk_id": 7, "max_chars": 5000}
+
+
+@pytest.mark.parametrize(("question", "offered", "expected"), [
+    ("产品保留多久？", set(), []),
+    ("列出可访问的文档", {"list_documents"}, ["list_documents"]),
+    ("请展开完整文档", {"get_document"}, ["get_document"]),
+])
+async def test_document_tools_require_intent_and_verified_anchors(monkeypatch, question, offered, expected):
+    async def planner(_messages, tools):
+        assert {tool["function"]["name"] for tool in tools} == offered
+        yield {"type": "tool_calls", "tool_calls": [
+            AgentToolCall("list", "list_documents", {}),
+            AgentToolCall("guessed", "get_document", {"file_md5": "b" * 32, "chunk_id": 7}),
+            AgentToolCall("anchored", "get_document", {"file_md5": "a" * 32, "chunk_id": 7}),
+        ]}
+    monkeypatch.setattr(llm_service, "stream_agent_turn", planner)
+    result = SimpleNamespace(status="SUCCESS", data={"results": [
+        {"fileMd5": "a" * 32, "chunkId": 7, "textContent": "保留 30 天"},
+    ]})
+    search = AgentToolCall("search", "search_knowledge", {}, source_agent="knowledge")
+    work = await target_specialist_agents.plan_work(
+        plans=[AgentPlan("knowledge", "knowledge", _Registry._tools["knowledge"], "retrieve")],
+        question=question, entities={}, registry=_Registry(), tool_registry=_ToolRegistry(),
+        fallback_outcomes=[(search, result)],
+    )
+    assert [call.name for call in work[0].proposed_calls] == expected
+    if expected == ["get_document"]:
+        assert work[0].proposed_calls[0].arguments["file_md5"] == "a" * 32
 
 
 @pytest.mark.asyncio

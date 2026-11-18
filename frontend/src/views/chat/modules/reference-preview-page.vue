@@ -25,6 +25,7 @@ const score = ref<number | null>(null);
 const chunkId = ref<number | null>(null);
 const referenceNumber = ref<number | undefined>(undefined);
 const sessionId = ref('');
+const citationId = ref('');
 const previewKey = computed(() => String(route.query.previewKey || ''));
 const hasPreviewTarget = computed(() => Boolean(fileName.value || fileMd5.value));
 
@@ -60,6 +61,7 @@ function syncFromStorage() {
     };
 
     fileName.value = payload.fileName || fileName.value;
+    citationId.value = payload.citationId || '';
     fileMd5.value = payload.fileMd5 || fileMd5.value;
     pageNumber.value = payload.pageNumber || pageNumber.value;
     anchorText.value = payload.anchorText || anchorText.value;
@@ -83,7 +85,23 @@ async function loadReferenceDetail() {
   const restoredFromStorage = syncFromStorage();
   loadError.value = '';
 
+  if (citationId.value) {
+    const { error, data } = await request<Api.Document.ReferenceDetailResponse>({
+      url: 'documents/citation', params: { citationId: citationId.value }
+    });
+    if (error || !data) {
+      loadError.value = error?.message || '引用已失效或无权访问';
+      fileName.value = ''; fileMd5.value = ''; matchedChunkText.value = ''; evidenceSnippet.value = '';
+      return;
+    }
+    matchedChunkText.value = data.contextText || data.textContent || matchedChunkText.value;
+    pageNumber.value = data.pageNumber || pageNumber.value;
+    return;
+  }
   if (restoredFromStorage && (fileMd5.value || matchedChunkText.value || evidenceSnippet.value)) {
+    // Historical references lack a build identity; do not silently read a new version.
+    loadError.value = '此历史引用未记录知识版本，请重新检索后查看';
+    fileName.value = ''; fileMd5.value = ''; matchedChunkText.value = ''; evidenceSnippet.value = '';
     return;
   }
 

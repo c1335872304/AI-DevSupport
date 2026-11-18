@@ -2,14 +2,65 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.dialects.mysql import DATETIME as MysqlDateTime
 
 from app.core.time import utcnow
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class IndexBuild(Base):
+    __tablename__ = "index_builds"
+    build_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    file_id: Mapped[int] = mapped_column(Integer, index=True)
+    owner: Mapped[str] = mapped_column(String(64))
+    epoch: Mapped[int] = mapped_column(Integer)
+    input_revision: Mapped[int] = mapped_column(Integer)
+    revision_id: Mapped[str] = mapped_column(String(64))
+    profile_id: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(24), default="BUILDING", index=True)
+    manifest_json: Mapped[str] = mapped_column(Text, default="{}")
+    completed_chunks: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
+
+
+class DocumentRevision(Base):
+    __tablename__ = "document_revisions"
+    revision_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    file_id: Mapped[int] = mapped_column(Integer, index=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(1000))
+    metadata_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class IndexOutbox(Base):
+    __tablename__ = "index_outbox"
+    event_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    job_id: Mapped[str] = mapped_column(String(64), unique=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class EmbeddingAttempt(Base):
+    __tablename__ = "embedding_attempts"
+    attempt_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    build_id: Mapped[str] = mapped_column(String(64), index=True)
+    batch_start: Mapped[int] = mapped_column(Integer)
+    input_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(24), default="STARTED")
+    provider_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    provider_request_ids_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    settled_tokens: Mapped[int] = mapped_column(BigInteger, default=0)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class TimestampMixin:
@@ -46,6 +97,9 @@ class FileUpload(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     file_md5: Mapped[str] = mapped_column(String(32), index=True)
     file_name: Mapped[str] = mapped_column(String(255))
+    source_md5: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    active_source_key: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    active_file_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     total_size: Mapped[int] = mapped_column(BigInteger, default=0)
     status: Mapped[int] = mapped_column(Integer, default=0)  # 0 uploading, 1 completed, 2 merging
     process_status: Mapped[str] = mapped_column(String(32), default="PENDING")
@@ -61,6 +115,12 @@ class FileUpload(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     merged_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     active_vector_version: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    write_epoch: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    input_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    desired_metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Customer-service knowledge metadata. These fields live on the document and are
     # denormalized into Elasticsearch chunks at index time for pre-retrieval filtering.
     knowledge_category: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
@@ -68,6 +128,8 @@ class FileUpload(Base):
     knowledge_region: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     knowledge_channel: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     knowledge_effective_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    knowledge_effective_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    knowledge_superseded_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     knowledge_version: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     knowledge_error_code: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     knowledge_plan: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
@@ -95,6 +157,7 @@ class DocumentParentChunk(Base):
     parent_chunk_id: Mapped[int] = mapped_column(Integer)
     vector_version: Mapped[str] = mapped_column(String(64), default="legacy", index=True)
     text_content: Mapped[str] = mapped_column(Text)
+    location_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_chunk_id: Mapped[int] = mapped_column(Integer)
     end_chunk_id: Mapped[int] = mapped_column(Integer)
@@ -110,6 +173,7 @@ class DocumentVector(Base):
     chunk_id: Mapped[int] = mapped_column(Integer)
     vector_version: Mapped[str] = mapped_column(String(64), default="legacy", index=True)
     text_content: Mapped[str] = mapped_column(Text)
+    location_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     anchor_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
     model_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -129,6 +193,97 @@ class ConversationSession(Base, TimestampMixin):
     # Structured entities remembered across turns, e.g. request_id/app_id/error_code.
     # This preserves the legacy supervisor's entity memory without requiring Redis.
     collected_entities_json: Mapped[str] = mapped_column(Text, default="{}")
+
+
+class ConversationContextState(Base):
+    __tablename__ = "conversation_context_states"
+    conversation_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("conversation_sessions.conversation_id", ondelete="CASCADE"), primary_key=True,
+    )
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    last_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    state_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class DiagnosisSession(Base, TimestampMixin):
+    __tablename__ = "diagnosis_sessions"
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow, onupdate=utcnow)
+    diagnosis_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(64), index=True)
+    app_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="COLLECTING")
+    symptom: Mapped[str] = mapped_column(Text)
+    entities_json: Mapped[str] = mapped_column(Text, default="{}")
+    entity_sources_json: Mapped[str] = mapped_column(Text, default="{}")
+    candidates_json: Mapped[str] = mapped_column(Text, default="[]")
+    missing_fields_json: Mapped[str] = mapped_column(Text, default="[]")
+    next_action: Mapped[str] = mapped_column(String(500), default="补充脱敏请求信息")
+    end_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_generation_id: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    workflow_json: Mapped[str] = mapped_column(Text, default="{}", server_default=text("('{}')"))
+
+
+class DiagnosisExecution(Base):
+    __tablename__ = "diagnosis_executions"
+    generation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    diagnosis_id: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(24), default="PENDING", index=True)
+    context_json: Mapped[str] = mapped_column(Text, default="{}")
+    owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), nullable=True)
+    epoch: Mapped[int] = mapped_column(Integer, default=0)
+    attempts_used: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow, onupdate=utcnow)
+
+
+class DiagnosisStep(Base):
+    __tablename__ = "diagnosis_steps"
+    step_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    diagnosis_id: Mapped[str] = mapped_column(String(64), index=True)
+    generation_id: Mapped[str] = mapped_column(String(64), index=True)
+    tool_name: Mapped[str] = mapped_column(String(64))
+    arguments_json: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(24), default="PENDING")
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    result_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow, onupdate=utcnow)
+
+
+class DiagnosisTurn(Base):
+    __tablename__ = "diagnosis_turns"
+    generation_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    diagnosis_id: Mapped[str] = mapped_column(String(64), index=True)
+    finished: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow)
+
+
+class DiagnosisEvidence(Base):
+    __tablename__ = "diagnosis_evidence"
+    evidence_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    diagnosis_id: Mapped[str] = mapped_column(String(64), index=True)
+    generation_id: Mapped[str] = mapped_column(String(64), index=True)
+    payload_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow)
+
+
+class DiagnosisTransition(Base):
+    __tablename__ = "diagnosis_transitions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    diagnosis_id: Mapped[str] = mapped_column(String(64), index=True)
+    generation_id: Mapped[str] = mapped_column(String(64))
+    from_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(32))
+    reason: Mapped[str] = mapped_column(String(255))
+    evidence_ids_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow)
 
 
 class ConversationMessage(Base):
@@ -285,6 +440,7 @@ class SupportHandoff(Base):
     user_id: Mapped[str] = mapped_column(String(64), index=True)
     conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     generation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    diagnosis_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
     category: Mapped[str] = mapped_column(String(64), default="GENERAL", index=True)
     priority: Mapped[str] = mapped_column(String(16), default="NORMAL", index=True)
     status: Mapped[str] = mapped_column(String(20), default="OPEN", index=True)
@@ -327,7 +483,17 @@ class SupportApiCallLog(Base):
     http_status: Mapped[int] = mapped_column(Integer, index=True)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime().with_variant(MysqlDateTime(fsp=6), "mysql"), default=utcnow, index=True)
+
+
+class SupportRequestObservation(Base):
+    """Sanitized at-call instrumentation for the separate Demo API service."""
+    __tablename__ = "support_request_observations"
+    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    service_id: Mapped[str] = mapped_column(String(64), default="demo-api")
+    rule_version: Mapped[str] = mapped_column(String(64), default="2026-10-v1")
+    observations_json: Mapped[str] = mapped_column(Text, default="{}")
 
 
 class SupportErrorCode(Base):
@@ -378,12 +544,47 @@ class SupportInvoice(Base):
     status: Mapped[str] = mapped_column(String(20), default="ISSUED")
 
 
+class RefundApprovalPreview(Base, TimestampMixin):
+    __tablename__ = "refund_approval_previews"
+    __table_args__ = (UniqueConstraint("user_id", "request_key", name="uq_refund_preview_user_key"),)
+
+    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    invoice_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    conversation_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    handoff_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    closure_status: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    request_key: Mapped[str] = mapped_column(String(64))
+    reason: Mapped[str] = mapped_column(String(500))
+    decision_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decision_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class RefundSandboxIntent(Base):
+    __tablename__ = "refund_sandbox_intents"
+
+    request_id: Mapped[str] = mapped_column(
+        ForeignKey("refund_approval_previews.request_id", ondelete="CASCADE"), primary_key=True,
+    )
+    payment_id: Mapped[str] = mapped_column(String(64))
+    amount_minor: Mapped[int] = mapped_column(BigInteger)
+    refund_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rejection: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+
 class ProcessingJob(Base):
     __tablename__ = "processing_jobs"
+    __table_args__ = (Index("uq_processing_request_key", "request_key", unique=True),)
     job_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     file_id: Mapped[int] = mapped_column(Integer, index=True)
+    input_revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    request_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="PENDING", index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
+    lease_owner: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)

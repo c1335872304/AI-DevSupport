@@ -1,0 +1,15 @@
+services:
+  langfuse-web:
+    environment:
+      HOSTNAME: "0.0.0.0"
+    networks:
+      default:
+        gw_priority: 1
+      paismart:
+        aliases:
+          - paismart-langfuse
+
+networks:
+  paismart:
+    external: true
+    name: paismart-langfuse

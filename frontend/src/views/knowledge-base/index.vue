@@ -235,6 +235,8 @@ function syncTaskFromServer(target: Api.KnowledgeBase.UploadTask, source: Api.Kn
     actualChunkCount: source.actualChunkCount,
     knowledgeMetadata: source.knowledgeMetadata,
     vectorizationStatus: source.vectorizationStatus,
+    activeVectorVersion: source.activeVectorVersion,
+    activeIndexAvailable: source.activeIndexAvailable,
     vectorizationErrorMessage: source.vectorizationErrorMessage
   });
 }
@@ -337,6 +339,7 @@ function canRetryVectorization(row: Api.KnowledgeBase.UploadTask) {
 async function handleRetryVectorization(row: Api.KnowledgeBase.UploadTask) {
   const { error } = await request({
     url: `/documents/${row.fileMd5}/vectorization/retry`,
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     method: 'POST'
   });
 
@@ -355,7 +358,7 @@ function renderActualEmbeddingUsage(row: Api.KnowledgeBase.UploadTask) {
     return <span class="text-xs text-stone-400">-</span>;
   }
 
-  if (hasActualVectorizationUsage(row)) {
+  if (hasActualVectorizationUsage(row) && !['PENDING', 'PROCESSING', 'FAILED'].includes(row.vectorizationStatus || '')) {
     const actualTokenLabel = Number(row.actualEmbeddingTokens).toLocaleString();
     const actualChunkLabel = Number(row.actualChunkCount || 0).toLocaleString();
     return (
@@ -370,6 +373,7 @@ function renderActualEmbeddingUsage(row: Api.KnowledgeBase.UploadTask) {
     return (
       <div class="text-xs text-sky-700 leading-5">
         <div>向量化处理中</div>
+        {row.activeIndexAvailable ? <div class="text-emerald-700">现有知识版本仍可检索</div> : null}
         <div class="text-stone-400">完成后会回写实际 Tokens</div>
       </div>
     );
@@ -397,6 +401,7 @@ function renderActualEmbeddingUsage(row: Api.KnowledgeBase.UploadTask) {
     return (
       <div class="flex flex-col gap-6px text-xs leading-5">
         <div class="text-rose-600 font-500">向量化失败</div>
+        {row.activeIndexAvailable ? <div class="text-emerald-700">现有知识版本仍可检索</div> : null}
         <NEllipsis tooltip lineClamp={2} class="text-stone-500">
           {row.vectorizationErrorMessage || '请检查 Embedding 额度或稍后重试'}
         </NEllipsis>

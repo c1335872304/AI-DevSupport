@@ -10,6 +10,12 @@ from app.knowledge.rag import rag_service
 router = APIRouter(prefix="/search", tags=["search"])
 
 
+@router.get("/evidence")
+async def evidence_search(query: str = Query(..., min_length=1), topK: int = Query(6, ge=1, le=50),
+                          user: User = Depends(current_user), db: AsyncSession = Depends(get_db)):
+    return ok(await rag_service.search_evidence(db, user, query, topK))
+
+
 @router.get("/hybrid")
 async def hybrid_search(
     query: str = Query(..., min_length=1),

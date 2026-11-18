@@ -7,6 +7,8 @@ def test_redaction_masks_credentials_but_keeps_diagnostic_ids():
     assert "abc.def" not in redacted
     assert "sk-test-secret-123456" not in redacted
     assert "req_123" in redacted
+    assert "Authorization: Bearer [REDACTED]" in redacted
+    assert redact_text("Authorization: Bearer <API_KEY>") == "Authorization: Bearer <API_KEY>"
 
 
 def test_redaction_recurses_through_tool_arguments():

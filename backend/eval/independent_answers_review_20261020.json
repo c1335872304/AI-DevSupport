@@ -1,0 +1,18 @@
+{
+  "reviewer": "执行本次评测的 Codex 按事先冻结要求逐项审阅；不是盲测或独立人工/模型裁判",
+  "overallRule": "PASS=完整满足问题要求、厂商范围正确且关键结论有实际引用锚点支撑；PARTIAL=部分要求或锚点支撑缺失；FAIL=未回答核心问题或厂商不明时给通用参数保证。自动转人工作为额外运行缺陷单列，不事后加入冻结题的得分。",
+  "cases": [
+    {"id":"E01","overall":"PARTIAL","facts":"PASS","vendor":"PASS","citationSupport":"PARTIAL","insufficiency":"N/A","note":"三个事实要求满足；实际只引用#1 chunk1，缺少response_format设置所在的chunk0。另有get_document和检索#8提供全文相关证据，但不是回答实际引用的锚点。自动创建工单。"},
+    {"id":"E02","overall":"PASS","facts":"PASS","vendor":"PASS","citationSupport":"PASS","insufficiency":"N/A","note":"assistant、prefix=True、Beta地址三项正确，#1 chunk0及#2可支撑。额外自动转人工，单列运行缺陷。"},
+    {"id":"E03","overall":"PARTIAL","facts":"N/A","vendor":"PASS","citationSupport":"PARTIAL","insufficiency":"PARTIAL","note":"没有承诺个人5000QPS或永不限流，也明确Demo不代表厂商账户；但被故障诊断模板替换，未直接解释文档无法证明个人未来保障，追问故障号偏离问题。"},
+    {"id":"E04","overall":"FAIL","facts":"FAIL","vendor":"PASS","citationSupport":"FAIL","insufficiency":"N/A","note":"跨地域Key和计费方案两项均未回答；诊断门替换为没有请求记录。来源#3声明qwen-structured-outputs，实际映射qwen-batch。"},
+    {"id":"E05","overall":"FAIL","facts":"FAIL","vendor":"PASS","citationSupport":"FAIL","insufficiency":"N/A","note":"15行拆批、8192边界、256维三项均未回答；相关文档已召回，却被诊断门替换。来源#2/#3声明文件与映射不同。"},
+    {"id":"E06","overall":"PASS","facts":"N/A","vendor":"PASS","citationSupport":"PASS","insufficiency":"PASS","note":"明确未找到该型号，不能确认512K或发布日期；引用#2/#3是通用参数规则并明确不得外推。参数失败和额外工单保留在轨迹。"},
+    {"id":"E07","overall":"FAIL","facts":"FAIL","vendor":"PASS","citationSupport":"FAIL","insufficiency":"N/A","note":"background=true和轮询条件均未回答；后台文档已召回却被诊断门替换。来源#2/#3名称与映射不一致。"},
+    {"id":"E08","overall":"PARTIAL","facts":"PASS","vendor":"PASS","citationSupport":"PARTIAL","insufficiency":"N/A","note":"Schema保证差异和拒绝处理正确，全文有依据；#1/#2锚点支持JSON/Schema，但实际七个引用锚点未包含显式拒绝规则，严格引用支撑不完整。"},
+    {"id":"E09","overall":"PASS","facts":"N/A","vendor":"PASS","citationSupport":"PASS","insufficiency":"PASS","note":"明确不能由通用规则确认组织配置或未来全部请求，未编造个人状态；#1 chunk35直接支撑其缓存默认规则说明。"},
+    {"id":"E10","overall":"FAIL","facts":"PARTIAL","vendor":"FAIL","citationSupport":"PARTIAL","insufficiency":"FAIL","note":"未先确认厂商/模型，也未明确首段适用Qwen，将其response_format和max_tokens规则表述为通用方案；后补DeepSeek Responses参数不能消除范围歧义。"},
+    {"id":"E11","overall":"PARTIAL","facts":"PARTIAL","vendor":"PASS","citationSupport":"PARTIAL","insufficiency":"PARTIAL","note":"OpenAI部分正确并有锚点；DeepSeek部分未完成，还称结构化证据没有正文，而#6可访问锚点含JSON Output说明。暴露证据传递/消费缺口，不算完成比较。"},
+    {"id":"E12","overall":"PASS","facts":"N/A","vendor":"PASS","citationSupport":"PASS","insufficiency":"PASS","note":"明确2026快照不能确认2099规范；把64~2048和1024示例标为当前快照，#1及其余参数示例可支撑。额外工单单列。"}
+  ]
+}

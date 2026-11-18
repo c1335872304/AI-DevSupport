@@ -1,5 +1,7 @@
 # 本地启动
 
+四阶段交付的独立、无Provider费用演示见[三条演示与交付启动](../03-operations/PROJECT_DEMOS.md)；当前实现和验收范围见[最终报告](../04-testing/FINAL_PROJECT_ACCEPTANCE.md)。已有知识库和 `.env` 不需要为演示清空或覆盖。
+
 ## 1. 运行模式
 
 ### Minimal Local
@@ -11,7 +13,7 @@ SQLite
 Local Storage
 Background Processing
 Database Retrieval
-Local Hash Embedding（未配置 API Key 时）
+Qwen Embedding（建库与查询必须配置有效 Key）
 Context-only LLM fallback（未配置 LLM Key 时）
 ```
 
@@ -19,7 +21,7 @@ Context-only LLM fallback（未配置 LLM Key 时）
 
 ### Full Infrastructure
 
-用于完整生产链路：
+用于完整基础设施链路；生产边界另见运维文档：
 
 ```text
 MySQL
@@ -56,7 +58,8 @@ source .venv/bin/activate
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env
+cp -n .env.example .env  # 仅首次创建；已有配置不要覆盖
+python -m alembic upgrade head
 python run.py
 ```
 
@@ -66,11 +69,10 @@ python run.py
 API       http://localhost:8000
 Swagger   http://localhost:8000/docs
 Health    http://localhost:8000/health
-Metrics   http://localhost:8000/metrics
 WebSocket ws://localhost:8000/chat
 ```
 
-开发模式默认创建 SQLite schema 和 bootstrap admin。生产环境使用 Alembic，不依赖自动建表。
+首次本地可创建开发 schema 和 bootstrap admin；已有数据库先备份并运行 Alembic。create_all 不负责新增列，不能替代版本迁移。run.py 仅在 DATABASE_AUTO_MIGRATE=true 时自动执行迁移。Windows PowerShell 首次复制配置使用 Copy-Item .env.example .env，须先确认 .env 不存在。
 
 ## 3. API 诊断 / Billing Demo 数据（可选）
 
@@ -104,19 +106,7 @@ Professional plan -> QPS 50 / 月配额 1,000,000
 
 ## 4. Demo 客服知识库（推荐）
 
-项目自带 9 份面向 AI 客服的 Markdown 知识文档：
-
-```text
-api-getting-started.md
-authentication.md
-rate-limit.md
-billing-policy.md
-refund-policy.md
-error-codes.md
-troubleshooting-faq.md
-security-and-data-handling.md
-release-notes.md
-```
+默认知识库为 DeepSeek、Qwen、GPT / OpenAI 的 60 份官方正文快照，每家 20 份，使用千问 `text-embedding-v4` 编码。资料清单、来源和导入方式见 [官方文档知识库](VENDOR_KNOWLEDGE.md)。旧假想公司手册只保留作历史测试夹具，不再默认导入。
 
 先验证 Parser / Parent-Child Chunking：
 
@@ -128,13 +118,13 @@ python scripts/seed_demo_knowledge.py --validate-only
 然后一键走真实建库链路：
 
 ```bash
-python scripts/seed_demo_knowledge.py --username admin --reset
+python scripts/seed_demo_knowledge.py --username admin
 ```
 
 默认以 public 文档写入当前用户的 primary organization；如希望只有文档拥有者可检索：
 
 ```bash
-python scripts/seed_demo_knowledge.py --username admin --reset --private
+python scripts/seed_demo_knowledge.py --username admin --private
 ```
 
 重复运行默认会跳过已经完成索引且内容未变化的文档；强制重建可使用：
@@ -146,17 +136,15 @@ python scripts/seed_demo_knowledge.py --username admin --reindex
 建库后验证 RAG：
 
 ```bash
-python scripts/evaluate_rag.py eval/demo_knowledge_rag.jsonl --username admin -k 6
+python scripts/evaluate_rag.py eval/vendor_full_rag.jsonl --username admin -k 6
 ```
 
 推荐直接问：
 
 ```text
-“AUTH_KEY_EXPIRED 怎么处理？”
-“429 一定代表月额度用完了吗？”
-“Professional 套餐超额费用怎么算？”
-“我的退款到账了吗，能不能直接从知识库判断？”
-“接口超时时应该先收集什么信息？”
+“DeepSeek 的 402 和 429 分别表示什么？”
+“Qwen 的 API Key 如何配置？”
+“GPT API 的限流应该如何处理？”
 ```
 
 其中前三类知识问题可以由 RAG 回答；“我的退款是否到账”仍必须依赖真实业务 Tool/MCP，Demo 文档明确禁止根据政策推断个人状态。
@@ -179,15 +167,17 @@ pnpm build
 
 聊天前端使用 `/proxy-ws/chat`，本地 Vite proxy 和生产 Nginx 都应转发到后端 `/chat`。
 
+Docling 的独立环境和模型准备见 [RAG 操作手册](../03-operations/RAG_OPERATIONS.md)。仅运行 Markdown 语料无需安装 Docling；测试替身不代表真实编码效果。
+
 ## 6. 推荐的客服 Smoke Test
 
 启动后可以按顺序测试：
 
 ```text
-1. “你们的退款政策是什么？”
+1. “Qwen 的 API Key 如何配置？”
    预期：customer-support + knowledge search
 
-2. “我登录一直报错，验证码也收不到。”
+2. “DeepSeek 返回 429 时该如何处理？”
    预期：RoutingPolicy → knowledge Agent → 受控知识检索
 
 3. “不用继续排查了，帮我转人工。”
@@ -205,6 +195,8 @@ GET /api/v1/support/handoffs
 ## 7. 手动完整基础设施（高级）
 
 根目录 `compose.yaml` 是当前推荐入口；下面的基础设施 Compose 只适合需要手动运行后端的场景。
+
+以下配置复制仅适用于新环境。已有 `.env` 须保留并逐项调整，不直接覆盖；数据库升级前先备份。
 
 ```bash
 docker compose -f deploy/compose.infra.yml up -d
@@ -271,7 +263,7 @@ docker compose up -d --build api worker
 docker compose run --rm demo-seed python scripts/seed_demo_knowledge.py --username admin --reindex
 ```
 
-`--reindex` 会用 Qwen 为现有 9 份 Demo 文档重新生成向量；之后新的上传文档也会由 worker 使用同一套 Qwen 配置。Key 只写入本机 `backend/.env`，不要提交到 Git，也不要发到聊天中。
+`--reindex` 会用 Qwen 为清单内 60 份官方文档重新生成向量；之后新的上传文档也会由 worker 使用同一套 Qwen 配置。Key 只写入本机 `backend/.env`，不要提交到 Git，也不要发到聊天中。
 
 如果要使用 1024 维而不是当前的 256 维，需要先删除/重建 Elasticsearch 知识索引，再将 `EMBEDDING_DIMENSION=1024` 并完整重建所有文档；不能只改环境变量。
 
@@ -305,12 +297,13 @@ cd backend
 # Agent、RoutingPolicy、Scheduler、Skill、Security、Fixture Eval
 pytest -q tests/agent tests/architecture tests/skills tests/security tests/evaluation
 
-# 本地确定性 RAG、解析、存储和检索
+# 解析、分块、存储与显式测试替身回归；不调用真实 Embedding
 pytest -q tests/knowledge
 python scripts/evaluate_skills.py
 python scripts/evaluate_answers.py
 python scripts/evaluate_customer_service.py
-python scripts/evaluate_rag.py eval/demo_knowledge_rag.jsonl --username admin -k 6
+# 真实 RAG 评测另需 EMBEDDING_API_KEY，不能用空 Key 代替
+python scripts/evaluate_rag.py eval/vendor_full_rag.jsonl --username admin -k 6
 ```
 
 Docker 内 Billing MCP E2E：
@@ -356,7 +349,7 @@ python scripts/evaluate_customer_service.py --dataset eval/customer_service/benc
 内置 Demo Knowledge RAG Eval：
 
 ```bash
-python scripts/evaluate_rag.py eval/demo_knowledge_rag.jsonl --username admin -k 6
+python scripts/evaluate_rag.py eval/vendor_full_rag.jsonl --username admin -k 6
 ```
 
 真实自定义 RAG Eval：

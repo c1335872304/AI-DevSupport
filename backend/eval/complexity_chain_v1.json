@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "frozenBeforeRun": true,
+  "cases": [
+    {
+      "id": "C01",
+      "vendor": "deepseek",
+      "kind": "fact",
+      "complexity": "simple_document",
+      "question": "DeepSeek JSON Output接入时response_format和提示词应如何配置？",
+      "sources": [
+        {
+          "file": "deepseek-json-output.md",
+          "sha256": "36b4d4f8b456f138cf2f009f277f4a7180251d204ad463a4f50504e3d19b8aa8"
+        }
+      ],
+      "requiredClaims": [
+        "json_object；提示含json并提供格式示例；max_tokens合理"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "C02",
+      "vendor": "qwen",
+      "kind": "fact",
+      "complexity": "simple_document",
+      "question": "Qwen北京地域的API Key应配哪里的Base URL，还要匹配什么计费方案？",
+      "sources": [
+        {
+          "file": "qwen-base-url.md",
+          "sha256": "c6ac486615a1c97edcb62f13400dcd1de2f88737bc48cf9b955bd5d5af599e36"
+        }
+      ],
+      "requiredClaims": [
+        "同地域Key与Base URL配套",
+        "同一计费方案，不能跨地域混用"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "C03",
+      "vendor": "gpt",
+      "kind": "fact",
+      "complexity": "simple_document",
+      "question": "OpenAI后台响应如何开启，queued和in_progress时怎样轮询？",
+      "sources": [
+        {
+          "file": "gpt-background.md",
+          "sha256": "eebbc1f4075f0f9542387313059e86315a6fcb00b628eb8b45a226320cde6282"
+        }
+      ],
+      "requiredClaims": [
+        "background=true",
+        "GET/retrieve继续轮询两种状态，终态停止"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "C04",
+      "vendor": "qwen",
+      "kind": "fact",
+      "complexity": "simple_document",
+      "question": "Qwen的OpenAI兼容流式聊天，stream_options.include_usage应如何配置？",
+      "sources": [
+        {
+          "file": "qwen-streaming.md",
+          "sha256": "af38295d233791b4db192ccd3deff32b74551c8184de9f43cf6ee200e7606e1c"
+        }
+      ],
+      "requiredClaims": [
+        "stream=true",
+        "stream_options.include_usage=true，位置正确"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "G01",
+      "vendor": "comparison",
+      "kind": "comparison",
+      "complexity": "complex_document",
+      "question": "对比DeepSeek JSON Output与OpenAI Structured Outputs的Schema约束，分别给出依据。",
+      "sources": [
+        {
+          "file": "deepseek-json-output.md",
+          "sha256": "36b4d4f8b456f138cf2f009f277f4a7180251d204ad463a4f50504e3d19b8aa8"
+        },
+        {
+          "file": "gpt-structured-outputs.md",
+          "sha256": "ba8b90f6ec85d0f59000adb6f883af64765371e68e51c0368fb0155e9da9260c"
+        }
+      ],
+      "requiredClaims": [
+        "DeepSeek仅合法JSON，OpenAI支持Schema约束",
+        "两家分别引用，不混用参数"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "G02",
+      "vendor": "ambiguous",
+      "kind": "clarification",
+      "complexity": "clarification",
+      "question": "JSON结构化输出要设置什么参数才能保证Schema？",
+      "sources": [],
+      "requiredClaims": [
+        "确认厂商模型和接口；不提供通用跨厂商保证"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "D01",
+      "vendor": "demo",
+      "kind": "diagnosis",
+      "complexity": "diagnostic",
+      "question": "本地Demo API请求 req_chain_37_expired 返回401，请核查原因并说明修正后怎么复查。",
+      "sources": [],
+      "requiredClaims": [
+        "核验本次请求KEY_EXPIRED，不以当前ACTIVE状态否定历史过期",
+        "提示配置有效凭据并用新请求复查，不声称已恢复"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。",
+      "conversationGroup": "expired-recheck"
+    },
+    {
+      "id": "D02",
+      "vendor": "demo",
+      "kind": "diagnosis",
+      "complexity": "diagnostic",
+      "question": "我已配置有效凭据，新请求 req_chain_37_fixed_{phase} 返回200，请复查刚才的401是否已解决。",
+      "sources": [],
+      "requiredClaims": [
+        "同一会话复查新请求200",
+        "根据新证据确认已解决，保留旧请求历史原因"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。",
+      "conversationGroup": "expired-recheck",
+      "questionTemplate": "我已配置有效凭据，新请求 req_chain_37_fixed_{phase} 返回200，请复查刚才的401是否已解决。",
+      "fixtureBeforeSend": "fixed"
+    },
+    {
+      "id": "D03",
+      "vendor": "demo",
+      "kind": "diagnosis",
+      "complexity": "diagnostic",
+      "question": "本地Demo API请求 req_chain_37_rate 返回429，请核查是频率还是配额问题。",
+      "sources": [],
+      "requiredClaims": [
+        "RATE_LIMIT有请求时证据，rateObserved=11/rateLimit=10",
+        "不把429自动当配额耗尽，给降频及退避建议"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。",
+      "conversationGroup": "rate-recheck"
+    },
+    {
+      "id": "D04",
+      "vendor": "demo",
+      "kind": "diagnosis",
+      "complexity": "diagnostic",
+      "question": "我已降低频率，新请求 req_chain_37_quota_{phase} 仍返回429，请复查原因，能确认恢复了吗？",
+      "sources": [],
+      "requiredClaims": [
+        "识别新请求QUOTA_LIMIT/quotaRemaining=0",
+        "不误报恢复，不沿用旧频率原因"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。",
+      "conversationGroup": "rate-recheck",
+      "questionTemplate": "我已降低频率，新请求 req_chain_37_quota_{phase} 仍返回429，请复查原因，能确认恢复了吗？",
+      "fixtureBeforeSend": "quota"
+    },
+    {
+      "id": "D05",
+      "vendor": "demo",
+      "kind": "diagnosis",
+      "complexity": "diagnostic",
+      "question": "本地Demo API请求 req_chain_37_unknown 返回401，请确认一定是Key过期吗？",
+      "sources": [],
+      "requiredClaims": [
+        "不存在该请求记录，不确认具体原因",
+        "区分用户口述和已核验事实，不捏造查询结果"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    },
+    {
+      "id": "D06",
+      "vendor": "demo",
+      "kind": "diagnosis",
+      "complexity": "diagnostic",
+      "question": "本地Demo API请求 req_chain_37_rate 返回429，请核查并转人工客服。",
+      "sources": [],
+      "requiredClaims": [
+        "收集实际证据，保留明确转人工请求",
+        "仅工具成功并有工单号才声明创建成功"
+      ],
+      "scoring": "按冻结要求核对事实、来源及证据不足边界；诊断额外核对工具轨迹、状态和工单，不能用完成状态代替质量。"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,11 +22,24 @@ class Settings(BaseSettings):
     # Run Alembic once from backend/run.py before starting Uvicorn. Keep this
     # opt-in because direct multi-worker Uvicorn launches must migrate in CI/CD.
     database_auto_migrate: bool = False
+    refund_preview_enabled: bool = False
+    refund_checkpoint_path: Path = Path("data/refund-checkpoints.sqlite")
+    refund_sandbox_url: str = ""
 
     storage_backend: str = "local"
     local_storage_dir: str = "./data/storage"
 
     task_mode: str = "background"  # background | kafka
+    index_lease_seconds: int = 120
+    index_max_attempts: int = 3
+    index_gc_retention_seconds: int = 3600
+    index_max_active_per_user: int = 2
+    docling_python: str = ""
+    docling_artifacts_path: str = ""
+    document_parse_timeout_seconds: int = 180
+    document_parse_max_bytes: int = 25 * 1024 * 1024
+    document_parse_max_pages: int = 200
+    document_parse_max_memory_mb: int = 2048
     search_backend: str = "database"  # database | elasticsearch
 
     jwt_secret: str = "change-me-in-production-with-at-least-32-bytes"
@@ -64,6 +77,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.deepseek.com/v1"
     llm_api_key: str = ""
     llm_model: str = "deepseek-chat"
+    llm_thinking_enabled: bool | None = None
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2000
     llm_stream_include_usage: bool = True
@@ -94,6 +108,9 @@ class Settings(BaseSettings):
     websocket_auth_timeout_seconds: float = 10.0
     conversation_history_messages: int = 20
     conversation_history_chars: int = 12000
+    context_system_enabled: bool = True
+    context_progress_enabled: bool = False
+    context_shadow_enabled: bool = False
 
     # Agent runtime. A model turn may emit multiple independent tool calls; the
     # runtime executes them concurrently and feeds all results back in one batch.
@@ -110,6 +127,11 @@ class Settings(BaseSettings):
     # A generation has one shared read-Tool budget across all specialists and
     # replanning rounds. This is a hard stop against accidental tool loops.
     agent_max_tool_calls: int = 8
+    diagnosis_lease_seconds: int = 240
+    diagnosis_step_attempts: int = 2
+    diagnosis_turn_attempt_budget: int = 12
+    diagnosis_case_attempt_budget: int = 36
+    diagnosis_recovery_enabled: bool = True
 
     # Billing is the only external MCP integration. Its three stable read Tool
     # contracts are query_plan/query_usage/query_bill.
@@ -143,7 +165,6 @@ class Settings(BaseSettings):
     mcp_service_username: str = ""
 
     # Production runtime / accounting / observability.
-    agent_trace_persist_enabled: bool = True
     llm_minimum_balance_tokens: int = 1
     rate_limit_register_max: int = 20
     rate_limit_register_window_seconds: int = 600
@@ -158,10 +179,10 @@ class Settings(BaseSettings):
     privacy_trace_retention_days: int = 90
     privacy_auto_maintenance_enabled: bool = True
     privacy_maintenance_interval_seconds: int = 86400
-    metrics_enabled: bool = True
-    otel_enabled: bool = False
-    otel_service_name: str = "paismart-backend"
-    otel_exporter_otlp_endpoint: str = ""
+    langfuse_enabled: bool = True
+    langfuse_base_url: str = ""
+    langfuse_public_key: str = ""
+    langfuse_secret_key: SecretStr = SecretStr("")
 
     # Parent-child RAG: child chunks are embedded/searched; parent chunks are used as answer context.
     parent_chunk_size: int = 1800

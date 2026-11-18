@@ -21,6 +21,9 @@ declare global {
   const UploadStatus: typeof import('../enum/index')['UploadStatus']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const addThemeVarsToGlobal: typeof import('../store/modules/theme/shared')['addThemeVarsToGlobal']
+  const applyStreamContent: typeof import('../utils/chat-stream')['applyStreamContent']
+  const approvalApi: typeof import('../service/api/support-approval')['approvalApi']
+  const approvalLabel: typeof import('../service/api/support-approval')['approvalLabel']
   const buildInviteChannelGuide: typeof import('../constants/invite-channel')['buildInviteChannelGuide']
   const buildInviteCodeShareMessage: typeof import('../constants/invite-channel')['buildInviteCodeShareMessage']
   const calculateMD5: typeof import('../utils/common')['calculateMD5']
@@ -63,6 +66,7 @@ declare global {
   const filterAuthRoutesByRoles: typeof import('../store/modules/route/shared')['filterAuthRoutesByRoles']
   const filterTabsById: typeof import('../store/modules/tab/shared')['filterTabsById']
   const filterTabsByIds: typeof import('../store/modules/tab/shared')['filterTabsByIds']
+  const findStreamMessage: typeof import('../utils/chat-stream')['findStreamMessage']
   const findTabByRouteName: typeof import('../store/modules/tab/shared')['findTabByRouteName']
   const formatDate: typeof import('../utils/common')['formatDate']
   const getActivePinia: typeof import('pinia')['getActivePinia']
@@ -207,6 +211,9 @@ declare global {
   // @ts-ignore
   export type { FlatResponseData } from '~/packages/axios/src'
   import('~/packages/axios/src')
+  // @ts-ignore
+  export type { ApprovalItem, ApprovalReview, ApprovalOptions } from '../service/api/support-approval'
+  import('../service/api/support-approval')
   // @ts-ignore
   export type { ECOption } from '../hooks/common/echarts'
   import('../hooks/common/echarts')

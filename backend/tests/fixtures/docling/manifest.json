@@ -1,0 +1,69 @@
+{
+  "license": "Synthetic project test fixtures",
+  "cases": [
+    {
+      "file": "single.pdf",
+      "expected": [
+        "AUTH_KEY_INVALID",
+        "401"
+      ],
+      "page": 1
+    },
+    {
+      "file": "double.pdf",
+      "expected": [
+        "Authentication",
+        "401",
+        "Rate limits",
+        "429"
+      ],
+      "page": 1
+    },
+    {
+      "file": "crosspage-table.pdf",
+      "expected": [
+        "Parameter",
+        "limit_0",
+        "100",
+        "limit_64",
+        "164"
+      ],
+      "table": true
+    },
+    {
+      "file": "code.pdf",
+      "expected": [
+        "/v1/chat/completions",
+        "Bearer TOKEN",
+        "demo-model"
+      ],
+      "page": 1
+    },
+    {
+      "file": "headings.docx",
+      "expected": [
+        "AUTH_KEY_INVALID",
+        "401",
+        "Authorization"
+      ]
+    },
+    {
+      "file": "table-image.docx",
+      "expected": [
+        "max_requests",
+        "100"
+      ],
+      "table": true
+    },
+    {
+      "file": "scanned.pdf",
+      "expected": [],
+      "error": "OCR_REQUIRED"
+    },
+    {
+      "file": "corrupt.pdf",
+      "expected": [],
+      "error": "PARSE_TYPE"
+    }
+  ]
+}

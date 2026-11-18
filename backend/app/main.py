@@ -8,14 +8,13 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 
 from app import __version__
 
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.deps import protected_ops_user
-from app.core.observability import HTTP_LATENCY, HTTP_REQUESTS, prometheus_payload, setup_otel
 from app.core.redaction import redact_text
 from app.db.init_db import init_db
 from app.db.session import engine
@@ -23,7 +22,7 @@ from app.api.websocket.chat import router as websocket_router
 from app.knowledge.elasticsearch import elasticsearch_service
 from app.tools.mcp.billing import billing_mcp_adapter
 from app.tools.registry import tool_registry
-from app.documents.jobs import resume_processing_jobs
+from app.documents.jobs import maintenance_loop
 from app.agent.generation import generation_runtime
 from app.agent.graph.engine import LANGGRAPH_AVAILABLE, LANGGRAPH_ENGINE
 
@@ -38,7 +37,10 @@ async def lifespan(app: FastAPI):
     await init_db()
     app.state.interrupted_generations = await generation_runtime.recover_orphaned_states()
     billing_mcp_adapter.validate_configuration()
-    app.state.resumed_processing_jobs = await resume_processing_jobs()
+    index_task = asyncio.create_task(maintenance_loop(), name="index-maintenance")
+    from app.diagnosis.execution import recovery_loop
+    diagnostic_task = asyncio.create_task(recovery_loop(), name="diagnosis-recovery")
+    app.state.resumed_processing_jobs = []
     privacy_task = None
     if settings.privacy_auto_maintenance_enabled:
         from app.privacy.maintenance import run_once
@@ -56,6 +58,16 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
+        diagnostic_task.cancel()
+        try:
+            await diagnostic_task
+        except asyncio.CancelledError:
+            pass
+        index_task.cancel()
+        try:
+            await index_task
+        except asyncio.CancelledError:
+            pass
         if privacy_task and not privacy_task.done():
             privacy_task.cancel()
             try:
@@ -72,7 +84,6 @@ app = FastAPI(
     description="Python/FastAPI LangGraph AI customer-service Agent + RAG knowledge base",
     lifespan=lifespan,
 )
-setup_otel(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,19 +95,6 @@ app.add_middleware(
 
 
 
-
-@app.middleware("http")
-async def metrics_middleware(request: Request, call_next):
-    import time
-    started = time.monotonic()
-    response = await call_next(request)
-    route = request.scope.get("route")
-    path = getattr(route, "path", None) or request.url.path
-    if HTTP_REQUESTS is not None:
-        HTTP_REQUESTS.labels(method=request.method, path=path, status=str(response.status_code)).inc()
-    if HTTP_LATENCY is not None:
-        HTTP_LATENCY.labels(method=request.method, path=path).observe(time.monotonic() - started)
-    return response
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -137,11 +135,3 @@ async def health_details(_ops_user=Depends(protected_ops_user)):
         "taskMode": settings.task_mode,
         "billingMcpEnabled": billing_mcp_adapter.enabled,
     }
-
-
-@app.get("/metrics")
-async def metrics(_ops_user=Depends(protected_ops_user)):
-    if not settings.metrics_enabled:
-        raise HTTPException(status_code=404, detail="Metrics disabled")
-    payload, content_type = prometheus_payload()
-    return Response(content=payload, media_type=content_type)

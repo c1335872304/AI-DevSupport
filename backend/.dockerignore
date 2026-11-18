@@ -12,7 +12,7 @@ htmlcov/
 coverage.xml
 .git/
 .gitignore
-*.md
-!demo_knowledge/
-!demo_knowledge/*.md
-!demo_knowledge/manifest.json
+.venv/
+.venv-docling/
+.uv-cache/
+node_modules/

@@ -227,6 +227,12 @@ async def chat_socket(websocket: WebSocket):
                 generation_id = str(payload.get("generationId") or subscription_generation or "").strip()
                 logger.info("[WS] stop requested generation=%s", _gid(generation_id))
                 if generation_id:
+                    async with SessionLocal() as db:
+                        state = await db.get(GenerationState, generation_id)
+                        owned = state is not None and state.user_id == str(user.id)
+                    if not owned:
+                        await socket_send({"code": 404, "error": "未找到此生成任务"})
+                        continue
                     await generation_runtime.cancel(generation_id)
                     async with SessionLocal() as db:
                         state = await db.get(GenerationState, generation_id)

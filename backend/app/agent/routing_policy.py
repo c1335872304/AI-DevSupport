@@ -8,9 +8,15 @@ High-risk rules are evaluated before semantic hints, so a request cannot
 silently downgrade an explicit handoff-worthy operation.
 """
 
+import re
 from typing import Any
 
 from app.agent.types import RoutingDecision
+from app.agent.question_scope import document_request
+
+
+_TOPIC_PIVOT = re.compile(r"[，,。；;\n]\s*(?=回到|换(?:个|一个)(?:问题|话题)|继续(?:查|看|处理|排查))")
+_DEFERRED_TOPIC = re.compile(r"先不(?:查|看|谈|处理|聊|说)|先放(?:到)?一边|先搁(?:置|一边)")
 
 
 class RoutingPolicy:
@@ -18,8 +24,11 @@ class RoutingPolicy:
 
     _HANDOFF_REQUESTS = (
         "转人工", "人工客服", "人工处理", "找人工", "投诉", "升级处理", "客服经理", "人工介入",
+        "把这个问题提交人工", "请提交人工", "帮我提交人工", "请提交工单", "帮我提交工单",
     )
-    _HANDOFF_NEGATIONS = ("不用人工", "不要转人工", "无需人工", "已经解决", "问题已解决")
+    _HANDOFF_NEGATIONS = (
+        "不用人工", "不要转人工", "无需人工", "已经解决", "问题已解决", "不要提交工单", "不要提交人工",
+    )
     _HIGH_RISK_OPERATIONS = (
         "申请退款", "我要退款", "我想退款", "退款申请", "退费", "退订", "重复扣费",
         "支付争议", "chargeback", "改价", "升套餐", "降套餐", "套餐变更", "退差价",
@@ -51,7 +60,12 @@ class RoutingPolicy:
         entities: dict[str, str] | None = None,
         semantic_hint: dict[str, Any] | None = None,
     ) -> RoutingDecision:
-        text = " ".join(str(question or "").lower().split())
+        question = str(question or "")
+        for pivot in _TOPIC_PIVOT.finditer(question):
+            if _DEFERRED_TOPIC.search(question[:pivot.start()]):
+                question = question[pivot.end():]
+                break
+        text = " ".join(question.lower().split())
         resolved = dict(entities or {})
         semantic = str((semantic_hint or {}).get("intent") or "").strip().lower()
         matched: list[str] = []
@@ -73,7 +87,11 @@ class RoutingPolicy:
         policy_only = any(token in text for token in self._POLICY_ONLY)
         explicit_handoff = any(token in text for token in self._HANDOFF_REQUESTS)
         handoff_negated = any(token in text for token in self._HANDOFF_NEGATIONS)
-        high_risk_operation = any(token in text for token in self._HIGH_RISK_OPERATIONS) and not policy_only
+        semantic_operation = semantic in {"refund_request","refund_dispute","payment_dispute","subscription_change","chargeback"}
+        requested_refund = re.search(r"(?:帮我|替我|请)\s*(?:直接\s*)?退款", text)
+        high_risk_operation = (
+            bool(requested_refund) or any(token in text for token in self._HIGH_RISK_OPERATIONS) or semantic_operation
+        ) and not policy_only
         requires_handoff = high_risk_operation or (explicit_handoff and not handoff_negated)
 
         if high_risk_operation:
@@ -82,6 +100,9 @@ class RoutingPolicy:
             matched.append("explicit_handoff_request")
         if handoff_negated:
             matched.append("handoff_negated")
+
+        if not requires_handoff and document_request(question, resolved):
+            return RoutingDecision(selected_agents=("knowledge",), matched_rules=("document_rule_question",), reason="document_rule_question")
 
         # A financial/contract operation needs billing evidence. A generic
         # request for a human must not accidentally start billing work; it is

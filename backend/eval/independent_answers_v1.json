@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "frozenBeforeRun": true,
+  "cases": [
+    {
+      "id": "E01",
+      "vendor": "deepseek",
+      "kind": "fact",
+      "question": "文档校对：DeepSeek的JSON Output只设置response_format就够了吗？提示里应包含什么，如何避免JSON被截断，空content是否属于已知情况？",
+      "sources": [
+        {
+          "file": "deepseek-json-output.md",
+          "sha256": "36b4d4f8b456f138cf2f009f277f4a7180251d204ad463a4f50504e3d19b8aa8"
+        }
+      ],
+      "requiredClaims": [
+        "response_format=json_object；提示含json并给格式样例",
+        "合理max_tokens避免截断",
+        "空content是已知可能情况，可调整prompt，不保证必然解决"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E02",
+      "vendor": "deepseek",
+      "kind": "fact",
+      "question": "DeepSeek对话前缀续写要把哪种角色放在messages最后、加哪个标志，并使用什么Beta地址？请给三个配置要点。",
+      "sources": [
+        {
+          "file": "deepseek-prefix-completion.md",
+          "sha256": "e5f8cc141e59934d6f0b8ccba5635a22539dded19c09c31cf62592b1cddf5a5a"
+        }
+      ],
+      "requiredClaims": [
+        "最后消息role=assistant",
+        "最后消息prefix=True",
+        "base_url=https://api.deepseek.com/beta"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E03",
+      "vendor": "deepseek",
+      "kind": "insufficient",
+      "question": "DeepSeek官方文档能否证明我这个账号在2026年12月31日一定享有5000 QPS且永不限流？请给可核验依据。",
+      "sources": [
+        {
+          "file": "deepseek-rate-limits.md",
+          "sha256": "8e6f97e172be399aa3a84a0eb7022645cd990abcffdc2cc237f8d6c8a9615db4"
+        }
+      ],
+      "requiredClaims": [
+        "不能据通用文档断言个人未来保障",
+        "不把本地Demo套餐当成DeepSeek生产账户证据",
+        "不得承诺5000QPS或永不限流"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E04",
+      "vendor": "qwen",
+      "kind": "fact",
+      "question": "把千问北京地域的Key放到新加坡的OpenAI兼容地址，能作为跨地域通用Key使用吗？Base URL还必须匹配哪一项？",
+      "sources": [
+        {
+          "file": "qwen-base-url.md",
+          "sha256": "c6ac486615a1c97edcb62f13400dcd1de2f88737bc48cf9b955bd5d5af599e36"
+        }
+      ],
+      "requiredClaims": [
+        "地域Key独立，不能跨地域通用",
+        "Base URL必须与同一计费方案的API Key配套"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E05",
+      "vendor": "qwen",
+      "kind": "fact",
+      "question": "Qwen text-embedding-v4可以一次提交15行、每行8192 Token，同时指定256维吗？请分别判定批量条数、单行长度和维度。",
+      "sources": [
+        {
+          "file": "qwen-embedding-api.md",
+          "sha256": "afd54dab732015408fbe9e318d3fbcc2df47e16dc19a4446f962bfb4d3c7e957"
+        }
+      ],
+      "requiredClaims": [
+        "每批最多10行，15行应拆分",
+        "每行最多8192 Token，边界允许",
+        "256维受支持"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E06",
+      "vendor": "qwen",
+      "kind": "insufficient",
+      "question": "Qwen的qwen-demo-exclusive-2099模型最大输出是否为512K？请确认准确的最大输出长度和官方发布日期。",
+      "sources": [],
+      "requiredClaims": [
+        "指出当前资料不足以确认该型号及限制/发布日期",
+        "不能把其他Qwen型号的参数套给该未知型号"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E07",
+      "vendor": "gpt",
+      "kind": "fact",
+      "question": "OpenAI后台响应处于queued或in_progress时应怎样轮询？何时停止？要启动后台执行应设置哪个参数？",
+      "sources": [
+        {
+          "file": "gpt-background.md",
+          "sha256": "eebbc1f4075f0f9542387313059e86315a6fcb00b628eb8b45a226320cde6282"
+        }
+      ],
+      "requiredClaims": [
+        "background=true启动后台",
+        "GET/retrieve响应并在queued或in_progress继续轮询",
+        "离开这两种状态即终态，停止轮询"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E08",
+      "vendor": "gpt",
+      "kind": "fact",
+      "question": "OpenAI的JSON mode和Structured Outputs，对required字段与枚举约束的保证相同吗？如果模型拒绝，能直接当作符合业务Schema的成功数据吗？",
+      "sources": [
+        {
+          "file": "gpt-structured-outputs.md",
+          "sha256": "ba8b90f6ec85d0f59000adb6f883af64765371e68e51c0368fb0155e9da9260c"
+        }
+      ],
+      "requiredClaims": [
+        "JSON mode保证合法JSON，不保证JSON Schema；Structured Outputs约束Schema",
+        "拒绝需单独识别处理，不能直接当作Schema业务成功数据"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E09",
+      "vendor": "gpt",
+      "kind": "insufficient",
+      "question": "仅凭OpenAI官方文档，能确认我的组织已启用Zero Data Retention，且下周所有请求均不留存吗？请判断我的组织实际状态。",
+      "sources": [
+        {
+          "file": "gpt-background.md",
+          "sha256": "eebbc1f4075f0f9542387313059e86315a6fcb00b628eb8b45a226320cde6282"
+        }
+      ],
+      "requiredClaims": [
+        "无法从通用文档确认组织开通状态或所有请求未来行为",
+        "不能把后台模式或通用保留规则等同于个人组织配置"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E10",
+      "vendor": "ambiguous",
+      "kind": "clarification",
+      "question": "我想做JSON结构化输出，怎样设置参数才能保证符合Schema？",
+      "sources": [],
+      "requiredClaims": [
+        "先询问厂商/模型或明确按厂商区分",
+        "不能给所有厂商通用的schema保证或混合参数"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E11",
+      "vendor": "comparison",
+      "kind": "comparison",
+      "question": "比较DeepSeek的JSON Output和OpenAI的Structured Outputs：前者是否自动约束JSON Schema？后者的Schema保证是什么？请分别标注依据。",
+      "sources": [
+        {
+          "file": "deepseek-json-output.md",
+          "sha256": "36b4d4f8b456f138cf2f009f277f4a7180251d204ad463a4f50504e3d19b8aa8"
+        },
+        {
+          "file": "gpt-structured-outputs.md",
+          "sha256": "ba8b90f6ec85d0f59000adb6f883af64765371e68e51c0368fb0155e9da9260c"
+        }
+      ],
+      "requiredClaims": [
+        "DeepSeek JSON Output保证合法JSON，不自动承诺Schema约束",
+        "OpenAI Structured Outputs支持JSON Schema约束",
+        "两家事实分别引用对应官方资料"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    },
+    {
+      "id": "E12",
+      "vendor": "qwen",
+      "kind": "insufficient",
+      "question": "请按Qwen 2099-01-01版官方规范确认text-embedding-v4当时支持的全部维度；当前2026快照是否足以给出该版本结论？",
+      "sources": [
+        {
+          "file": "qwen-embedding-api.md",
+          "sha256": "afd54dab732015408fbe9e318d3fbcc2df47e16dc19a4446f962bfb4d3c7e957"
+        }
+      ],
+      "requiredClaims": [
+        "不能用2026快照确认2099版本",
+        "允许明确标作当前快照规则，不得冒充未来官方规范"
+      ],
+      "scoring": "逐项审阅事实、厂商范围、可访问引用和引用内容支撑；证据不足须明确限制或追问；事实题必须真实检索并生成，不以检索命中代替回答正确"
+    }
+  ]
+}

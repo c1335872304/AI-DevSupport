@@ -146,21 +146,16 @@ KAFKA_DLQ_TOPIC=file-processing-dlq
 
 ## 9. Observability
 
-Prometheus：
+在 Langfuse 查看问答路由、RAG 检索、模型生成和工具调用。配置步骤见 [Langfuse 链路追踪](LANGFUSE.md)。
 
 ```env
-METRICS_ENABLED=true
+LANGFUSE_ENABLED=true
+LANGFUSE_BASE_URL=<instance-base-url>
+LANGFUSE_PUBLIC_KEY=<project-public-key>
+LANGFUSE_SECRET_KEY=<project-secret-key>
 ```
 
-OpenTelemetry：
-
-```env
-OTEL_ENABLED=true
-OTEL_SERVICE_NAME=paismart-backend
-OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317
-```
-
-Agent / Tool 还有 durable DB Trace。客服生产环境建议额外监控：
+客服生产环境可从 Langfuse 追踪检查：
 
 ```text
 answer latency
@@ -184,7 +179,7 @@ account-data abstention rate
 [ ] create_support_handoff 实际写库可用
 [ ] pytest 通过
 [ ] customer-service Skill / Answer benchmark 通过
-[ ] /health 与 /metrics 正常
+[ ] /health 正常，抽样问答在 Langfuse 中可按 generation_id 查询
 [ ] Kafka DLQ 有告警
 [ ] DB、工单和对象存储有备份策略
 ```

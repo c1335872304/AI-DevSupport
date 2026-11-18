@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import secrets
 import hashlib
-import json
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -535,57 +534,3 @@ async def delete_package(package_id: int, admin: User = Depends(admin_user), db:
         item.enabled = False
         await db.commit()
     return ok(message="Deleted")
-
-@router.get("/agent-runs")
-async def list_agent_runs(
-    limit: int = Query(50, ge=1, le=200),
-    admin: User = Depends(admin_user),
-    db: AsyncSession = Depends(get_db),
-):
-    from app.db.models import AgentRun
-    rows = list((await db.scalars(select(AgentRun).order_by(AgentRun.started_at.desc()).limit(limit))).all())
-    return ok([{
-        "runId": row.run_id,
-        "generationId": row.generation_id,
-        "userId": row.user_id,
-        "question": row.question,
-        "status": row.status,
-        "activeSkills": json.loads(row.active_skills_json) if row.active_skills_json else [],
-        "trace": json.loads(row.trace_json) if row.trace_json else None,
-        "error": row.error,
-        "startedAt": row.started_at.isoformat(),
-        "completedAt": row.completed_at.isoformat() if row.completed_at else None,
-    } for row in rows])
-
-
-@router.get("/agent-runs/{run_id}")
-async def get_agent_run(run_id: str, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    from app.db.models import AgentRun, ToolExecution
-    row = await db.get(AgentRun, run_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Agent run not found")
-    tools = list((await db.scalars(
-        select(ToolExecution).where(ToolExecution.run_id == run_id).order_by(ToolExecution.id.asc())
-    )).all())
-    return ok({
-        "runId": row.run_id,
-        "generationId": row.generation_id,
-        "userId": row.user_id,
-        "question": row.question,
-        "status": row.status,
-        "activeSkills": json.loads(row.active_skills_json) if row.active_skills_json else [],
-        "trace": json.loads(row.trace_json) if row.trace_json else None,
-        "error": row.error,
-        "startedAt": row.started_at.isoformat(),
-        "completedAt": row.completed_at.isoformat() if row.completed_at else None,
-        "tools": [{
-            "toolCallId": item.tool_call_id,
-            "tool": item.tool_name,
-            "step": item.step,
-            "status": item.status,
-            "durationMs": item.duration_ms,
-            "arguments": json.loads(item.arguments_json) if item.arguments_json else {},
-            "error": item.error,
-            "createdAt": item.created_at.isoformat(),
-        } for item in tools],
-    })

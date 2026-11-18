@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import current_user
 from app.core.response import ok
 from app.core.time import utcnow
-from app.db.models import ConversationMessage, ConversationSession, User
+from app.db.models import ConversationMessage, ConversationSession, DiagnosisSession, DiagnosisTurn, User
 from app.db.session import get_db
 
 router = APIRouter(tags=["conversations"])
@@ -97,6 +97,9 @@ async def messages(
             )
         ).all()
     )
+    diagnosis_links = dict((await db.execute(select(DiagnosisTurn.generation_id, DiagnosisTurn.diagnosis_id)
+        .join(DiagnosisSession, DiagnosisSession.diagnosis_id == DiagnosisTurn.diagnosis_id)
+        .where(DiagnosisSession.conversation_id == conversationId, DiagnosisSession.user_id == str(user.id)))).all())
     data = []
     for row in rows:
         refs = json.loads(row.reference_mappings_json) if row.reference_mappings_json else None
@@ -107,6 +110,7 @@ async def messages(
                 "timestamp": row.created_at.isoformat(),
                 "conversationId": row.conversation_id,
                 "generationId": row.generation_id,
+                "diagnosisId": diagnosis_links.get(row.generation_id) if row.role == "assistant" else None,
                 "referenceMappings": refs,
                 "status": "finished" if row.role == "assistant" else None,
             }

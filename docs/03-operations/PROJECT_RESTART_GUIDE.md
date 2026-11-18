@@ -4,6 +4,8 @@
 
 > 适用范围：根目录 `compose.yaml` 对应的 Compose 项目 `paismart-demo`。本文不会停止无关 Docker 项目，也不会删除数据库、对象存储、检索或消息队列数据卷。
 
+> 当前源码升级边界：第一阶段 RAG 改动已隔离验收，既有 Demo 尚未自动重建。已有部署升级先备份、停止旧 API/Worker 写入、执行迁移，再启动新代码，具体见 [RAG 操作手册](RAG_OPERATIONS.md)。现有镜像不含独立 Docling 环境；PDF/DOCX 还需准备解析解释器与固定模型缓存。
+
 ## 1. 服务与访问地址
 
 完整 Demo 包含以下服务：
@@ -32,7 +34,7 @@ docker compose restart
 docker compose ps
 ```
 
-该方式复用现有镜像和数据卷，不会重新安装依赖，也不会产生 LLM 或 Embedding 请求。
+该方式复用现有镜像和数据卷，不重新安装依赖。启动恢复可能继续未完成的建库任务并产生 Embedding 请求；不要把重启视为无费用操作。
 
 只重启单个服务的示例：
 
@@ -44,7 +46,7 @@ docker compose restart worker
 
 ## 3. 代码改动后的标准更新
 
-代码、依赖、Dockerfile 或前端代理配置发生变化时，重新构建受影响服务：
+仅代码、依赖、Dockerfile 或前端代理变化且没有迁移时，可重新构建受影响服务。涉及第一阶段 schema 和索引写入逻辑的升级，先按上述操作手册隔离旧写入者并完成迁移，不直接执行滚动替换：
 
 ```powershell
 cd C:\\codes\\AI_DevSupport

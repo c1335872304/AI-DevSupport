@@ -3,6 +3,7 @@ import type { DataTableColumns, PaginationProps } from 'naive-ui';
 import { NButton, NEllipsis, NTag } from 'naive-ui';
 import { computed, onMounted, reactive, ref } from 'vue';
 import { request } from '@/service/request';
+import ApprovalQueue from './approval-queue.vue';
 
 const appStore = useAppStore();
 
@@ -277,6 +278,7 @@ onMounted(getData);
       </NCard>
     </div>
 
+    <ApprovalQueue />
     <NCard title="工单管理" :bordered="false" size="small" class="card-wrapper ticket-card">
       <template #header-extra>
         <NButton :loading="loading" @click="getData">刷新</NButton>

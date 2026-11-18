@@ -47,8 +47,24 @@ class MCPRemoteClient:
             return list(getattr(result, "tools", result) or [])
 
     async def call_tool(self, name: str, arguments: dict) -> Any:
-        async with self.connected() as client:
-            result = await client.call_tool(name, arguments)
+        from httpx2 import TimeoutException
+        from mcp.shared.exceptions import MCPError
+        from mcp_types import REQUEST_TIMEOUT
+
+        def is_timeout(error: BaseException) -> bool:
+            if isinstance(error, BaseExceptionGroup):
+                return all(is_timeout(item) for item in error.exceptions)
+            return isinstance(error, (TimeoutError, TimeoutException)) or (
+                isinstance(error, MCPError) and error.code == REQUEST_TIMEOUT
+            )
+
+        try:
+            async with self.connected() as client:
+                result = await client.call_tool(name, arguments)
+        except Exception as error:
+            if is_timeout(error):
+                raise TimeoutError("MCP tool request timed out") from error
+            raise
         if hasattr(result, "model_dump"):
             result = result.model_dump(mode="json")
         if isinstance(result, dict):

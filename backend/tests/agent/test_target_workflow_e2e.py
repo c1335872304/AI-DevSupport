@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -64,9 +65,10 @@ async def _run(
     generation_id: str,
     planner_state: dict[str, Any] | None = None,
     final_answer: str = "基于已核验结果给出下一步。",
+    semantic_hint: dict[str, Any] | None = None,
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
     async def no_semantic_route(*_args, **_kwargs):
-        return {}
+        return semantic_hint or {}
 
     async def final_response(_messages, force_no_tools=False):
         yield final_answer
@@ -134,6 +136,63 @@ def _nodes(events: list[dict[str, Any]]) -> list[str]:
     return [str(event["node"]) for event in events if event.get("type") == "workflow_node"]
 
 
+@pytest.mark.asyncio
+async def test_read_only_billing_uses_final_handoff_decision_over_model_hint(monkeypatch):
+    bill=_FixtureTool('query_bill',{'found':True,'bills':[{'invoiceId':'INV-12','month':'2026-10','amount':12,'status':'ISSUED'}]})
+    handoff=_FixtureTool('create_support_handoff',{'handoffId':'CS-UNWANTED'},read_only=False)
+    answer,events,_=await _run(AgentRuntime(ToolRegistry([bill,handoff])),monkeypatch,
+        '请核实2026-10的套餐、用量和账单金额。',generation_id='billing-conflicting-model-hint',
+        semantic_hint={'intent':'billing','needs_human':True,'entities':{'month':'2026-10'},'confidence':.95},
+        final_answer='已查询账单，2026-10金额为12元。')
+    assert '12' in answer and not handoff.calls
+    assert not next(e for e in events if e.get('type')=='handoff_decision')['decision']['required']
+    assert all(e['passed'] for e in events if e.get('type')=='quality_gate')
+    assert not any(e.get('type')=='quality_gate_blocked' for e in events)
+
+
+@pytest.mark.parametrize('question',['我要退款','帮我升套餐','请转人工核查账单','请把这个问题提交人工，我需要确认工单是否建好。'])
+async def test_required_handoff_survives_low_risk_model_hint(monkeypatch,question):
+    bill=_FixtureTool('query_bill',{'found':True,'bills':[{'invoiceId':'INV-12','month':'2026-10','amount':12,'status':'ISSUED'}]})
+    handoff=_FixtureTool('create_support_handoff',{'handoffId':'CS-REQUIRED','status':'OPEN'},read_only=False)
+    _,events,_=await _run(AgentRuntime(ToolRegistry([bill,handoff])),monkeypatch,question,
+        generation_id='required-handoff-boundary',semantic_hint={'intent':'billing','needs_human':False,'confidence':.99},
+        final_answer='已创建人工工单，业务结果需人工核验。')
+    assert len(handoff.calls)==1
+    assert _nodes(events).index('target_evidence_join') < _nodes(events).index('target_create_handoff')
+    assert next(e for e in events if e.get('type')=='handoff_decision')['decision']['required']
+    assert all(e['passed'] for e in events if e.get('type')=='quality_gate')
+
+
+@pytest.mark.asyncio
+async def test_handoff_success_without_id_does_not_confirm_this_request(monkeypatch):
+    handoff = _FixtureTool("create_support_handoff", {"status": "OPEN"}, read_only=False)
+    answer, events, chunks = await _run(
+        AgentRuntime(ToolRegistry([handoff])), monkeypatch, "请提交人工处理",
+        generation_id="handoff-without-id",
+        final_answer="已创建人工工单，等待人工处理。",
+    )
+    assert len(handoff.calls) == 1
+    trace = next(event["trace"] for event in events if event.get("type") == "skill_trace")
+    assert trace["handoffResult"]["attempted"] is True
+    assert trace["handoffResult"]["success"] is False
+    assert "已创建人工工单" not in answer + "".join(chunks)
+
+
+@pytest.mark.asyncio
+async def test_billing_tool_uses_request_month_and_rejects_wrong_period(monkeypatch):
+    bill = _FixtureTool("query_bill", {"found": True, "bills": [
+        {"invoiceId": "FIXTURE-OTHER", "month": "2026-02", "amount": 12, "status": "PAID"},
+    ]})
+    answer, events, _ = await _run(
+        AgentRuntime(ToolRegistry([bill])), monkeypatch, "帮我查 2026-11 的账单金额。",
+        generation_id="billing-period-boundary", final_answer="暂时未核实该账期金额。",
+    )
+    assert bill.calls == [{"month": "2026-11"}]
+    failure = next(event for event in events if event.get("resultStatus") == "ERROR")
+    assert failure["error"] == "Billing period mismatch"
+    assert "12" not in answer
+
+
 def test_api_diagnostic_tool_parameters_require_customer_or_log_provenance():
     assert not TargetSpecialistAgents._api_call_has_diagnostic_anchor(
         "query_error_code", {"code": "RATE_LIMIT_EXCEEDED"}, {}, [],
@@ -179,6 +238,7 @@ async def test_api_request_id_e2e_runs_dependency_batch_then_parent_context(monk
 
 @pytest.mark.asyncio
 async def test_confirmed_429_evidence_keeps_a_grounded_model_diagnostic_without_gate_rewrite(monkeypatch):
+    monkeypatch.setattr(llm_service.settings, "llm_api_key", "test-only")
     call_log = _FixtureTool("query_call_log", {
         "found": True, "requestId": "req_demo_429", "appId": "app_demo",
         "endpoint": "/v1/chat", "httpStatus": 429, "errorCode": "RATE_LIMIT_EXCEEDED",
@@ -215,7 +275,7 @@ async def test_confirmed_429_evidence_keeps_a_grounded_model_diagnostic_without_
 
 
 @pytest.mark.asyncio
-async def test_first_time_rate_limit_question_filters_unsupported_personal_claims(monkeypatch):
+async def test_first_time_rate_limit_question_filters_unsupported_personal_claims(monkeypatch, langfuse_receiver):
     search = _FixtureTool("search_knowledge", {
         "results": [{"fileMd5": "a" * 32, "fileName": "rate-limit.md", "chunkId": 4, "pageNumber": 1}],
     })
@@ -248,6 +308,16 @@ async def test_first_time_rate_limit_question_filters_unsupported_personal_claim
     assert filtered["action"] == "filtered_unsupported_claims"
     assert not any(event.get("type") == "quality_gate_repaired" for event in events)
     assert not any(event.get("type") == "quality_gate_blocked" for event in events)
+    spans = langfuse_receiver("我被限流了，怎么回事", "本次或近期调用触发了限流", "rate-limit.md")
+    root, = [span for span in spans if not span.parent_span_id]
+    exported = next(item.value.string_value for item in root.attributes if item.key == "langfuse.observation.output")
+    output = json.loads(exported)
+    assert output["qualityGateAction"] == "filtered_unsupported_claims"
+    assert any(gate["filtered"] for gate in output["qualityGates"].values())
+    assert "unsupported_personal_rate_limit_claim" in (
+        output["qualityGates"]["api-diagnostic:audit_api_diagnostic"]["ruleCodes"]
+    )
+    assert {"search_knowledge", "safety"} <= {span.name for span in spans if span.trace_id == root.trace_id}
 
 
 @pytest.mark.asyncio
@@ -300,7 +370,10 @@ async def test_high_risk_billing_e2e_collects_evidence_before_creating_handoff(m
 
 
 @pytest.mark.asyncio
-async def test_high_risk_billing_mcp_e2e_discovers_tools_before_fact_collection(monkeypatch):
+@pytest.mark.parametrize("remote_fails", [False, True], ids=["success", "failure"])
+async def test_high_risk_billing_mcp_e2e_discovers_tools_before_fact_collection(
+    monkeypatch, langfuse_receiver, remote_fails,
+):
     """The Billing Agent must use the MCP catalog, never the local billing Tool."""
     from types import SimpleNamespace
 
@@ -329,6 +402,9 @@ async def test_high_risk_billing_mcp_e2e_discovers_tools_before_fact_collection(
 
     async def fake_call_tool(self, name, arguments):
         remote_calls.append({"name": name, "arguments": dict(arguments)})
+        await asyncio.sleep(0.08)
+        if remote_fails:
+            raise RuntimeError("private-mcp-error-detail")
         return {
             "structuredContent": {
                 "found": True,
@@ -358,6 +434,17 @@ async def test_high_risk_billing_mcp_e2e_discovers_tools_before_fact_collection(
     assert [tool["name"] for tool in discovery_event["tools"]] == ["mcp__billing__get_invoice"]
     assert "customer_id" not in discovery_event["tools"][0]["inputSchema"]["properties"]
     assert remote_calls == [{"name": "get_invoice", "arguments": {"customer_id": "701"}}]
+    exported = langfuse_receiver("private-mcp-error-detail", "customer_id", "INV-1")
+    tool_span, = [span for span in exported if span.name == "mcp__billing__get_invoice"]
+    output = next(item.value.string_value for item in tool_span.attributes if item.key == "langfuse.observation.output")
+    telemetry = json.loads(output)
+    assert telemetry["status"] == ("ERROR" if remote_fails else "SUCCESS")
+    assert telemetry["durationMs"] >= 30
+    assert tool_span.end_time_unix_nano > tool_span.start_time_unix_nano
+    if remote_fails:
+        assert tool_span.status.code == 2
+        assert tool_span.status.message == "ERROR"
+
     assert len(handoff.calls) == 1
     nodes = _nodes(events)
     assert nodes.index("target_evidence_join") < nodes.index("target_handoff_decision") < nodes.index("target_create_handoff")
@@ -375,5 +462,7 @@ async def test_tool_timeout_e2e_records_failure_and_never_claims_handoff_success
     assert failed and failed[-1]["resultStatus"] == "TIMEOUT"
     evidence_event = next(event for event in events if event.get("type") == "evidence_summary")
     assert "search_knowledge:TIMEOUT" in evidence_event["summary"]["unresolvedItems"]
-    assert "target_create_handoff" in _nodes(events)
+    assert "target_create_handoff" not in _nodes(events)
+    assert handoff.calls == []
+    assert "查询超时" in answer
     assert "已创建人工工单" not in answer

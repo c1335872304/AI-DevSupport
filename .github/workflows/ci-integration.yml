@@ -1,0 +1,77 @@
+name: Isolated integration acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend/app/documents/**'
+      - 'backend/app/knowledge/**'
+      - 'backend/app/diagnosis/**'
+      - 'backend/alembic/**'
+      - 'backend/tests/knowledge/**'
+      - 'backend/tests/agent/test_diagnosis_loop.py'
+      - '.github/workflows/ci-integration.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: rag-test-only
+          MYSQL_DATABASE: rag_acceptance
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -prag-test-only"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.17.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: 'false'
+          ES_JAVA_OPTS: '-Xms512m -Xmx512m'
+        ports: ['19216:9200']
+        options: >-
+          --health-cmd="curl -fsS http://localhost:9200/_cluster/health"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      DATABASE_URL: mysql+aiomysql://root:rag-test-only@127.0.0.1:3306/rag_acceptance
+      RAG_TEST_MYSQL_URL: mysql+aiomysql://root:rag-test-only@127.0.0.1:3306/rag_acceptance
+      PHASE3_TEST_MYSQL_URL: mysql+aiomysql://root:rag-test-only@127.0.0.1:3306/rag_acceptance
+      RAG_TEST_REAL_ES: '1'
+      LLM_API_KEY: ''
+      EMBEDDING_API_KEY: ''
+      REDIS_ENABLED: 'false'
+      BILLING_MCP_ENABLED: 'false'
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m alembic upgrade head
+      - name: Exercise real cross-store and execution fences
+        run: >-
+          python -m pytest tests/knowledge/test_build_coordination.py
+          tests/knowledge/test_multi_process_claim.py tests/agent/test_diagnosis_loop.py
+          -q --junitxml=data/checkpoints/integration.xml
+      - name: Start isolated Billing MCP
+        run: python billing_mcp_server.py --host 127.0.0.1 --port 18056 > data/checkpoints/billing-server.log 2>&1 &
+      - name: Exercise real Billing MCP protocol
+        env:
+          BILLING_MCP_COMPOSE_E2E: 'true'
+          BILLING_MCP_COMPOSE_URL: http://127.0.0.1:18056/mcp
+        run: python -m pytest tests/e2e/test_billing_mcp_compose.py -q --junitxml=data/checkpoints/billing.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-results
+          path: backend/data/checkpoints/*.xml

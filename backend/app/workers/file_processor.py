@@ -6,9 +6,7 @@ import json
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
 from app.core.config import get_settings
-from app.db.session import SessionLocal
-from app.knowledge.indexer import process_file
-from app.documents.jobs import run_processing_job
+from app.documents.jobs import run_processing_job, create_processing_job
 
 
 async def run() -> None:
@@ -35,18 +33,24 @@ async def run() -> None:
                 if job_id:
                     await run_processing_job(job_id)
                 else:
-                    async with SessionLocal() as db:
-                        await process_file(db, file_id)
+                    await run_processing_job(await create_processing_job(file_id))
                 await consumer.commit()
             except Exception as exc:
                 error = str(exc)[:1000]
-                envelope = {"fileId": file_id, "jobId": str(locals().get("job_id") or ""), "attempt": attempt + 1, "error": error}
+                envelope = {
+                    "fileId": file_id,
+                    "jobId": str(locals().get("job_id") or ""),
+                    "attempt": attempt + 1,
+                    "error": error,
+                }
                 if file_id is not None and attempt < max(0, settings.kafka_retry_attempts):
-                    await asyncio.sleep(max(0.0, settings.kafka_retry_backoff_seconds) * (2 ** attempt))
+                    await asyncio.sleep(max(0.0, settings.kafka_retry_backoff_seconds) * (2**attempt))
                     await producer.send_and_wait(settings.kafka_topic, json.dumps(envelope).encode("utf-8"))
                 else:
                     envelope.update({"raw": message.value.decode("utf-8", errors="replace")[:4000]})
-                    await producer.send_and_wait(settings.kafka_dlq_topic, json.dumps(envelope).encode("utf-8"))
+                    await producer.send_and_wait(
+                        settings.kafka_dlq_topic, json.dumps(envelope).encode("utf-8")
+                    )
                 # Commit only after retry/DLQ publication succeeds; poison messages no longer
                 # block the partition forever and no failed job disappears silently.
                 await consumer.commit()

@@ -119,6 +119,7 @@ def merge_rag_report(report: dict[str, Any], path: str | None) -> None:
 async def live_report(args, cases: list[dict[str, Any]], with_skill: bool) -> dict[str, Any]:
     from app.agent.llm import llm_service
     from app.core.config import get_settings
+    from app.core.langfuse_observability import flush_langfuse, langfuse_span, observation_output
     from app.evaluation.customer_service_live import run_live_customer_service_case
 
     if not get_settings().llm_api_key:
@@ -126,14 +127,30 @@ async def live_report(args, cases: list[dict[str, Any]], with_skill: bool) -> di
     results = []
     details = []
     for case in cases:
-        artifact = await run_live_customer_service_case(case, llm_service=llm_service, with_skill=with_skill)
-        apply_cost(artifact, args.input_cost_per_million, args.output_cost_per_million)
-        result = evaluate_customer_service_case(case, artifact)
+        with langfuse_span(
+            "customer_service.regression", root=True, kind="evaluator",
+            attributes={"langfuse.trace.metadata.case_id": str(case.get("id")), "with_skill": with_skill},
+        ) as span:
+            artifact = await run_live_customer_service_case(case, llm_service=llm_service, with_skill=with_skill)
+            apply_cost(artifact, args.input_cost_per_million, args.output_cost_per_million)
+            result = evaluate_customer_service_case(case, artifact)
+            observation_output(span, {
+                "passed": result.passed,
+                "resolutionPassed": result.resolution_passed,
+                "score": result.score,
+                "layers": {name: layer.passed for name, layer in result.layers.items()},
+            })
+            if span is not None:
+                artifact["langfuseTraceId"] = f"{span.get_span_context().trace_id:032x}"
         results.append(result)
         row = result_dict(result)
         row["artifact"] = artifact
         details.append(row)
-    return {"summary": aggregate_customer_service_results(results), "details": details}
+    return {
+        "summary": aggregate_customer_service_results(results),
+        "details": details,
+        "langfuseQueueFlushed": await asyncio.to_thread(flush_langfuse) if get_settings().langfuse_enabled else None,
+    }
 
 
 def dataset_profile(cases: list[dict[str, Any]]) -> dict[str, Any]:

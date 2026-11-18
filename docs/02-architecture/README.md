@@ -1,74 +1,68 @@
-# API 助手架构文档
+# 项目架构总览
 
-> 状态：当前实现基线（2026-09-10）。
->
-> 产品展示名称为 **API 助手**；代码包、Docker Compose 项目名、数据库名中仍可能保留 `PaiSmart`，它们是内部技术标识，不代表前端品牌。
+状态：2026-10-20 当前源码。四阶段核心范围均已验收，分层评测与规划开销优化见[最终报告](../04-testing/FINAL_PROJECT_ACCEPTANCE.md)；部署环境是否运行该源码须单独确认。内部包名、数据库和 Compose 中的 PaiSmart 是保留的技术标识。
 
-## 1. 架构文档的唯一入口
+## 两条主链路
 
-| 文档 | 负责回答的问题 | 权威范围 |
-|---|---|---|
-| [CUSTOMER_SERVICE_ARCHITECTURE.md](CUSTOMER_SERVICE_ARCHITECTURE.md) | 客服 Agent、路由、Tool、证据、质量门和最终答复如何协作 | 客服运行时主架构 |
-| [KNOWLEDGE_PIPELINE.md](KNOWLEDGE_PIPELINE.md) | 文档上传、父子 Chunk、Embedding、检索、权限和引用如何工作 | Knowledge/RAG |
-| [ADMIN_TICKET_CONSOLE.md](ADMIN_TICKET_CONSOLE.md) | 工单创建边界、管理员页面、API、权限和脱敏 | SupportHandoff/管理员工单台 |
-| [../03-operations/DOCKER_OPERATIONS.md](../03-operations/DOCKER_OPERATIONS.md) | 本地 Docker 如何启动、更新和验收 | 运行与部署 |
-| [../03-operations/PRODUCTION.md](../03-operations/PRODUCTION.md) | 哪些能力仍属于生产化规划 | 生产边界 |
-
-测试计划和测试结果保留在 `docs/04-testing/` 与 `docs/05-live-tests/`，不在架构文档中重复维护测试数字。测试结果以对应报告为准。
-
-## 2. 当前系统边界
-
-```text
-浏览器 :9527
-  → frontend（API 助手管理台 / 客服界面）
-  → api :8000（FastAPI + WebSocket + LangGraph 目标工作流）
-       → RoutingPolicy
-       → 专业 Agent 规划
-       → Shared Scheduler / Tool Runtime
-       → Evidence Summary / Handoff / Answer / Safety
-       → MySQL / Redis / MinIO / Elasticsearch / Kafka
-       → billing-mcp:8011（仅 Billing 只读 MCP，Compose 内部可见）
+```mermaid
+flowchart TD
+    UI[Vue 客服与管理台] --> API[FastAPI REST / WebSocket]
+    API --> Graph[LangGraph 路由与专业 Agent]
+    Graph --> Tools[共享调度与 Tool Runtime]
+    Tools --> RAG[检索、权限与引用]
+    Tools --> Business[API 本地工具 / Billing 只读 MCP]
+    Tools --> Evidence[证据汇总、人工决策、答复与质量门]
+    Evidence --> UI
+    API --> Revision[上传、正文修订与元数据]
+    Revision --> Jobs[ProcessingJob / Outbox]
+    Jobs --> Execute[后台执行或 Kafka Worker]
+    Execute --> Build[租约构建、校验、条件发布]
+    Build --> Index[数据库 / Elasticsearch]
+    Index --> RAG
 ```
 
-系统有三个专业事实 Agent：
+## 代码边界
 
-- `api_diagnostic`：API 日志、鉴权、错误码、限流和接口诊断；
-- `billing`：套餐、用量、账单和退款相关的只读业务核验；
-- `knowledge`：政策、FAQ、产品说明、错误码释义和通用排障文档。
+| 模块 | 职责与入口 | 依赖约束 |
+| --- | --- | --- |
+| `frontend/src` | 页面、状态、REST/WS 客户端、版本引用展示 | 通过服务端接口访问业务数据 |
+| `backend/app/api` | `router.py`、`v1/`、`websocket/`：认证、参数和传输 | 不在路由内直接构建索引 |
+| `app/agent` | `graph/workflow.py` 编排路由、专业 Agent、证据汇总与流式发送。 `graph/answer_content.py` 构造答复提示、检索降级文案和引用。 `graph/answer_safety.py` 统一审查流式预览和最终答复。 | 通过受控 Tool 获取事实 |
+| `app/tools`、`app/skill_runtime` | Tool 注册、权限上下文、Skill 执行；Billing MCP | 文档内容不能扩展工具权限 |
+| `app/diagnosis` | 跨 generation 的诊断、来源/时效、状态变更 | 不替代原有 Agent 编排；客户端不能直接确认已解决 |
+| `app/documents` | 上传存储、正文修订、任务、租约、删除与清理 | 管文档和任务生命周期 |
+| `app/knowledge` | 解析、分块、编码、构建发布、检索与引用 | 检索只使用有效且授权的活动构建 |
+| `app/accounting` | Provider 用量记录与结算 | 已知用量防重，未知用量待对账 |
+| `app/db`、`backend/alembic` | 模型、会话和版本化迁移 | Alembic 管升级；create_all 不能替代升级 |
+| `app/support`、`app/privacy` | 工单交接、隐私维护 | 保持身份与数据范围约束 |
+| `app/core` | 配置、安全、访问控制、脱敏与观测 | 不承载具体诊断或建库流程 |
+| `backend/scripts`、`backend/tests` | 显式运维命令、验收与测试 | 不被应用导入作为运行时依赖 |
 
-`customer-support` 和 `escalation` 是后置共享 Skill，不是额外的专业 Agent。只有 `create_support_handoff` 成功返回真实 `handoffId`，系统才允许向客户确认工单已经创建。
+`documents/jobs.py`、`knowledge/indexer.py` 保留为兼容入口，实际实现分别在 `job_runtime.py`、`build_pipeline.py`。新逻辑写入实现模块，避免再次形成两个执行流程。
 
-## 3. 必须保持的架构决策
+## 必须保持的契约
 
-1. `RoutingPolicy` 是唯一的 Agent 选择器，LLM 不能改写路由、风险等级和人工条件。
-2. 专业 Agent 只规划自己 Skill 声明的 Tool，不执行 Tool、不创建工单、不直接生成客户最终答复。
-3. 所有事实必须经过 `AgentEvidence` 和 `Evidence Summary`，再进入人工决策和答复生成。
-4. 知识库只能支持通用规则，不能证明客户个人的账单、订单、用量、Key 或 API 请求事实。
-5. 质量门是确定性审计和内容过滤层，不调用 LLM，不编造新事实；它只能放行、删除无事实依据的主张，或发送受控安全说明。
-6. Billing 是唯一允许接入 MCP 的领域，MCP 服务只提供只读 Tool，个人身份由服务端上下文注入。
-7. 管理员工单台不是新的工单创建渠道，管理员处理说明不自动暴露给客户。
+1. RoutingPolicy 决定 Agent 范围；专业 Agent 找事实，最终答复由证据汇总和质量门约束。
+2. RAG 证明通用知识；用户调用、Key、账单等个人事实由当前身份的业务工具证明。
+3. 写索引走持久任务及受租约保护的构建；失去执行权或输入修订变化的任务不得发布。
+4. 新版本通过校验后切换活动指针。失败保留旧版；GC 只清理明确目标，墓碑阻止删除后复活。
+5. 候选检索、父块展开和引用读取均复核当前权限、活动版本；不能仅依赖 ES 中的旧标签。
+6. 文档和查询使用一致的千问模型与维度。只编码子块；没有 Key 或 Provider 失败明确报错。
 
-## 4. 代码映射
+## 运行拓扑与存储职责
 
-| 领域 | 主要实现 |
-|---|---|
-| 工作流 | `backend/app/agent/graph/workflow.py` |
-| 路由与实体 | `backend/app/agent/routing_policy.py`、`backend/app/agent/entities.py` |
-| 专业 Agent | `backend/app/agent/target_agents.py`、`backend/app/agent/agent_skill_policy.py` |
-| 证据汇总 | `backend/app/agent/evidence.py`、`backend/app/agent/types.py` |
-| 调度与 Tool Runtime | `backend/app/agent/shared_scheduler.py`、`backend/app/tools/` |
-| Skill 与质量门 | `backend/skills/**/SKILL.md`、`backend/skills/**/scripts/` |
-| RAG | `backend/app/knowledge/`、`backend/app/documents/` |
-| 工单 API | `backend/app/api/v1/support.py`、`backend/app/support/handoff.py` |
-| 管理员工单台 | `frontend/src/views/support-handoff/index.vue` |
-| 前端品牌 | `frontend/src/locales/`、`frontend/src/layouts/modules/global-logo/` |
+本地开发可使用 SQLite、本地文件、后台任务、数据库检索；完整 Compose 使用 MySQL、MinIO、Kafka/Worker、Elasticsearch、Redis 和 Billing MCP。两种模式共享应用入口；配置不能混用容器地址与宿主机地址。
 
-## 5. 架构变更与测试的关系
+| 存储 | 保存内容 |
+| --- | --- |
+| SQL | 身份权限、文档输入修订、任务、构建与活动指针、父子块、用量、工单 |
+| 本地文件 / MinIO | 原始正文修订、解析产物 |
+| Elasticsearch | 可重建的检索索引，不能代替 SQL 中的发布和权限真相 |
+| Kafka | 任务通知，重复投递由任务领取防重；漏通知由扫描恢复 |
+| Redis | 应用配置启用的共享缓存/限流等基础能力，不承担文档发布锁 |
 
-架构改动必须补充对应测试计划或报告中的用例，不删除历史测试记录：
+Docling 在独立 Python 子进程中运行，固定模型缓存，PDF/DOCX 不静默退回旧解析器。扫描 OCR 尚未纳入首期。
 
-- Agent、证据、质量门：见 [PROJECT_E2E_TEST_PLAN.md](../04-testing/PROJECT_E2E_TEST_PLAN.md) 和 [QUALITY_GATE_REDESIGN_2026-09-09.md](../04-testing/QUALITY_GATE_REDESIGN_2026-09-09.md)；
-- RAG：见 [RAG_ADVANCED_TEST_PLAN.md](../04-testing/RAG_ADVANCED_TEST_PLAN.md) 和 [RAG_BLIND_TEST_REPORT.md](../04-testing/RAG_BLIND_TEST_REPORT.md)；
-- 工单台：见 [ADMIN_TICKET_CONSOLE_TEST_PLAN.md](../04-testing/ADMIN_TICKET_CONSOLE_TEST_PLAN.md) 和 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/ADMIN_TICKET_CONSOLE_TEST_REPORT.md)；
-- 真实模型和网络：见 `docs/05-live-tests/` 与 [NETWORK_TROUBLESHOOTING.md](../03-operations/NETWORK_TROUBLESHOOTING.md)。
+## 进一步阅读
 
+[诊断状态](DIAGNOSIS_STATE.md) · [客服 Agent](CUSTOMER_SERVICE_ARCHITECTURE.md) · [RAG 流水线](KNOWLEDGE_PIPELINE.md) · [工单台](ADMIN_TICKET_CONSOLE.md) · [运行手册](../03-operations/RAG_OPERATIONS.md) · [当前验收](../04-testing/RAG_PHASE_ONE_ACCEPTANCE.md) · [生产边界](../03-operations/PRODUCTION.md)

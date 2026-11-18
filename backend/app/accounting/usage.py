@@ -67,7 +67,10 @@ class UsageService:
         await db.commit()
         return amount
 
-    async def settle_llm(self, db: AsyncSession, generation_id: str, actual_tokens: int, reason: str = "chat_generation") -> int:
+    async def settle_llm(
+        self, db: AsyncSession, generation_id: str, actual_tokens: int,
+        reason: str = "chat_generation", *, commit: bool = True,
+    ) -> int:
         """Settle a reservation and return unused budget after a successful request."""
         reservation = await db.get(LLMTokenReservation, generation_id)
         if not reservation or reservation.status != "RESERVED":
@@ -78,7 +81,8 @@ class UsageService:
         if not user:
             reservation.status = "SETTLED"
             reservation.settled_tokens = 0
-            await db.commit()
+            if commit:
+                await db.commit()
             return 0
         before = int(user.llm_token_balance or 0)
         if requested <= reserved:
@@ -105,10 +109,14 @@ class UsageService:
         ))
         reservation.settled_tokens = charged
         reservation.status = "SETTLED"
-        await db.commit()
+        if commit:
+            await db.commit()
         return charged
 
-    async def release_llm(self, db: AsyncSession, generation_id: str, reason: str = "failed_generation") -> int:
+    async def release_llm(
+        self, db: AsyncSession, generation_id: str,
+        reason: str = "failed_generation", *, commit: bool = True,
+    ) -> int:
         """Return a still-reserved budget; safe to call repeatedly."""
         reservation = await db.get(LLMTokenReservation, generation_id)
         if not reservation or reservation.status != "RESERVED":
@@ -125,7 +133,8 @@ class UsageService:
             ))
         reservation.status = "RELEASED"
         reservation.settled_tokens = 0
-        await db.commit()
+        if commit:
+            await db.commit()
         return int(reservation.reserved_tokens or 0)
 
     async def summary_for_user(self, db: AsyncSession, user: User) -> dict:

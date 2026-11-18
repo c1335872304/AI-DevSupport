@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
 
 from app.evaluation.customer_service import (
     aggregate_customer_service_results,
+    evaluate_answer_layer,
     evaluate_customer_service_case,
     evaluate_tool_calling,
     validate_customer_service_case,
@@ -25,6 +28,21 @@ def by_id(case_id: str):
     return next(row for row in load_cases() if row["id"] == case_id)
 
 
+def test_billing_number_support_requires_the_verified_period():
+    case = {"id": "usage-period", "question": "帮我核对本月用量"}
+    artifact = {
+        "trace": {"evidenceSummary": {"verifiedFacts": [
+            {"tool": "query_usage", "found": True, "usage": [{"month": "2026-11", "callCount": 120}]},
+        ]}},
+    }
+    for answer, unsupported in (
+        ("2026-11 用量为120 次", []),
+        ("2026-06 用量为120 次", ["2026-06"]),
+    ):
+        layer, _ = evaluate_answer_layer(case, {**artifact, "answer": answer})
+        assert layer.details["hallucination"]["unsupportedMaterialNumbers"] == unsupported
+
+
 def test_customer_service_benchmark_has_broad_coverage_and_valid_contracts():
     rows = load_cases()
     assert len(rows) >= 24
@@ -33,6 +51,30 @@ def test_customer_service_benchmark_has_broad_coverage_and_valid_contracts():
     for row in rows:
         result = validate_customer_service_case(row)
         assert result["pass"], result
+
+
+def test_phase_a_dataset_has_frozen_balanced_pairs():
+    manifest = json.loads((DATASET.parent / "phase_a_manifest.json").read_text(encoding="utf-8"))
+    all_ids = set()
+    for split, expected_pairs in (("regression", 24), ("release", 6)):
+        metadata = manifest["splits"][split]
+        data = (DATASET.parent / metadata["file"]).read_bytes()
+        assert sha256(data).hexdigest() == metadata["sha256"]
+        pairs = defaultdict(list)
+        for line in data.splitlines():
+            row = json.loads(line)
+            assert validate_customer_service_case(row)["pass"]
+            assert row["id"] not in all_ids
+            all_ids.add(row["id"])
+            assert row["split"] == split
+            assert row["strictToolFixtures"] is True
+            pairs[row["pairId"]].append(row)
+        assert len(pairs) == expected_pairs
+        for pair in pairs.values():
+            assert sorted(row["side"] for row in pair) == ["allow", "restrict"]
+            assert len({row["category"] for row in pair}) == 1
+            assert len({row["expectedAction"] for row in pair}) == 2
+    assert len(all_ids) == 60
 
 
 def test_tool_selection_and_argument_accuracy_are_measured():

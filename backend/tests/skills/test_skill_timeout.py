@@ -7,7 +7,7 @@ from app.skill_runtime.registry import SkillRegistry
 
 
 @pytest.mark.asyncio
-async def test_skill_script_timeout_kills_hanging_process(tmp_path):
+async def test_skill_script_timeout_kills_hanging_process(tmp_path, monkeypatch):
     scripts_dir = tmp_path / "scripts"
     scripts_dir.mkdir()
     script = scripts_dir / "sleep.py"
@@ -20,7 +20,7 @@ async def test_skill_script_timeout_kills_hanging_process(tmp_path):
         scripts=("sleep",),
     )
     registry = SkillRegistry([skill], root=tmp_path)
-    registry.settings.skills_script_timeout_seconds = 0.05
+    monkeypatch.setattr(registry.settings, "skills_script_timeout_seconds", 0.05)
 
     with pytest.raises(TimeoutError, match="timed out"):
         await asyncio.wait_for(registry.run_script("timeout-test", "sleep", {}), timeout=1)

@@ -14,8 +14,8 @@ async def init_db() -> None:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             # create_all does not add columns to an existing SQLite/MySQL table.
-            # Keep local upgrades self-contained because this project has no
-            # migration runner in the development setup.
+            # Legacy local compatibility only. Versioned schema upgrades use
+            # Alembic; run.py can invoke it through DATABASE_AUTO_MIGRATE.
             def add_missing_columns(sync_conn):
                 columns = {item["name"] for item in inspect(sync_conn).get_columns("conversation_sessions")}
                 if "collected_entities_json" not in columns:

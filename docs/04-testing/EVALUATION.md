@@ -1,5 +1,13 @@
 # AI 客服六层评测体系
 
+A 阶段冻结题集的现行结果和复跑入口见 [生产图离线验收](PHASE_A_OFFLINE_ACCEPTANCE.md)。
+
+第四阶段已加入冻结输入、实际 AgentRuntime 逐轨迹评分与三组检索对照，当前结果见[最终验收](FINAL_PROJECT_ACCEPTANCE.md)。`eval/phase4/manifest.json` 固定数据摘要与开发/保留划分；轨迹评分检查原因、业务证据归属、参数来源、复查范围、结束状态和真实工单。零分母返回不可用，不写成0%或100%。
+
+24个合成诊断任务的保留子集不是独立第三方盲测；旧120条官方语料检索为回归集。结构化无依据原因比例只覆盖候选结论，不能包装成所有自然语言事实的普遍错误率。模型实际用量、保守计价、离线替身与真实服务分别报告。普通向量RAG和优化前无持久诊断的系统，其复查指标标记为不适用。
+
+> 方法规范：本文包含历史客服场景集，不能假设所有用例都适用于当前三家官方语料。当前 RAG 语料入口为 `backend/eval/vendor_full_rag.jsonl`，最新结果与运行后端见 [第一阶段验收](RAG_PHASE_ONE_ACCEPTANCE.md)。历史 Demo 和真实业务模拟须分别报告。
+
 PaiSmart 的评测目标只有一个：**客户问题是否被准确、安全、有效地解决，并且在 AI 无法可靠解决时正确升级人工。**
 
 Skill Eval 只是其中一层。当前统一 Benchmark 覆盖 RAG、Tool、Agent 决策、最终回答、安全和工程性能。
@@ -103,7 +111,7 @@ python scripts/evaluate_customer_service.py \
 | Billing MCP `list_tools` / `call_tool` | 否 | 使用本地 Docker Billing MCP、MySQL 和真实 HTTP MCP 边界。 | 已通过 Compose E2E |
 | Docker 基础设施健康检查 | 否 | 验证 API、前端、MySQL、Redis、MinIO、Elasticsearch、Kafka、Worker。 | 已通过 Compose 健康检查 |
 | 前端 WebSocket E2E | 否 | 使用固定模型输出，验证浏览器事件流到最终回答。 | 已通过完整 E2E |
-| Demo RAG 检索 | 否 | 未配置 Embedding Key 时使用本地确定性向量；外部 Embedding Provider 另需 `EMBEDDING_API_KEY`。 | 已有本地测试 |
+| Demo RAG 检索 | 不需 LLM Key；需要 Embedding Key | 建库和查询使用千问 `EMBEDDING_API_KEY`；空 Key 明确失败，离线单测只使用显式测试替身。 | 单测与真实检索分别记录 |
 | `--live` Agent / Skill / 客服评测 | 是 | 调用真实 LLM，验证实际 Tool 选择和回答质量。 | 配置 Key 后运行 |
 | `--llm-judge` 答案评测 | 是 | 使用 LLM 作为评审模型。 | 配置 Key 后运行 |
 
@@ -111,7 +119,7 @@ python scripts/evaluate_customer_service.py \
 
 ### 2.2 无 API Key 测试分组与执行顺序
 
-以下分组都不需要 `LLM_API_KEY`。其中 Agent、Skill 和 Answer Eval 使用固定模型替身；RAG 使用本地确定性 Embedding；Billing MCP 使用 Docker 内部真实 HTTP 服务。
+以下分组都不需要 `LLM_API_KEY`。其中 Agent、Skill 和 Answer Eval 使用固定模型替身；RAG 单测使用显式 Embedding 测试替身，真实检索脚本另需千问 Key；Billing MCP 使用 Docker 内部真实 HTTP 服务。
 
 ```bash
 cd backend

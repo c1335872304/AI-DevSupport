@@ -2,9 +2,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from app.db.models import User
+
+if TYPE_CHECKING:
+    from app.diagnosis.execution import Lease
+    from app.support.handoff_contract import HandoffAuthorization
 
 
 @dataclass(slots=True)
@@ -14,6 +18,8 @@ class ToolExecutionContext:
     active_skills: frozenset[str] = field(default_factory=frozenset)
     scopes: frozenset[str] = field(default_factory=lambda: frozenset({"*"}))
     source: str = "agent"
+    diagnosis_lease: Lease | None = None
+    handoff_authorization: HandoffAuthorization | None = None
 
 
 @dataclass(slots=True)

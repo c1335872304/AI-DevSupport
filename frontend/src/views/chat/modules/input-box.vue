@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { applyStreamContent, findStreamMessage } from '@/utils/chat-stream';
 const chatStore = useChatStore();
 const { connectionStatus, input, isRateLimited, list, rateLimitRemainingSeconds, wsData } = storeToRefs(chatStore);
 
@@ -69,22 +70,8 @@ const cooldownText = computed(() => {
   return `${rateLimitRemainingSeconds} 秒后可重新发送`;
 });
 
-function findAssistantMessage(generationId?: string) {
-  if (generationId) {
-    for (let i = list.value.length - 1; i >= 0; i -= 1) {
-      const item = list.value[i];
-      if (item?.role === 'assistant' && item.generationId === generationId) {
-        return item;
-      }
-    }
-  }
-
-  const latest = list.value[list.value.length - 1];
-  if (latest?.role === 'assistant') {
-    return latest;
-  }
-
-  return null;
+function findAssistantMessage(generationId?: string, allowUnboundStart = false) {
+  return findStreamMessage(list.value, generationId, allowUnboundStart);
 }
 
 function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
@@ -96,6 +83,7 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
 }
 
 function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  applyStreamContent(assistant, payload);
   if (payload.status === 'finished' && assistant.status !== 'error') {
     assistant.status = 'finished';
   } else if (payload.status === 'failed') {
@@ -124,7 +112,7 @@ function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string,
 
   const message = buildWsErrorMessage(payload);
   assistant.status = 'error';
-  assistant.content = message;
+  assistant.errorMessage = message;
   markExecutingToolsAsFailed(assistant);
   stopGenerationStatusMonitor();
 
@@ -136,8 +124,7 @@ function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string,
 }
 
 function handleChunkPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
-  assistant.status = 'loading';
-  assistant.content += payload.chunk;
+  applyStreamContent(assistant, payload);
   lastStreamContentLength = assistant.content.length;
   lastStreamContentChangedAt = Date.now();
 }
@@ -321,9 +308,26 @@ watch(wsData, val => {
     return;
   }
 
-  const assistant = findAssistantMessage(payload.generationId);
+  const assistant = findAssistantMessage(payload.generationId, payload.type === 'start');
 
   if (!assistant) return;
+
+  if (payload.type === 'workflow_node') {
+    assistant.workflowStage = payload.node;
+    assistant.workflowStageStartedAt = Date.now();
+    return;
+  }
+  if (payload.type === 'answer_start' || payload.type === 'answer_replace') {
+    applyStreamContent(assistant, payload);
+    if (payload.referenceMappings) assistant.referenceMappings = payload.referenceMappings;
+    return;
+  }
+
+  if (payload.type === 'diagnosis_state') {
+    assistant.diagnosis = payload.diagnosis || undefined;
+    assistant.diagnosisId = payload.diagnosis?.diagnosisId;
+    return;
+  }
 
   if (payload.type === 'start') {
     handleStartPayload(assistant, payload);

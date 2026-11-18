@@ -1,0 +1,36 @@
+{
+  "dataset": "advanced_rag_blind_public_120.jsonl",
+  "schemaVersion": 1,
+  "purpose": "公开、无预设 metadata filter 的 RAG 检索盲测主集；不包含版本、错误 metadata 或租户隔离夹具。",
+  "caseCount": 120,
+  "coverageBucketCounts": {
+    "P1": 18,
+    "P2": 18,
+    "P3": 16,
+    "P4": 14,
+    "P5": 14,
+    "P6": 14,
+    "P7": 14,
+    "P8": 12
+  },
+  "surfaceFormCounts": {
+    "standard": 54,
+    "colloquial": 20,
+    "technical_log": 16,
+    "mixed": 12,
+    "typo": 8,
+    "long": 10
+  },
+  "sourceBatch": "blind-120-expansion",
+  "validation": {
+    "validator": "scripts/validate_blind_dataset.py",
+    "runDate": "2026-09-12",
+    "passed": true,
+    "reviewPairs": 0
+  },
+  "baselineProvenance": {
+    "historicalPublicBaseline": "advanced_rag_blind.jsonl 中实际执行的 41 条公开查询",
+    "exactQuestionOverlap": 5,
+    "status": "迁移缺口：本文件尚未完整继承历史 41 条，不能作为严格同样本趋势比较的替代物。"
+  }
+}

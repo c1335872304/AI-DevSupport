@@ -5,6 +5,7 @@ import { router } from '@/router';
 import { request } from '@/service/request';
 import { formatDate } from '@/utils/common';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
+import DiagnosisPanel from './diagnosis-panel.vue';
 defineOptions({ name: 'ChatMessage' });
 
 const props = defineProps<{
@@ -14,6 +15,22 @@ const props = defineProps<{
 }>();
 
 const authStore = useAuthStore();
+const progressNow = ref(Date.now());
+let progressTimer: ReturnType<typeof setInterval> | undefined;
+onMounted(() => { progressTimer = setInterval(() => { progressNow.value = Date.now(); }, 1000); });
+onUnmounted(() => { if (progressTimer) clearInterval(progressTimer); });
+const running = computed(() => ['pending', 'loading'].includes(props.msg.status || ''));
+const progressText = computed(() => ({
+  load_context: '正在读取会话上下文', extract_entities: '正在理解你的问题',
+  routing_policy: '正在选择处理流程', target_specialist_dispatch: '正在核查处理步骤',
+  target_execute_tools: '正在查询资料或业务记录', target_evidence_join: '正在汇总查询证据',
+  target_handoff_decision: '正在确认后续处理方式', target_create_handoff: '正在创建人工工单',
+  target_generate_response: props.msg.content ? '正在继续生成回答' : '正在根据证据生成回答',
+  safety: '正在完成最终检查', emit_final: '正在整理最终引用', persist_trace: '正在保存结果'
+} as Record<string, string>)[props.msg.workflowStage || ''] || '正在处理你的问题');
+const stageSeconds = computed(() => Math.max(0, Math.floor(
+  (progressNow.value - (props.msg.workflowStageStartedAt || progressNow.value)) / 1000
+)));
 
 function handleCopy(content: string) {
   navigator.clipboard.writeText(content);
@@ -272,6 +289,8 @@ function extractContextAnchorText(target: HTMLElement) {
 }
 
 function openReferencePreviewPage(payload: {
+  citationId?: string | null;
+  indexVersion?: string | null;
   retrievalMode?: Api.Chat.ReferenceEvidence['retrievalMode'];
   retrievalLabel?: string | null;
   retrievalQuery?: string | null;
@@ -358,6 +377,8 @@ async function handleSourceFileClick(fileInfo: {
 
     if (persistedDetail?.fileMd5 && !detail) {
       openReferencePreviewPage({
+        citationId: persistedDetail.citationId,
+        indexVersion: persistedDetail.indexVersion,
         fileName: persistedDetail.fileName || fileName,
         fileMd5: persistedDetail.fileMd5,
         pageNumber: persistedDetail.pageNumber,
@@ -377,6 +398,8 @@ async function handleSourceFileClick(fileInfo: {
 
     const targetMd5 = detail?.fileMd5 || extractedMd5 || null;
     openReferencePreviewPage({
+      citationId: detail?.citationId,
+      indexVersion: detail?.indexVersion,
       fileName: detail?.fileName || fileName,
       fileMd5: targetMd5,
       pageNumber: detail?.pageNumber,
@@ -418,6 +441,12 @@ async function handleSourceFileClick(fileInfo: {
         <NText class="text-3 color-gray-500">{{ formatDate(msg.timestamp) }}</NText>
       </div>
     </div>
+    <div v-if="msg.role === 'assistant' && running" class="ml-12 mt-3 flex items-center gap-2 text-12px color-gray-500" aria-live="polite">
+      <icon-eos-icons:three-dots-loading class="text-4" />
+      <span>{{ progressText }}</span><span v-if="stageSeconds > 0">· {{ stageSeconds }} 秒</span>
+    </div>
+    <DiagnosisPanel v-if="msg.role === 'assistant' && (msg.diagnosisId || msg.diagnosis)" class="mt-3 sm:ml-12"
+      :diagnosis-id="msg.diagnosisId || msg.diagnosis?.diagnosisId" :snapshot="msg.diagnosis" />
     <div v-if="msg.role === 'assistant' && activeSkills.length > 0" class="ml-12 mt-3 flex flex-wrap gap-2">
       <span v-for="skill in activeSkills" :key="skill" class="skill-chip">
         Skill · {{ getSkillLabel(skill) }}
@@ -477,13 +506,10 @@ async function handleSourceFileClick(fileInfo: {
         <span v-if="event.error" class="tool-event__status" :title="event.error">{{ event.resultStatus || 'ERROR' }}</span>
       </div>
     </div>
-    <NText v-if="msg.status === 'pending' || (msg.status === 'loading' && msg.role === 'assistant' && !msg.content)">
-      <icon-eos-icons:three-dots-loading class="ml-12 mt-2 text-8" />
+    <NText v-if="msg.status === 'error'" class="ml-12 mt-2 italic color-#d03050">
+      {{ msg.errorMessage || msg.content || '服务器繁忙，请稍后再试' }}
     </NText>
-    <NText v-else-if="msg.status === 'error'" class="ml-12 mt-2 italic color-#d03050">
-      {{ msg.content || '服务器繁忙，请稍后再试' }}
-    </NText>
-    <div v-else-if="msg.role === 'assistant'" class="mt-2 pl-12" @click="handleContentClick">
+    <div v-if="msg.role === 'assistant' && msg.content && (msg.status !== 'error' || msg.errorMessage)" class="mt-2 pl-12" @click="handleContentClick">
       <VueMarkdownIt :content="content" />
     </div>
     <NText v-else-if="msg.role === 'user'" class="ml-12 mt-2 text-4">{{ content }}</NText>

@@ -1,0 +1,423 @@
+{
+  "model": "text-embedding-v4",
+  "dimension": 256,
+  "documents": 69,
+  "childVectors": 5917,
+  "documentProviderTokens": 847960,
+  "documentsDetail": [
+    {
+      "fileName": "api-getting-started.md",
+      "chunks": 5,
+      "providerTokens": 1480,
+      "activeVersion": "3130ef1039324944ab09f62bc74aa820"
+    },
+    {
+      "fileName": "authentication.md",
+      "chunks": 4,
+      "providerTokens": 992,
+      "activeVersion": "359d28ac462e49399374f75cd3323394"
+    },
+    {
+      "fileName": "rate-limit.md",
+      "chunks": 3,
+      "providerTokens": 852,
+      "activeVersion": "d49e75e52eb44de6b9b771f04d227e6b"
+    },
+    {
+      "fileName": "billing-policy.md",
+      "chunks": 3,
+      "providerTokens": 1034,
+      "activeVersion": "20cfb859c1fe451ea28f3ac7a8caa8eb"
+    },
+    {
+      "fileName": "refund-policy.md",
+      "chunks": 3,
+      "providerTokens": 747,
+      "activeVersion": "36e6e017e6cc42bba6e4f184af5860e3"
+    },
+    {
+      "fileName": "error-codes.md",
+      "chunks": 3,
+      "providerTokens": 770,
+      "activeVersion": "12fe0067c047482091d8ffa28627f201"
+    },
+    {
+      "fileName": "troubleshooting-faq.md",
+      "chunks": 3,
+      "providerTokens": 965,
+      "activeVersion": "b8c9279e085b4a1ab00499794467e2a7"
+    },
+    {
+      "fileName": "security-and-data-handling.md",
+      "chunks": 3,
+      "providerTokens": 824,
+      "activeVersion": "3dc7622edd4648d796d46c5a1afedecc"
+    },
+    {
+      "fileName": "release-notes.md",
+      "chunks": 2,
+      "providerTokens": 631,
+      "activeVersion": "e93b4bf8f7dd4eaea27bbf07deed651f"
+    },
+    {
+      "fileName": "gpt-overview.md",
+      "chunks": 24,
+      "providerTokens": 2394,
+      "activeVersion": "4c89437be7e84f2a85029d85816b5f3e"
+    },
+    {
+      "fileName": "gpt-quickstart.md",
+      "chunks": 130,
+      "providerTokens": 15184,
+      "activeVersion": "f6ace1fe02e9462b9fdeaa1eb136f635"
+    },
+    {
+      "fileName": "gpt-text.md",
+      "chunks": 48,
+      "providerTokens": 5379,
+      "activeVersion": "8dfe7c7c205b47648dc5aefd66fe3897"
+    },
+    {
+      "fileName": "gpt-conversation-state.md",
+      "chunks": 61,
+      "providerTokens": 6778,
+      "activeVersion": "b08ca97c635c4b87b8398ef6b1e70a75"
+    },
+    {
+      "fileName": "gpt-streaming.md",
+      "chunks": 18,
+      "providerTokens": 2019,
+      "activeVersion": "099092b8551748e09c1c742bcaeb2eb5"
+    },
+    {
+      "fileName": "gpt-function-calling.md",
+      "chunks": 192,
+      "providerTokens": 21636,
+      "activeVersion": "4c9807ac15e8475f8590e7528b089fa9"
+    },
+    {
+      "fileName": "gpt-structured-outputs.md",
+      "chunks": 319,
+      "providerTokens": 34439,
+      "activeVersion": "9757f15da2934164915efbb811939db4"
+    },
+    {
+      "fileName": "gpt-reasoning.md",
+      "chunks": 175,
+      "providerTokens": 19292,
+      "activeVersion": "09cac21d5018413abd75dad970d5d2c1"
+    },
+    {
+      "fileName": "gpt-reasoning-practices.md",
+      "chunks": 46,
+      "providerTokens": 4418,
+      "activeVersion": "9e3a3be4295e4ebd91849cad17b80528"
+    },
+    {
+      "fileName": "gpt-prompt-engineering.md",
+      "chunks": 94,
+      "providerTokens": 9862,
+      "activeVersion": "c91b993aa54847578cb86379d4c08ea2"
+    },
+    {
+      "fileName": "gpt-prompt-caching.md",
+      "chunks": 123,
+      "providerTokens": 12640,
+      "activeVersion": "cf95c2ebe20f434e808b7bd88e1e0fe0"
+    },
+    {
+      "fileName": "gpt-embeddings.md",
+      "chunks": 145,
+      "providerTokens": 17149,
+      "activeVersion": "1da85964f65c47978b405ffb9e43f85b"
+    },
+    {
+      "fileName": "gpt-retrieval.md",
+      "chunks": 139,
+      "providerTokens": 16105,
+      "activeVersion": "d2bceccbcdb44500bd18c17b05d80651"
+    },
+    {
+      "fileName": "gpt-file-search.md",
+      "chunks": 70,
+      "providerTokens": 7859,
+      "activeVersion": "3813601f22c04917a53c304ea5a2ef88"
+    },
+    {
+      "fileName": "gpt-errors.md",
+      "chunks": 80,
+      "providerTokens": 7133,
+      "activeVersion": "d4767ad855a24aec8dce96fc9f594600"
+    },
+    {
+      "fileName": "gpt-rate-limits.md",
+      "chunks": 60,
+      "providerTokens": 6102,
+      "activeVersion": "fbeb9b23bbcf4731a5bd6a32270909eb"
+    },
+    {
+      "fileName": "gpt-batch.md",
+      "chunks": 53,
+      "providerTokens": 6796,
+      "activeVersion": "3a940920fd9548b083ed6b397196a1bc"
+    },
+    {
+      "fileName": "gpt-background.md",
+      "chunks": 52,
+      "providerTokens": 5521,
+      "activeVersion": "2828a30406994f0cb8496d65c81819ae"
+    },
+    {
+      "fileName": "gpt-webhooks.md",
+      "chunks": 42,
+      "providerTokens": 4823,
+      "activeVersion": "d71fddff994b46c8bdb1db2ad2b1bafe"
+    },
+    {
+      "fileName": "gpt-responses-migration.md",
+      "chunks": 152,
+      "providerTokens": 17579,
+      "activeVersion": "a6c62fcbb71c4ed4916992c383d9ed04"
+    },
+    {
+      "fileName": "qwen-quickstart.md",
+      "chunks": 99,
+      "providerTokens": 15135,
+      "activeVersion": "304b748609774e9aadee29d6aa7943b2"
+    },
+    {
+      "fileName": "qwen-api-key.md",
+      "chunks": 27,
+      "providerTokens": 5162,
+      "activeVersion": "010865f5896d4e20ad0fc53754f2375a"
+    },
+    {
+      "fileName": "qwen-batch.md",
+      "chunks": 252,
+      "providerTokens": 39884,
+      "activeVersion": "fd0fa2cdad6c434d871a22d2f3b4a9ba"
+    },
+    {
+      "fileName": "qwen-sdk.md",
+      "chunks": 11,
+      "providerTokens": 1844,
+      "activeVersion": "553951ffe7c842d5a735f55dfef9d98a"
+    },
+    {
+      "fileName": "qwen-base-url.md",
+      "chunks": 18,
+      "providerTokens": 3596,
+      "activeVersion": "62a7650d292843ad9dfa587be62390a3"
+    },
+    {
+      "fileName": "qwen-regions.md",
+      "chunks": 37,
+      "providerTokens": 7272,
+      "activeVersion": "6b3e415c31d64b9ea076775753d2707f"
+    },
+    {
+      "fileName": "qwen-chat-completions.md",
+      "chunks": 246,
+      "providerTokens": 39285,
+      "activeVersion": "4fde58be23cb46458180c39b43f97349"
+    },
+    {
+      "fileName": "qwen-dashscope.md",
+      "chunks": 292,
+      "providerTokens": 40282,
+      "activeVersion": "5f09a64bd69f4127bd165b23b3eea305"
+    },
+    {
+      "fileName": "qwen-responses.md",
+      "chunks": 223,
+      "providerTokens": 31954,
+      "activeVersion": "eb91e269c5654287b7d59b5a0e4be8c3"
+    },
+    {
+      "fileName": "qwen-streaming.md",
+      "chunks": 137,
+      "providerTokens": 20052,
+      "activeVersion": "0415ac284e72443aad1c38254b8bcc9e"
+    },
+    {
+      "fileName": "qwen-function-calling.md",
+      "chunks": 399,
+      "providerTokens": 51941,
+      "activeVersion": "5be6a40638cd4e699e603d94ff6cf440"
+    },
+    {
+      "fileName": "qwen-structured-outputs.md",
+      "chunks": 194,
+      "providerTokens": 27509,
+      "activeVersion": "01826492496a48c38a2fced86379e539"
+    },
+    {
+      "fileName": "qwen-thinking.md",
+      "chunks": 239,
+      "providerTokens": 35658,
+      "activeVersion": "32e0c5a912fc46b6af67283b042d5aab"
+    },
+    {
+      "fileName": "qwen-multi-round.md",
+      "chunks": 111,
+      "providerTokens": 14378,
+      "activeVersion": "bc3d63d0ee1449709100e9369664fb2b"
+    },
+    {
+      "fileName": "qwen-context-cache.md",
+      "chunks": 118,
+      "providerTokens": 22098,
+      "activeVersion": "54e8a11d6e4e4b72939dc6b2e199c33d"
+    },
+    {
+      "fileName": "qwen-embedding-api.md",
+      "chunks": 113,
+      "providerTokens": 15319,
+      "activeVersion": "94985465d021453fad3bd31ef6df55e0"
+    },
+    {
+      "fileName": "qwen-embedding-v4.md",
+      "chunks": 14,
+      "providerTokens": 3281,
+      "activeVersion": "465d8bb74bea460a96470b0dbca224f9"
+    },
+    {
+      "fileName": "qwen-rate-limits.md",
+      "chunks": 803,
+      "providerTokens": 134906,
+      "activeVersion": "8cdd7639a148415b979470864519009e"
+    },
+    {
+      "fileName": "qwen-errors.md",
+      "chunks": 229,
+      "providerTokens": 47490,
+      "activeVersion": "5ad191330e1542b39a82266cdfbad7bf"
+    },
+    {
+      "fileName": "qwen-prompt-engineering.md",
+      "chunks": 76,
+      "providerTokens": 18068,
+      "activeVersion": "f3c3ce086e964b48a38e2330fb6d327f"
+    },
+    {
+      "fileName": "deepseek-quickstart.md",
+      "chunks": 7,
+      "providerTokens": 1146,
+      "activeVersion": "7f1ff29a5c6344c4ab7cf1cd9b54877c"
+    },
+    {
+      "fileName": "deepseek-errors.md",
+      "chunks": 2,
+      "providerTokens": 464,
+      "activeVersion": "619f6b7e244044f1a3cf093e4ac6a345"
+    },
+    {
+      "fileName": "deepseek-rate-limits.md",
+      "chunks": 6,
+      "providerTokens": 1250,
+      "activeVersion": "9798f6a62f6847268d9ae1cf75ba1483"
+    },
+    {
+      "fileName": "deepseek-token-usage.md",
+      "chunks": 2,
+      "providerTokens": 480,
+      "activeVersion": "bab0f4b9d95e4d7b860bdb6a80cb2c1a"
+    },
+    {
+      "fileName": "deepseek-models-pricing.md",
+      "chunks": 5,
+      "providerTokens": 1348,
+      "activeVersion": "857171a4ae7b49dbb076b37798b91818"
+    },
+    {
+      "fileName": "deepseek-chat-completions.md",
+      "chunks": 51,
+      "providerTokens": 9487,
+      "activeVersion": "786a0f8c09994505a1f524b718a0fb26"
+    },
+    {
+      "fileName": "deepseek-responses.md",
+      "chunks": 31,
+      "providerTokens": 5417,
+      "activeVersion": "4393fd7ce2ae4bf59d5f036fe55c8649"
+    },
+    {
+      "fileName": "deepseek-fim-api.md",
+      "chunks": 10,
+      "providerTokens": 1859,
+      "activeVersion": "5aef32b0594b4b4ca31b3e4c8e286f30"
+    },
+    {
+      "fileName": "deepseek-balance.md",
+      "chunks": 2,
+      "providerTokens": 430,
+      "activeVersion": "dd28edc9fbd247728151ef54b3cb83b4"
+    },
+    {
+      "fileName": "deepseek-models.md",
+      "chunks": 8,
+      "providerTokens": 1366,
+      "activeVersion": "4b1587161dfe40dca84a3194cc633654"
+    },
+    {
+      "fileName": "deepseek-thinking.md",
+      "chunks": 26,
+      "providerTokens": 3838,
+      "activeVersion": "8cebdb80517848dda9d130e252c23d8b"
+    },
+    {
+      "fileName": "deepseek-tool-calling.md",
+      "chunks": 17,
+      "providerTokens": 2733,
+      "activeVersion": "be1619d133724addb559014623150d5a"
+    },
+    {
+      "fileName": "deepseek-json-output.md",
+      "chunks": 4,
+      "providerTokens": 631,
+      "activeVersion": "03080852e1cd405fa83ab4bc58fbb8bc"
+    },
+    {
+      "fileName": "deepseek-multi-round.md",
+      "chunks": 4,
+      "providerTokens": 672,
+      "activeVersion": "6a582e5ba40e475b8aec3d9c84641c06"
+    },
+    {
+      "fileName": "deepseek-context-cache.md",
+      "chunks": 6,
+      "providerTokens": 1483,
+      "activeVersion": "0815c09089164297838c4505508b9d1a"
+    },
+    {
+      "fileName": "deepseek-vision.md",
+      "chunks": 18,
+      "providerTokens": 3321,
+      "activeVersion": "9c46fa111522430cadfa65c81dde8886"
+    },
+    {
+      "fileName": "deepseek-files.md",
+      "chunks": 13,
+      "providerTokens": 2610,
+      "activeVersion": "df3f1add0dd74fa0ad81c8ceedf62c70"
+    },
+    {
+      "fileName": "deepseek-prefix-completion.md",
+      "chunks": 3,
+      "providerTokens": 488,
+      "activeVersion": "ac8984379a534267ad6d663759271fd2"
+    },
+    {
+      "fileName": "deepseek-fim-guide.md",
+      "chunks": 3,
+      "providerTokens": 548,
+      "activeVersion": "5d1327499f3d4a3f902b47b45b34be06"
+    },
+    {
+      "fileName": "deepseek-anthropic-protocol.md",
+      "chunks": 9,
+      "providerTokens": 1872,
+      "activeVersion": "4beeba2569174a4289dce31dd26c61e4"
+    }
+  ]
+}

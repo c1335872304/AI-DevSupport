@@ -1,0 +1,26 @@
+# 历史测试与演进记录
+
+这里保留历史测试、修复、语料迁移和已被替代的基线。各报告应按当时的语料、部署与指标口径阅读。
+
+当前状态见 [第一阶段验收](../RAG_PHASE_ONE_ACCEPTANCE.md)；当前评测方法见 [评测规范](../EVALUATION.md)。
+
+| 历史材料 | 阅读用途 |
+| --- | --- |
+| [A 阶段首版质量基线](PHASE_A_QUALITY_BASELINE_2026-11-17.md) | 历史模型夹具评测与 Docker 抽验记录 |
+| [ADMIN_TICKET_CONSOLE_TEST_PLAN.md](ADMIN_TICKET_CONSOLE_TEST_PLAN.md) | 保留原始过程、适用条件与局限 |
+| [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](ADMIN_TICKET_CONSOLE_TEST_REPORT.md) | 保留原始过程、适用条件与局限 |
+| [PROJECT_E2E_REMEDIATION_PLAN.md](PROJECT_E2E_REMEDIATION_PLAN.md) | 保留原始过程、适用条件与局限 |
+| [PROJECT_E2E_REMEDIATION_REPORT.md](PROJECT_E2E_REMEDIATION_REPORT.md) | 保留原始过程、适用条件与局限 |
+| [PROJECT_E2E_TEST_PLAN.md](PROJECT_E2E_TEST_PLAN.md) | 保留原始过程、适用条件与局限 |
+| [PROJECT_E2E_TEST_REPORT.md](PROJECT_E2E_TEST_REPORT.md) | 保留原始过程、适用条件与局限 |
+| [PROJECT_TEST_REPORT_2026-09-09.md](PROJECT_TEST_REPORT_2026-09-09.md) | 保留原始过程、适用条件与局限 |
+| [QUALITY_GATE_REDESIGN_2026-09-09.md](QUALITY_GATE_REDESIGN_2026-09-09.md) | 保留原始过程、适用条件与局限 |
+| [QWEN_EMBEDDING_REPLACEMENT_2026-10-19.md](QWEN_EMBEDDING_REPLACEMENT_2026-10-19.md) | 保留原始过程、适用条件与局限 |
+| [RAG_ADVANCED_TEST_PLAN.md](RAG_ADVANCED_TEST_PLAN.md) | 保留原始过程、适用条件与局限 |
+| [RAG_ADVANCED_TEST_REPORT.md](RAG_ADVANCED_TEST_REPORT.md) | 保留原始过程、适用条件与局限 |
+| [RAG_BLIND_TEST_120_PLAN.md](RAG_BLIND_TEST_120_PLAN.md) | 保留原始过程、适用条件与局限 |
+| [RAG_BLIND_TEST_120_REPORT.md](RAG_BLIND_TEST_120_REPORT.md) | 保留原始过程、适用条件与局限 |
+| [RAG_BLIND_TEST_REPORT.md](RAG_BLIND_TEST_REPORT.md) | 保留原始过程、适用条件与局限 |
+| [RAG_BLIND_TEST_SUITE.md](RAG_BLIND_TEST_SUITE.md) | 保留原始过程、适用条件与局限 |
+| [VENDOR_FULL_CORPUS_REPORT_2026-10-19.md](VENDOR_FULL_CORPUS_REPORT_2026-10-19.md) | 保留原始过程、适用条件与局限 |
+| [VENDOR_KNOWLEDGE_REPORT_2026-10-19.md](VENDOR_KNOWLEDGE_REPORT_2026-10-19.md) | 保留原始过程、适用条件与局限 |

@@ -3,6 +3,16 @@ from __future__ import annotations
 from app.agent.routing_policy import routing_policy
 
 
+def test_explicit_topic_pivot_excludes_deferred_billing_from_diagnostic_routing():
+    decision = routing_policy.decide(
+        "刚才的账单先放一边，回到接口故障。请求号 req_example_001。",
+        {"request_id": "req_example_001"},
+        {"intent": "api_diagnostic"},
+    )
+    assert "api_diagnostic" in decision.selected_agents
+    assert "billing" not in decision.selected_agents
+
+
 def test_high_risk_refund_is_not_downgraded_by_a_general_semantic_hint():
     decision = routing_policy.decide("我想申请退款", {}, {"intent": "general"})
 
@@ -58,6 +68,18 @@ def test_explicit_handoff_negation_does_not_force_a_ticket():
 
     assert decision.requires_handoff_after_summary is False
     assert "handoff_negated" in decision.matched_rules
+
+
+def test_semantic_contract_change_still_requires_handoff():
+    decision=routing_policy.decide('Please move me to the higher tier',{},
+        {'intent':'subscription_change','needs_human':True})
+    assert decision.risk_level=='HIGH' and decision.requires_handoff_after_summary
+
+
+def test_read_only_billing_does_not_inherit_model_handoff_hint():
+    decision=routing_policy.decide('请核实2026-10的套餐、用量和账单金额。',{},
+        {'intent':'billing','needs_human':True})
+    assert decision.risk_level=='LOW' and not decision.requires_handoff_after_summary
 
 
 def test_greeting_does_not_start_a_specialist():

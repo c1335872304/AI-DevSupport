@@ -1,0 +1,29 @@
+{
+  "reviewer": "Codex 按实测前冻结要求逐项审阅；非独立人工/第二模型裁判，不能据小样本外推线上准确率",
+  "cases": [
+    {"id":"E01","overall":"PASS","note":"json_object、提示json及示例、max_tokens、空content均正确；#1/#8同版本上下文包含对应要求，额外截断说明有#5依据。"},
+    {"id":"E02","overall":"PASS","note":"assistant、prefix=True、Beta地址完整正确，来源中有对应说明；没有多余工单。"},
+    {"id":"E03","overall":"PASS","note":"直接否定个人未来5000QPS及永不限流保证；区分并发与QPS，通用文档与个人账户，不再转成故障模板。"},
+    {"id":"E04","overall":"PASS","note":"地域独立和同计费方案两个要求都回答，#1为Base URL总览正文，未混用厂商。"},
+    {"id":"E05","overall":"PASS","note":"15行需拆批、8192单行边界、256维三项正确；实际引用上下文包含限制与维度表。"},
+    {"id":"E06","overall":"PASS","note":"未查到型号规格，不确认512K和发布日期；明确其他型号通用参数不能外推。"},
+    {"id":"E07","overall":"PASS","note":"background=true、GET/retrieve、queued/in_progress继续及终态停止完整；有后台文档上下文支撑。"},
+    {"id":"E08","overall":"PASS","note":"合法JSON与Schema保证、拒绝独立处理均正确；#1可读上下文包含显式拒绝规则，修复此前读者不可见的证据。"},
+    {"id":"E09","overall":"PASS","note":"不确认个人组织ZDR及未来全部请求不留存；通用存储/缓存规则按其范围说明，未以Demo账户代替厂商事实。"},
+    {"id":"E10","overall":"PASS","note":"真实LangGraph澄清分支先问厂商、模型与接口；没有检索或伪造通用配置。"},
+    {"id":"E11","overall":"PASS","note":"两家结论完整、分别引用；DeepSeek JSON Output仅合法JSON，OpenAI Structured Outputs约束Schema，并区分其他strict工具场景。"},
+    {"id":"E12","overall":"PASS","note":"明确2026快照不能证明2099规范，当前参数明确限定快照范围；个别历史/未来用词仍可精简。"},
+    {"id":"N01","overall":"PASS","note":"前缀、可选后缀、中间补全、代码用途及4K上限正确，FIM指南可验证。"},
+    {"id":"N02","overall":"PASS","note":"默认开启、完整匹配已落盘单元、非百分百命中正确；缓存指南锚点可支撑。"},
+    {"id":"N03","overall":"PASS","note":"文档不是个人当前余额，余额快照不能保证未来费用；未调用Demo账单冒充厂商账户。"},
+    {"id":"N04","overall":"PASS","note":"stream=true及stream_options.include_usage位置正确，区分OpenAI兼容接口与DashScope原生；来源可验证。"},
+    {"id":"N05","overall":"PASS","note":"query用于查询侧、document用于底库、默认document正确；参数段有依据。"},
+    {"id":"N06","overall":"PASS","note":"不从通用文档认定个人购买状态，保持地域Key独立的范围，不虚构跨地域服务已开通。"},
+    {"id":"N07","overall":"PASS","note":"依据快照说明ZDR后台store=false且临时落盘约10分钟，未将ZDR等同完全零磁盘写入。"},
+    {"id":"N08","overall":"PASS","note":"previous_response_id串联上下文、避免客户端重传完整历史、历史输入仍计量三项完整；计费文字指token计量，不应理解为取消缓存折扣。"},
+    {"id":"N09","overall":"PASS","note":"未知模型与个人组织开通状态均不确认，不编造上下文长度；提供核验方向。"},
+    {"id":"N10","overall":"PASS","note":"先确认厂商、模型和接口，不给跨厂商strict通用参数保证；澄清分支实际执行。"},
+    {"id":"N11","overall":"PASS","note":"两种JSON Object/Output只保证合法JSON，另行区分Qwen JSON Schema；两家正文均保留并分别引用。"},
+    {"id":"N12","overall":"PARTIAL","note":"未来费用与限制无法保证的核心结论正确；但补充信息把新加坡的0.000514/无免费额度泛化为通用当前状态，且把RPM/TPM限流混入批量条数讨论。地域、计费及限制类型范围表达仍有缺陷，未计为满分。"}
+  ]
+}

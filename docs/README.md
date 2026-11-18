@@ -1,102 +1,55 @@
-# API 助手文档导航
+# API 助手文档入口
 
-项目 Markdown 按用途分目录管理。产品前端品牌为“API 助手”；代码包、Compose 项目名和数据库名中的 `PaiSmart` 属于内部技术标识。本导航只整理项目说明，不移动运行时会读取的 Demo 知识库或 Skill 文件。
+更新：2026-10-20。四阶段核心迭代已完成，Docker Demo 已原地更新并保留知识库与配置；截图输入为未实施的可选项。
 
-## 文档维护规则
+随后按明确替换要求，Docker知识库已迁移为三家各20份官方正文、5888条复用千问向量；见[官方语料迁移验收](04-testing/DOCKER_VENDOR_KNOWLEDGE_MIGRATION_2026-10-20.md)。前一份升级报告中的21份是替换前的历史状态。
 
-- `01-getting-started/`：第一次接手项目、启动和最小验收；
-- `02-architecture/`：当前实现的架构基线，代码变化后必须同步更新；
-- `03-operations/`：Docker、网络、CI 和生产运行边界；
-- `04-testing/`：测试计划、执行报告和历史复验记录，全部保留，不因架构更新删除；
-- `05-live-tests/`：真实模型、成本和 Provider 网络测试记录，保留为独立审计材料。
+后续已修复迁移验收暴露的厂商召回和账单安全门不一致，见[最新修复与Docker重验](04-testing/VENDOR_SCOPE_AND_BILLING_GATE_FIX_2026-10-20.md)。
 
-架构文档从 [02-architecture/README.md](02-architecture/README.md) 进入；测试结果不复制到架构文档，避免出现多个互相矛盾的数字。
+随后补充了实际检索与生成的[独立端到端回答评测](04-testing/INDEPENDENT_ANSWER_EVALUATION_2026-10-20.md)及[逐题回答证据](04-testing/INDEPENDENT_ANSWER_CASES_2026-10-20.md)。新评测发现仍有诊断门误拦文档问答、引用错位等问题；检索命中率不能代表回答质量。
 
-## 本次整理结果（2026-09-10）
+这些问题已按优先级修复并部署Docker，见[回答链路修复与新旧题重验](04-testing/ANSWER_QUALITY_FIX_2026-10-20.md)。原12题通过，新12题11通过、1部分通过；地域计费范围表达仍列为剩余问题。
 
-- 保留 `04-testing/` 和 `05-live-tests/` 下全部测试计划、报告及历史过程记录；
-- 新增 [架构总览](02-architecture/README.md)，统一说明当前边界、架构决策、代码映射和测试关联；
-- 更新客服 Agent 架构、RAG 架构和管理员工单台架构，删除过期的执行数字，改为链接到测试报告；
-- 将质量门的稳定架构契约放回 `02-architecture/CUSTOMER_SERVICE_ARCHITECTURE.md`，把限流首次问答的具体过程保留在测试记录中；
-- 修正根 README 中 Billing MCP 的描述，避免把 API 诊断误写成 MCP 路由。
+## 从哪里开始
 
-```text
-docs/
-├── 01-getting-started/   # 第一次启动与本地验收
-├── 02-architecture/      # Agent、RAG 与生产边界
-├── 03-operations/        # Docker、Billing MCP、CI 与运维
-├── 04-testing/           # 离线评测、RAG 专项与项目 E2E
-└── 05-live-tests/        # 真实模型的限量测试记录
-```
+最新完成[按问题复杂度优化调用链及Docker验收](04-testing/COMPLEXITY_CHAIN_OPTIMIZATION_2026-10-20.md)：简单配置题减少模型规划，401/429保留完整诊断与复查；记录配对质量、耗时及费用。
 
-## 快速开始
+随后完成[简单文档题上下文优化](04-testing/EVIDENCE_BUDGET_OPTIMIZATION_2026-10-20.md)：精简模型侧元数据、合并重叠证据并控制预算；同时记录缓存差异与失败重测，不用调用次数代替费用。
 
-适合第一次接手项目、启动 Docker Demo 或确认服务是否正常：
+最新完成[稳定证据前缀与Docker缓存验收](04-testing/STABLE_PREFIX_OPTIMIZATION_2026-10-20.md)：选材后稳定排序、同步来源编号、文档前置问题后置；真实检索首轮和固定证据换问法实验分开报告。
 
-| 文档 | 用途 | 状态 |
-|---|---|---|
-| [GETTING_STARTED.md](01-getting-started/GETTING_STARTED.md) | 本地启动、账号、模型 Key、Demo 知识库和最小验收 | 当前入口 |
+随后完成[实时流式输出与Docker验收](04-testing/LIVE_STREAMING_ACCEPTANCE_2026-10-20.md)：生成期间检查并推送完整短句或代码块，展示真实工作流进度，结束后校准权威正文；保留现有知识库、向量和配置。
 
-## Docker 与运维
+| 目的 | 文档 | 权威范围 |
+| --- | --- | --- |
+| 了解项目 | [项目简介](PROJECT_INTRO.md) | 产品能力与边界 |
+| 启动开发环境 | [本地启动](01-getting-started/GETTING_STARTED.md) | 配置、迁移、启动 |
+| 了解代码 | [架构总览](02-architecture/README.md) | 模块职责与依赖方向 |
+| 理解 RAG | [知识流水线](02-architecture/KNOWLEDGE_PIPELINE.md) | 当前实现与一致性契约 |
+| 导入官方资料 | [知识库说明](01-getting-started/VENDOR_KNOWLEDGE.md) | DeepSeek、Qwen、GPT 快照与来源 |
+| 运行与恢复 | [RAG 操作手册](03-operations/RAG_OPERATIONS.md) | Docling、任务、修订、故障恢复 |
+| 复跑客服演示 | [正式入口演示](03-operations/CUSTOMER_SERVICE_DEMO.md) | 无请求号诊断、工单写入和恢复 |
+| 查看客服候选验收 | [性能、用量与预发布演练](04-testing/ERP_CANDIDATE_RELEASE_ACCEPTANCE_2026-11-18.md) · [预发布手册](03-operations/CONTEXT_STAGING_ACCEPTANCE_RUNBOOK.md) | 同一候选的真实模型对照、依赖故障、通知门禁与回滚 |
+| 运行退款沙箱演示 | [退款审批与执行方案](REFUND_APPROVAL_EXECUTION_PLAN.md) | 人工审批、落库退款、同编号查单和回执恢复 |
+| 查看最新验收 | [Docker升级验收](04-testing/DOCKER_DEMO_UPGRADE_2026-10-20.md) · [最终验收](04-testing/FINAL_PROJECT_ACCEPTANCE.md) · [第三阶段验收](04-testing/DIAGNOSIS_LOOP_ACCEPTANCE.md) · [第二阶段验收](04-testing/DIAGNOSIS_STATE_ACCEPTANCE.md) · [RAG 验收](04-testing/RAG_PHASE_ONE_ACCEPTANCE.md) | 各阶段测试结果、指标和限制 |
+| 查看进度 | [第四阶段检查点](04-testing/PHASE_FOUR_PROGRESS.md) · [第三阶段检查点](04-testing/PHASE_THREE_PROGRESS.md) · [第二阶段检查点](04-testing/PHASE_TWO_PROGRESS.md) · [RAG 检查点](04-testing/LONG_TASK_PROGRESS.md) | 状态和证据位置 |
+| 安排后续迭代 | [四阶段计划](FOUR_PHASE_ITERATION_PLAN.md) · [客服 Agent 工程改进计划](ERP_AGENT_PRACTICES_ADOPTION_PLAN.md) | 迭代范围、写入边界与验收进度 |
+| 维护项目 | [整理记录与剩余债务](MAINTENANCE.md) | 已清理事项、保留理由及后续债务 |
 
-| 文档 | 用途 | 状态 |
-|---|---|---|
-| [DOCKER_OPERATIONS.md](03-operations/DOCKER_OPERATIONS.md) | 启停、健康检查、日志、测试、重建和安全清理 | 当前入口 |
-| [NETWORK_TROUBLESHOOTING.md](03-operations/NETWORK_TROUBLESHOOTING.md) | Docker CLI、Windows 代理、DashScope DNS、离线 Embedding 和 Provider 排障 | 当前入口 |
-| [DOCKER_AND_LOCAL_BILLING_MCP_PLAN.md](03-operations/DOCKER_AND_LOCAL_BILLING_MCP_PLAN.md) | Docker 拓扑、本地 Billing MCP 与验收边界 | 当前实现 |
-| [CI_PLAN.md](03-operations/CI_PLAN.md) | Fast / Integration / Live 分层 CI、RAG 门禁和外部模型成本控制 | Fast CI 已实现；Integration / Live 待补 |
-| [PRODUCTION.md](03-operations/PRODUCTION.md) | 数据库迁移、工单、MCP Auth、Kafka、监控和生产边界 | 生产规划 |
+## 按主题查阅
 
-## 架构与开发
+- Agent：[诊断闭环](02-architecture/DIAGNOSIS_LOOP.md)、[诊断状态与证据](02-architecture/DIAGNOSIS_STATE.md)、[客服运行时架构](02-architecture/CUSTOMER_SERVICE_ARCHITECTURE.md)、[管理员工单台](02-architecture/ADMIN_TICKET_CONSOLE.md)。
+- RAG：[设计与实施对照](02-architecture/RAG_EVOLUTION_DESIGN.md)、[企业开源参考](02-architecture/RAG_UPSTREAM_REVIEW.md)。当前行为以知识流水线为准，设计文档保留演进背景。
+- 运维：[三条演示](03-operations/PROJECT_DEMOS.md)、[诊断恢复](03-operations/DIAGNOSIS_OPERATIONS.md)、[Docker 操作](03-operations/DOCKER_OPERATIONS.md)、[重启指南](03-operations/PROJECT_RESTART_GUIDE.md)、[网络排障](03-operations/NETWORK_TROUBLESHOOTING.md)、[Billing MCP 拓扑](03-operations/DOCKER_AND_LOCAL_BILLING_MCP_PLAN.md)。
+- 工程规划：[生产边界](03-operations/PRODUCTION.md)、[CI 计划](03-operations/CI_PLAN.md)。这里的待办不视为已经完成的能力。
+- 评测：[六层评测规范](04-testing/EVALUATION.md)、[用户问题集](04-testing/USER_QUESTION_SIMULATION.md)、[A 写入验收](04-testing/RAG_BATCH_A_REPORT.md)、[B 生命周期验收](04-testing/RAG_BATCH_B_REPORT.md)、[C 解析检索验收](04-testing/RAG_BATCH_C_REPORT.md)。
+- 历史：[旧测试与语料演进索引](04-testing/history/README.md)、[真实模型测试计划](05-live-tests/DEEPSEEK_LIVE_TEST_PLAN.md)、[历史真实模型报告](05-live-tests/DEEPSEEK_LIVE_TEST_REPORT.md)。历史成绩只能按原报告条件解读。
+- 脚本：[用途与运行边界](../backend/scripts/README.md)。
 
-| 文档 | 用途 | 状态 |
-|---|---|---|
-| [README.md](02-architecture/README.md) | 当前架构入口、决策、不变量、代码映射和测试关联 | 当前架构入口 |
-| [CUSTOMER_SERVICE_ARCHITECTURE.md](02-architecture/CUSTOMER_SERVICE_ARCHITECTURE.md) | Agent、Skill、Tool、MCP、RAG、证据、质量门和安全边界 | 当前架构基线 |
-| [ADMIN_TICKET_CONSOLE.md](02-architecture/ADMIN_TICKET_CONSOLE.md) | 管理员工单台、权限、分页接口、数据边界与验收方式 | 当前实现；跨用户页面夹具待补 |
-| [KNOWLEDGE_PIPELINE.md](02-architecture/KNOWLEDGE_PIPELINE.md) | 知识文档、父子 Chunk、Qwen Embedding、Elasticsearch 与索引版本 | 当前实现 |
-| [EVALUATION.md](04-testing/EVALUATION.md) | 路由、工具调用、引用、最终回答和安全质量评测 | 当前评测规范 |
+## 维护规则
 
-## RAG 测试与结果
-
-> 本节所有测试计划、执行报告和历史复验记录均保留。架构变更更新 `docs/02-architecture/`；测试结果只在对应报告中追加或修订，不删除历史过程。
-
-| 文档 | 用途 | 状态 |
-|---|---|---|
-| [RAG_ADVANCED_TEST_PLAN.md](04-testing/RAG_ADVANCED_TEST_PLAN.md) | 高级 RAG 用例、指标、权限、安全、性能和发布门禁 | 计划已执行部分专项 |
-| [RAG_ADVANCED_TEST_REPORT.md](04-testing/RAG_ADVANCED_TEST_REPORT.md) | 60 条带过滤 Demo 烟雾评测及其局限 | 已完成 |
-| [RAG_BLIND_TEST_SUITE.md](04-testing/RAG_BLIND_TEST_SUITE.md) | 60 条无预设过滤盲测与隔离夹具定义 | 已设计并执行可执行子集 |
-| [RAG_BLIND_TEST_REPORT.md](04-testing/RAG_BLIND_TEST_REPORT.md) | 41 条公开盲测、12 份夹具、19 项隔离检查的结果 | 已完成；最终答案/压测待补 |
-
-当前可复核的检索基线是：公开盲测 41 条、`k=6` 时 `Hit Rate@6=1.000`、`Recall@6=1.000`、`MRR=0.795`、`nDCG=0.847`。带目标 metadata 的 60 条烟雾集全命中，但不能替代盲测成绩。
-
-## 真实模型与成本受控测试
-
-| 文档 | 用途 | 状态 |
-|---|---|---|
-| [DEEPSEEK_LIVE_TEST_PLAN.md](05-live-tests/DEEPSEEK_LIVE_TEST_PLAN.md) | DeepSeek 真实聊天、RAG、权限、余额和用量监控的限量测试方案 | 可复用方案 |
-| [DEEPSEEK_LIVE_TEST_REPORT.md](05-live-tests/DEEPSEEK_LIVE_TEST_REPORT.md) | 小样本真实调用的脱敏执行记录 | 已完成小样本；未跑批量 live |
-| [PROJECT_E2E_TEST_PLAN.md](04-testing/PROJECT_E2E_TEST_PLAN.md) | 浏览器主链路、真实用户提问、RAG、工单、后台、失败回退的总控验收方案 | 已执行；存在待修复问题 |
-| [USER_QUESTION_SIMULATION.md](04-testing/USER_QUESTION_SIMULATION.md) | 60 条真实用户问题模拟，覆盖口语、追问、混合意图、安全和无答案边界 | 已设计；7 条 Live 已执行 |
-| [PROJECT_E2E_TEST_REPORT.md](04-testing/PROJECT_E2E_TEST_REPORT.md) | 完整项目实际执行过程、真实用户问题、权限、工单、用量和缺陷结果 | 已执行；存在待修复问题 |
-| [PROJECT_E2E_REMEDIATION_PLAN.md](04-testing/PROJECT_E2E_REMEDIATION_PLAN.md) | E2E 已发现问题的隔离、质量、成本、部署与界面修复计划 | 第一轮已实施；Live 待复验 |
-| [PROJECT_E2E_REMEDIATION_REPORT.md](04-testing/PROJECT_E2E_REMEDIATION_REPORT.md) | E2E 修复代码、离线回归、构建与容器重建验证记录 | 第一轮已完成；Live 待复验 |
-| [PROJECT_TEST_REPORT_2026-09-09.md](04-testing/PROJECT_TEST_REPORT_2026-09-09.md) | 本轮后端、前端、离线评测、RAG 与环境问题复验 | 已完成；Docker/远端 Provider 待环境恢复 |
-| [ADMIN_TICKET_CONSOLE_TEST_PLAN.md](04-testing/ADMIN_TICKET_CONSOLE_TEST_PLAN.md) | 管理员工单台的 API、页面、权限、脱敏与恢复测试用例 | 已执行；结果见测试报告 |
-| [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](04-testing/ADMIN_TICKET_CONSOLE_TEST_REPORT.md) | 管理员工单台本轮真实 API、浏览器、权限与恢复执行结果 | 已执行；跨用户夹具待补 |
-| [QUALITY_GATE_REDESIGN_2026-09-09.md](04-testing/QUALITY_GATE_REDESIGN_2026-09-09.md) | 质量门过滤、证据判断与首次限流问答的历史验收记录 | 测试记录；架构以 02-architecture 为准 |
-
-## 推荐阅读路线
-
-```text
-第一次启动：README -> 01-getting-started/GETTING_STARTED -> 03-operations/DOCKER_OPERATIONS
-理解架构：02-architecture/README -> 02-architecture/CUSTOMER_SERVICE_ARCHITECTURE -> 02-architecture/KNOWLEDGE_PIPELINE -> 02-architecture/ADMIN_TICKET_CONSOLE
-复核 RAG：04-testing/RAG_ADVANCED_TEST_PLAN -> 04-testing/RAG_ADVANCED_TEST_REPORT -> 04-testing/RAG_BLIND_TEST_REPORT
-准备 CI：03-operations/CI_PLAN -> 03-operations/DOCKER_OPERATIONS -> 各专项测试脚本
-```
-
-## 不要混入项目说明导航的 Markdown
-
-- `backend/demo_knowledge/*.md`：运行时 Demo 知识库正文，`demo-seed` 会读取并写入 Elasticsearch；修改它会改变检索结果。
-- `backend/skills/**/SKILL.md` 及其 `references/*.md`：Agent 运行时 Skill / 参考资料，属于可执行提示和约束；不要为了整理文档而移动或合并。
-- `backend/eval/*.jsonl`：评测数据集，不是说明文档；对应的用例解释放在 `04-testing/` 的 RAG 测试文档中。
+1. `02-architecture/` 描述当前实现；`03-operations/` 说明如何运行；计划只安排未来工作；报告记录一次具体执行。
+2. 当前测试数字只维护在最新验收报告，不复制到简介和导航。旧语料、哈希编码或不同部署的成绩不得沿用。
+3. 历史报告归档后保留原结论，追加状态说明。移动文档须更新相对链接，运行 `python backend/scripts/check_docs.py`。
+4. `backend/vendor_knowledge/` 是当前官方语料快照；`backend/demo_knowledge/` 是旧测试夹具；`backend/skills/` 是运行时提示约束。三者不为整理说明文档而移动。
+5. `.env`、知识库、模型缓存、数据备份与验收证据不属于普通清理对象。源码归档位于 `backend/data/checkpoints/`，具体证据见验收报告。

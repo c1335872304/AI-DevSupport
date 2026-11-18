@@ -1,6 +1,6 @@
 # 管理员工单台
 
-> 状态：当前实现基线（2026-09-10）。管理员页面和 API 的执行结果见 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/ADMIN_TICKET_CONSOLE_TEST_REPORT.md)。
+> 状态：当前实现基线（2026-09-10）。管理员页面和 API 的执行结果见 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/history/ADMIN_TICKET_CONSOLE_TEST_REPORT.md)。
 
 ## 1. 目标与范围
 
@@ -148,4 +148,4 @@ GET /support/handoffs/{handoffId}
 1. 需要第二个用户的现存工单，才能闭环验证管理员访问“其他用户工单”的真实数据场景；
 2. 需要可用的普通用户浏览器账号，才能完成普通用户菜单隐藏和手动访问管理员路由的页面级验证。
 
-详细通过项、未闭环项、数据恢复说明和本轮 UI 修复记录，以 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/ADMIN_TICKET_CONSOLE_TEST_REPORT.md) 为准；本架构文档不重复维护测试数字。
+详细通过项、未闭环项、数据恢复说明和本轮 UI 修复记录，以 [ADMIN_TICKET_CONSOLE_TEST_REPORT.md](../04-testing/history/ADMIN_TICKET_CONSOLE_TEST_REPORT.md) 为准；本架构文档不重复维护测试数字。

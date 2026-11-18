@@ -124,6 +124,7 @@ class QueryOptimizer:
         history: list[dict] | None,
         entity_memory: dict[str, str] | None,
         is_follow_up: bool,
+        recalled_history: list[dict] | None = None,
     ) -> QueryOptimization:
         raw = " ".join(str(question or "").split())[:1200]
         rows = list(history or [])
@@ -135,6 +136,9 @@ class QueryOptimizer:
             return QueryOptimization(query=raw, applied=False, mode="raw")
 
         previous = self._last_user_question(rows)
+        if recalled_history:
+            recovered = "；".join(item["text"] for item in recalled_history)
+            previous = f"{recovered}；{previous}"[:1000]
         if not previous:
             return QueryOptimization(query=raw, applied=False, mode="raw")
         contextual = self._contextual_query(raw, previous, entities)

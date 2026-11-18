@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import hashlib
 import logging
-import re
 import time
 
 import httpx
@@ -23,9 +21,16 @@ class EmbeddingService:
         self.settings = get_settings()
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        if self.settings.embedding_api_key:
-            return await self._remote(texts)
-        return [self._local_hash_embedding(text) for text in texts]
+        if not texts:
+            return []
+        if not self.settings.embedding_api_key.strip():
+            raise RuntimeError(
+                "Qwen Embedding requires EMBEDDING_API_KEY. Configure the provider key; "
+                "local synthetic embeddings are not supported."
+            )
+        if any(not isinstance(text, str) or not text.strip() for text in texts):
+            raise ValueError("Embedding inputs must be non-empty strings")
+        return await self._remote(texts)
 
     async def embed_one(self, text: str) -> list[float]:
         return (await self.embed([text]))[0]
@@ -56,8 +61,12 @@ class EmbeddingService:
                 response = await client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 payload = response.json()
-                record_embedding_usage(payload.get("usage"))
+                # Provider usage may be incurred even when its response is malformed.
+                record_embedding_usage(payload.get("usage"), response.headers.get("x-request-id")
+                    or payload.get("request_id") or payload.get("id"))
                 items = sorted(payload["data"], key=lambda item: item["index"])
+                if [item["index"] for item in items] != list(range(len(texts))):
+                    raise RuntimeError("Embedding provider returned missing, duplicate or invalid input indices")
                 vectors = [item["embedding"] for item in items]
             expected_dimension = self.settings.embedding_dimension
             actual_dimensions = {len(vector) for vector in vectors}
@@ -67,6 +76,8 @@ class EmbeddingService:
                     f"{sorted(actual_dimensions)}, expected {expected_dimension}. "
                     "Set EMBEDDING_DIMENSION to the provider dimension and reindex the knowledge base."
                 )
+            if any(not np.isfinite(np.asarray(vector, dtype=float)).all() for vector in vectors):
+                raise RuntimeError("Embedding provider returned non-finite vector values")
             logger.info("[EMBED] success vectors=%d dimension=%d duration_ms=%d", len(vectors), len(vectors[0]) if vectors else 0, int((time.monotonic() - started) * 1000))
             _console(f"[EMBED] success vectors={len(vectors)} dimension={len(vectors[0]) if vectors else 0} duration_ms={int((time.monotonic() - started) * 1000)}")
             return vectors
@@ -74,24 +85,6 @@ class EmbeddingService:
             logger.exception("[EMBED] failed duration_ms=%d", int((time.monotonic() - started) * 1000))
             _console(f"[EMBED] failed duration_ms={int((time.monotonic() - started) * 1000)} error={exc}")
             raise
-
-    def _local_hash_embedding(self, text: str) -> list[float]:
-        dim = self.settings.embedding_dimension
-        vec = np.zeros(dim, dtype=np.float32)
-        # Chinese-friendly character ngrams plus ASCII words. Deterministic and dependency-free.
-        compact = re.sub(r"\s+", " ", text.lower())
-        tokens = re.findall(r"[a-z0-9_]+", compact)
-        tokens += [compact[i : i + 2] for i in range(max(0, len(compact) - 1)) if compact[i : i + 2].strip()]
-        for token in tokens:
-            digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
-            n = int.from_bytes(digest, "little")
-            idx = n % dim
-            sign = -1.0 if (n >> 8) & 1 else 1.0
-            vec[idx] += sign
-        norm = float(np.linalg.norm(vec))
-        if norm > 0:
-            vec /= norm
-        return vec.tolist()
 
     @staticmethod
     def cosine(a: list[float], b: list[float]) -> float:

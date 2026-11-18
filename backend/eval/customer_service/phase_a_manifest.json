@@ -1,0 +1,22 @@
+{
+  "version": "phase-a-2026-11-17-v2",
+  "frozenBeforeRun": true,
+  "splits": {
+    "regression": {
+      "file": "phase_a_regression.jsonl",
+      "cases": 48,
+      "pairs": 24,
+      "sha256": "f5d0ce3342bd256b045925ed7f165f8b9ba02fc9929e50a4e0ded370c06bdb8e"
+    },
+    "release": {
+      "file": "phase_a_release.jsonl",
+      "cases": 12,
+      "pairs": 6,
+      "sha256": "9e96ea404197bebfd3b8acf9078ff5a9009868d947cd4353f627f757c40be77e"
+    }
+  },
+  "review": "Agent-authored initial baseline. Release split is reserved for release comparison; independent blind review is pending.",
+  "evidence": "Public documentation-style excerpts and synthetic tool fixtures. Each excerpt on fixture page 1.",
+  "previousEvidence": "backend/data/history/phase-a/phase_a_manifest_v1.json",
+  "revision": "Real tool response shapes, explicit missing fixtures, clearer prompts, and four history pairs. v1 first attempts archived."
+}

@@ -412,6 +412,8 @@ declare namespace Api {
       actualChunkCount?: number;
       vectorizationStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | null;
       vectorizationErrorMessage?: string | null;
+      activeVectorVersion?: string | null;
+      activeIndexAvailable?: boolean;
       knowledgeMetadata?: KnowledgeMetadata;
       createdAt?: string;
       mergedAt?: string;
@@ -438,6 +440,8 @@ declare namespace Api {
     type GenerationStatus = 'STREAMING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
 
     interface ReferenceEvidence {
+      citationId?: string | null;
+      indexVersion?: string | null;
       fileMd5: string;
       fileName: string;
       pageNumber?: number | null;
@@ -521,7 +525,50 @@ declare namespace Api {
       conversationId: string;
     }
 
+    interface DiagnosisEvidence {
+      resultStatus?: string;
+      evidenceId: string;
+      sourceType: 'USER_REPORT' | 'BUSINESS_QUERY' | 'DOCUMENT_RULE';
+      scope: string;
+      verified: boolean;
+      freshness: string;
+      tool?: string;
+      requestId?: string;
+      appId?: string;
+      eventAt?: string;
+      queriedAt?: string;
+      validUntil?: string;
+      windowStart?: string;
+      windowEnd?: string;
+      summary?: string;
+      facts?: Array<Record<string, unknown>>;
+    }
+
+    interface Diagnosis {
+      revision: number;
+      candidates?: Array<{ cause: string; title: string; status: 'SUPPORTED' | 'EXCLUDED' | 'UNDETERMINED' }>;
+      workflow?: {
+        actions?: Array<{ cause: string; instruction: string; recheck: string }>;
+        decision?: { serviceId?: string; ruleVersion?: string };
+        rechecks?: Array<{ requestId: string; status: string; httpStatus?: number; reason?: string }>;
+      };
+      executions?: Array<{ generationId: string; status: string; attemptsUsed: number }>;
+      diagnosisId: string;
+      status: string;
+      appId?: string;
+      symptom: string;
+      missingFields: string[];
+      nextAction: string;
+      updatedAt: string;
+      evidence: DiagnosisEvidence[];
+    }
+
     interface Message {
+      workflowStage?: string;
+      workflowStageStartedAt?: number;
+      errorMessage?: string;
+      diagnosisId?: string;
+      diagnosis?: Diagnosis;
       role: 'user' | 'assistant';
       content: string;
       status?: 'pending' | 'loading' | 'finished' | 'error';
@@ -547,6 +594,7 @@ declare namespace Api {
     }
 
     interface GenerationSnapshot {
+      diagnosisId?: string;
       generationId: string;
       userId: string;
       conversationId: string;
@@ -578,6 +626,9 @@ declare namespace Api {
     }
 
     interface ReferenceDetailResponse extends Chat.ReferenceEvidence {
+      textContent?: string;
+      contextText?: string;
+      contextType?: string;
       referenceNumber: number;
     }
   }

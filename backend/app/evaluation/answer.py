@@ -8,9 +8,20 @@ from typing import Any, Iterable
 
 
 _CITATION_RE = re.compile(r"(?:来源|source)\s*#?\s*(\d+)", re.IGNORECASE)
+_GROUP_CITATION_RE = re.compile(r"^\s*[（(]\s*(?:来源|source)\s*#?\s*\d+[^\n]*[）)]\s*$", re.IGNORECASE)
+_REFERENCE_LIST_ENTRY_RE = re.compile(
+    r"^\s*(?:[-*+]\s+|\d+[.)]\s+)?(?:来源|source)\s*#?\s*\d+\s*[:：|]",
+    re.IGNORECASE,
+)
+_CITATION_PAGE_RE = re.compile(r"((?:来源|source)\s*#?\s*\d+[^\n\r|）)]{0,160}\|)\s*第\s*(\d+)\s*页", re.IGNORECASE)
+_AFTER_PUNCTUATION_CITATION = re.compile(
+    r"([。！？!?；;])([ \t]*)([（(][ \t]*(?:来源|source)[ \t]*#?[ \t]*\d+[^()（）\r\n]*[）)])",
+    re.IGNORECASE,
+)
 _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.DOTALL)
 _MATERIAL_NUMBER_RE = re.compile(
     r"(?:[$¥￥€£]\s*\d+(?:\.\d+)?(?:\s*(?:万|亿|k|m|b))?)"
+    r"|(?:(?<!\d)(?:19|20)\d{2}(?:\s*-\s*(?:0?[1-9]|1[0-2])(?!\d)|\s*年\s*(?:0?[1-9]|1[0-2])\s*月))"
     r"|(?:\b(?:19|20)\d{2}\b)"
     r"|(?:\d+(?:\.\d+)?\s*%)"
     r"|(?:\d+(?:\.\d+)?\s*(?:ms|毫秒|秒|分钟|小时|天|倍|亿元|万元|美元|元|人|个|项|篇|页))",
@@ -40,6 +51,9 @@ def _units(text: str) -> list[str]:
         paragraph = paragraph.strip()
         if not paragraph:
             continue
+        # A parenthesized source immediately after same-line punctuation belongs
+        # to the clause that just ended. Preserve the next clause's boundary.
+        paragraph = _AFTER_PUNCTUATION_CITATION.sub(r"\3\1\2", paragraph)
         pieces = re.split(r"(?<=[。！？!?；;])\s*", paragraph)
         rows.extend(piece.strip() for piece in pieces if piece.strip())
     return rows or ([str(text).strip()] if str(text).strip() else [])
@@ -89,6 +103,32 @@ def _find_matching_unit(answer: str, item: Any) -> str | None:
     return None
 
 
+def _citation_groups(answer: str) -> list[tuple[list[str], list[int]]]:
+    """A parenthesized tail citation applies to the adjacent paragraph or list."""
+    groups = []
+    attached: list[str] = []
+    paragraph_break = False
+    for raw in answer.splitlines():
+        line = raw.strip()
+        if not line:
+            if not attached or not all(re.match(r"(?:[-*+]\s|\d+[.)]\s)", row) for row in attached):
+                attached = []
+            paragraph_break = True
+            continue
+        if _GROUP_CITATION_RE.fullmatch(line):
+            if attached:
+                groups.append((attached, extract_citations(line)))
+            attached = []
+        elif re.match(r"(?:[-*+]\s|\d+[.)]\s)", line):
+            if paragraph_break or (attached and not re.match(r"(?:[-*+]\s|\d+[.)]\s)", attached[-1])):
+                attached = []
+            attached.append(line)
+        else:
+            attached = [line]
+        paragraph_break = False
+    return groups
+
+
 def extract_citations(text: str) -> list[int]:
     seen: list[int] = []
     for raw in _CITATION_RE.findall(str(text or "")):
@@ -118,6 +158,8 @@ def _material_numbers(text: str) -> set[str]:
     for match in _MATERIAL_NUMBER_RE.findall(str(text or "")):
         token = re.sub(r"\s+", "", match.lower())
         token = token.replace("￥", "¥")
+        if date := re.fullmatch(r"((?:19|20)\d{2})[-年](\d{1,2})月?", token):
+            token = f"{date[1]}-{int(date[2]):02d}"
         values.add(token)
     return values
 
@@ -185,6 +227,7 @@ def evaluate_answer(
     references: dict[str, dict[str, Any]] | None = None,
     judge: dict[str, Any] | None = None,
     judge_weight: float = 0.40,
+    verified_number_text: str = "",
 ) -> AnswerEvalResult:
     rubric = case.get("rubric") or {}
     answer = str(answer or "")
@@ -200,18 +243,35 @@ def evaluate_answer(
     answer_citations = extract_citations(answer)
 
     required_facts = list(rubric.get("requiredFacts") or [])
+    claim_body = "\n".join(line for line in answer.splitlines() if not _REFERENCE_LIST_ENTRY_RE.match(line))
+    answer_units = _units(claim_body)
+    citation_groups = _citation_groups(claim_body)
     fact_weights = [max(0.0, float(item.get("weight", 1.0))) if isinstance(item, dict) else 1.0 for item in required_facts]
     total_fact_weight = sum(fact_weights) or 1.0
     matched_weight = 0.0
     grounded_weight = 0.0
     fact_details: list[dict[str, Any]] = []
     for fact, weight in zip(required_facts, fact_weights, strict=True):
-        unit = _find_matching_unit(answer, fact)
-        matched = unit is not None
+        matching_units = [unit for unit in answer_units if _matches_item(unit, fact)]
+        matched = bool(matching_units) or _matches_item(claim_body, fact)
         expected_sources = _source_ids(fact)
-        unit_citations = extract_citations(unit or "") if matched else []
+        supporting_sources = set(expected_sources) & valid_source_ids
+        # Whole-answer matching can report fact coverage, but navigation links
+        # or another sentence's sources cannot prove the fact was cited.
+        cited_matches = [extract_citations(unit) for unit in matching_units]
+        unit_citations = next(
+            (citations for citations in cited_matches if supporting_sources.intersection(citations)),
+            cited_matches[0] if cited_matches else [],
+        )
         citation_required = bool(expected_sources) and bool((fact.get("requireCitation", True) if isinstance(fact, dict) else True))
-        citation_ok = (not citation_required) or bool(set(unit_citations) & set(expected_sources))
+        if matched and citation_required and not set(unit_citations) & set(expected_sources) & valid_source_ids:
+            for rows, group_citations in citation_groups:
+                if set(group_citations) & set(expected_sources) & valid_source_ids and any(
+                    _matches_item(row, fact) for row in rows
+                ):
+                    unit_citations = group_citations
+                    break
+        citation_ok = (not citation_required) or bool(set(unit_citations) & set(expected_sources) & valid_source_ids)
         if matched:
             matched_weight += weight
         if matched and citation_ok:
@@ -221,6 +281,7 @@ def evaluate_answer(
             "matched": matched,
             "expectedSourceIds": expected_sources,
             "unitCitations": unit_citations,
+            "citationRequired": citation_required,
             "citationPass": citation_ok,
         })
     completeness = matched_weight / total_fact_weight if required_facts else 1.0
@@ -249,9 +310,15 @@ def evaluate_answer(
             else:
                 forbidden_hits.append(str(item))
 
-    allowed_number_text = _evidence_texts(evidence) + "\n" + str(case.get("question") or "")
+    allowed_number_text = "\n".join((_evidence_texts(evidence), str(case.get("question") or ""), verified_number_text))
     allowed_numbers = _material_numbers(allowed_number_text)
-    answer_numbers = _material_numbers(answer)
+
+    def strip_verified_citation_page(match: re.Match[str]) -> str:
+        source_id = extract_citations(match.group(1))[0]
+        reference = references.get(str(source_id)) or {}
+        return match.group(1) if str(reference.get("pageNumber")) == match.group(2) else match.group(0)
+
+    answer_numbers = _material_numbers(_CITATION_PAGE_RE.sub(strip_verified_citation_page, answer))
     unsupported_numbers = sorted(answer_numbers - allowed_numbers)
     number_safety = 1.0 if not answer_numbers else max(0.0, 1.0 - (len(unsupported_numbers) / len(answer_numbers)))
     forbidden_safety = 1.0 if not forbidden_hits else 0.0
@@ -318,7 +385,9 @@ def evaluate_answer(
         score = ((1.0 - weight) * deterministic) + (weight * judge_score)
 
     pass_score = float(rubric.get("passScore") or 0.75)
-    hard_fail = bool(invalid_citations or forbidden_hits)
+    citation_required_facts = [fact for fact in fact_details if fact["citationRequired"]]
+    citation_passes = sum(fact["citationPass"] for fact in citation_required_facts)
+    hard_fail = bool(invalid_citations or forbidden_hits) or citation_passes != len(citation_required_facts)
     if rubric.get("requireAnyCitation") and not answer_citations:
         hard_fail = True
     passed = score >= pass_score and not hard_fail
@@ -333,6 +402,9 @@ def evaluate_answer(
             "validSourceIds": sorted(valid_source_ids),
             "invalid": invalid_citations,
             "required": required_citations,
+            "requiredFactCount": len(citation_required_facts),
+            "passedFactCount": citation_passes,
+            "allRequiredFactsPassed": citation_passes == len(citation_required_facts),
         },
         "hallucination": {
             "forbiddenHits": forbidden_hits,

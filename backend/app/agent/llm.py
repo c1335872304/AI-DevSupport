@@ -12,7 +12,9 @@ import httpx
 from app.agent.types import AgentToolCall
 from app.agent.entities import normalize_entities
 from app.core.config import get_settings
-from app.accounting.llm_usage import record_provider_usage
+from app.accounting.llm_usage import record_provider_error, record_provider_finish, record_provider_usage
+from app.core.langfuse_observability import langfuse_span, observation_output, record_model_usage
+from app.core.time import utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +59,8 @@ class LLMService:
         self._circuit_open_until = 0.0
 
     def _record_provider_failure(self, exc: Exception) -> None:
+        reason = f"HTTP_{exc.response.status_code}" if isinstance(exc, httpx.HTTPStatusError) else type(exc).__name__
+        record_provider_error(reason)
         self._consecutive_failures += 1
         threshold = max(1, self.settings.llm_circuit_breaker_failures)
         if self._consecutive_failures >= threshold:
@@ -65,6 +69,11 @@ class LLMService:
             "[LLM] provider failure count=%d circuit_open=%s error=%s",
             self._consecutive_failures, self._circuit_open(), exc,
         )
+
+    def _apply_thinking_mode(self, payload: dict) -> None:
+        enabled = getattr(self.settings, "llm_thinking_enabled", None)
+        if enabled is not None:
+            payload["thinking"] = {"type": "enabled" if enabled else "disabled"}
 
     @staticmethod
     def _retryable(exc: Exception) -> bool:
@@ -150,19 +159,30 @@ class LLMService:
         timeout_seconds: float | None = None,
     ) -> dict:
         """POST one non-streaming provider request with bounded retry and circuit break."""
+        self._apply_thinking_mode(payload)
         if self._circuit_open():
+            record_provider_error("CIRCUIT_OPEN")
             raise RuntimeError("LLM provider circuit is open")
         attempts = max(0, self.settings.llm_max_retries)
         timeout = max(0.1, timeout_seconds or self.settings.llm_request_timeout_seconds)
         for attempt in range(attempts + 1):
             try:
-                async with asyncio.timeout(timeout):
-                    async with httpx.AsyncClient(
-                        timeout=timeout, trust_env=False
-                    ) as client:
-                        response = await client.post(url, headers=headers, json=payload)
-                        response.raise_for_status()
-                        raw = response.json()
+                with langfuse_span(
+                    "routing.model", kind="generation",
+                    attributes={"langfuse.observation.model.name": getattr(self.settings, "llm_model", "")},
+                ):
+                    async with asyncio.timeout(timeout):
+                        async with httpx.AsyncClient(
+                            timeout=timeout, trust_env=False
+                        ) as client:
+                            response = await client.post(url, headers=headers, json=payload)
+                            response.raise_for_status()
+                            raw = response.json()
+                    if isinstance(raw, dict):
+                        record_provider_usage(raw.get("usage"))
+                        for choice in raw.get("choices") or ():
+                            record_provider_finish(label, choice.get("finish_reason"))
+                        record_model_usage(raw.get("usage"))
                 self._record_provider_success()
                 return raw
             except asyncio.CancelledError:
@@ -189,22 +209,30 @@ class LLMService:
         system = (
             "你是客服系统的意图路由器，不负责回答用户问题，也不能调用工具。\n"
             "请只输出一个 JSON 对象，不要输出 Markdown 或解释文字。\n"
-            "字段必须是：intent、skills、needs_human、confidence、is_follow_up、entities。\n"
+            "字段必须是：intent、skills、needs_human、confidence、is_follow_up、entities、diagnostic_scope。\n"
             "intent 只能从 refund_request、refund_policy、payment_dispute、api_diagnostic、"
             "authentication_error、network_error、upload_error、billing、order、product_usage、general 中选择。\n"
             "规则：\n"
             "1. 退款申请、退费争议、支付争议、退款到账核验、套餐或合同变更属于资金或账户操作，needs_human=true，skills 包含 billing 和 escalation。\n"
             "2. 只是询问退款政策，不要自动升级人工，intent=refund_policy。\n"
             "3. API 错误、401、429、request_id、API Key、接口失败属于 api-diagnostic；需要文档解释时可同时包含 knowledge。\n"
-            "4. 用户表达转人工、投诉、重复失败或明确需要人工时，needs_human=true，skills 包含 escalation。\n"
+            "4. 用户明确转人工、投诉或明确需要人工时，needs_human=true，skills 包含 escalation。仅说重复失败不表示需要人工。\n"
             "5. skills 只能填写下面可用 Skill 中的名称。"
             "\n6. entities 只抽取当前问题明确出现或明确指代的字段；不要编造。字段包括："
             "request_id、error_code、http_status、endpoint、app_id、api_key_id、month、"
             "webhook_event_id、invoice_id、ticket_id、order_id、transaction_id。"
-            "\n7. is_follow_up=true 表示当前问题依赖上一轮上下文（如“那为什么”“上面那个”）。"
+            "\n7. is_follow_up=true 表示当前问题依赖上一轮上下文，也包括只补充时间、操作、症状或纠正信息。"
+            "先处理纠正再分类：用户用否定或更正替换已经提供的信息时，旧值失效，按最新肯定的描述选 intent。"
+            "upload_error 仅用于用户当前确认是上传失败的情况；下载或导出失败属于其他诊断类型。"
+            "用户明确改题时，以新题为主；明确回到旧题时，区分中间的其他事项。"
+            "\n8. diagnostic_scope 只用以下值：unspecified（用户报告故障，但尚未说出失败的操作或接口）、"
+            "incident（询问自己实际发生的故障、原因或某次请求，即使已有状态码）、"
+            "aggregate（明确要求查一段时间的汇总或近期统计）、none（其他，包括一般规则、状态码释义、账单和寒暄）。"
+            "用户说出了操作名称，即使没有接口路径，也不再属于 unspecified。"
+            "用当前问题和相关的用户原话判断。时间线索如‘晚上才有’不等于汇总请求；不要把助手的提问当用户提供的事实。"
             "只输出 JSON，例如：{\"intent\":\"api_diagnostic\",\"skills\":[\"api-diagnostic\",\"knowledge\"],"
             "\"needs_human\":false,\"confidence\":0.9,\"is_follow_up\":true,"
-            "\"entities\":{\"request_id\":\"req_demo_401\"}}"
+            "\"entities\":{\"request_id\":\"req_demo_401\"},\"diagnostic_scope\":\"incident\"}"
         )
         if skill_catalog.strip():
             system += "\n可用 Skill：\n" + skill_catalog.strip()
@@ -309,13 +337,22 @@ class LLMService:
         headers = {"Authorization": f"Bearer {self.settings.llm_api_key}", "Content-Type": "application/json"}
         url = self.settings.llm_base_url.rstrip("/") + "/chat/completions"
         started = time.monotonic()
+        self._apply_thinking_mode(payload)
         try:
-            async with asyncio.timeout(timeout):
-                async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
-                    response = await client.post(url, headers=headers, json=payload)
-                    response.raise_for_status()
-                    raw = response.json()
+            with langfuse_span(
+                "retrieval_rewrite.model", kind="generation",
+                attributes={"langfuse.observation.model.name": self.settings.llm_model},
+            ):
+                async with asyncio.timeout(timeout):
+                    async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
+                        response = await client.post(url, headers=headers, json=payload)
+                        response.raise_for_status()
+                        raw = response.json()
+                if isinstance(raw, dict):
+                    record_model_usage(raw.get("usage"))
             record_provider_usage(raw.get("usage"))
+            for choice in raw.get("choices") or ():
+                record_provider_finish("retrieval_rewrite", choice.get("finish_reason"))
             content = str((((raw.get("choices") or [{}])[0].get("message") or {}).get("content") or "")).strip()
             if content.startswith("```"):
                 content = content.replace("```json", "", 1).replace("```", "").strip()
@@ -352,6 +389,7 @@ class LLMService:
             return
         if self._circuit_open():
             _console("[LLM] circuit_open; using local fallback")
+            record_provider_error("CIRCUIT_OPEN")
             async for event in self._fallback_agent_turn(messages, tools):
                 yield event
             return
@@ -360,11 +398,13 @@ class LLMService:
         for attempt in range(attempts + 1):
             buffered: list[dict] = []
             try:
-                async with asyncio.timeout(max(0.1, self.settings.llm_request_timeout_seconds)):
-                    async for event in self._stream_agent_turn_once(messages, tools):
-                        # Buffer a complete turn so a retry cannot duplicate partial
-                        # content or tool-call fragments in the graph state.
-                        buffered.append(event)
+                with langfuse_span("specialist.model", kind="generation",
+                                   attributes={"langfuse.observation.model.name": getattr(self.settings, "llm_model", "")}):
+                    async with asyncio.timeout(max(0.1, self.settings.llm_request_timeout_seconds)):
+                        async for event in self._stream_agent_turn_once(messages, tools):
+                            # Buffer a complete turn so a retry cannot duplicate partial
+                            # content or tool-call fragments in the graph state.
+                            buffered.append(event)
                 self._record_provider_success()
                 for event in buffered:
                     yield event
@@ -399,6 +439,7 @@ class LLMService:
             "max_tokens": self.settings.llm_max_tokens,
             "stream": True,
         }
+        self._apply_thinking_mode(payload)
         if self.settings.llm_stream_include_usage:
             payload["stream_options"] = {"include_usage": True}
         headers = {"Authorization": f"Bearer {self.settings.llm_api_key}", "Content-Type": "application/json"}
@@ -410,6 +451,7 @@ class LLMService:
         _console(f"[LLM] agent_request model={self.settings.llm_model} messages={len(messages)} tools={len(tools)}")
         event_count = 0
         content_chars = 0
+        finish_reason = None
 
         # Use a direct connection in the local setup. An invalid system HTTPS
         # proxy can leave the streaming request pending until the full timeout.
@@ -428,9 +470,13 @@ class LLMService:
                     try:
                         obj = json.loads(data)
                         record_provider_usage(obj.get("usage"))
+                        record_model_usage(obj.get("usage"))
                         choices = obj.get("choices") or []
                         if not choices:
                             continue
+                        if reason := choices[0].get("finish_reason"):
+                            finish_reason = reason
+                            record_provider_finish("specialist", reason)
                         delta = choices[0].get("delta") or {}
                     except Exception:
                         continue
@@ -459,6 +505,8 @@ class LLMService:
         logger.info("[LLM] agent stream finished events=%d content_chars=%d tool_calls=%d duration_ms=%d", event_count, content_chars, len(call_parts), int((time.monotonic() - started) * 1000))
         _console(f"[LLM] agent_stream_finished events={event_count} content_chars={content_chars} tool_calls={len(call_parts)} duration_ms={int((time.monotonic() - started) * 1000)}")
 
+        if call_parts and finish_reason == "length":
+            raise httpx.RemoteProtocolError("Model tool calls were truncated")
         if call_parts:
             calls: list[AgentToolCall] = []
             for index in sorted(call_parts):
@@ -488,25 +536,38 @@ class LLMService:
             return
         if self._circuit_open():
             _console("[LLM] circuit_open; using local message fallback")
+            record_provider_error("CIRCUIT_OPEN")
             async for chunk in self._fallback_from_messages(messages):
                 yield chunk
             return
 
         attempts = max(0, self.settings.llm_max_retries)
         for attempt in range(attempts + 1):
-            buffered: list[str] = []
+            emitted = False
             try:
-                async with asyncio.timeout(max(0.1, self.settings.llm_request_timeout_seconds)):
-                    async for chunk in self._stream_messages_once(messages, force_no_tools=force_no_tools):
-                        buffered.append(chunk)
+                with langfuse_span("answer.model", kind="generation",
+                                   attributes={"langfuse.observation.model.name": getattr(self.settings, "llm_model", "")}) as span:
+                    started = time.monotonic()
+                    async with asyncio.timeout(max(0.1, self.settings.llm_request_timeout_seconds)):
+                        async for chunk in self._stream_messages_once(messages, force_no_tools=force_no_tools):
+                            if chunk:
+                                if not emitted and span is not None:
+                                    observation_output(span, {"firstTokenMs": (time.monotonic() - started) * 1000})
+                                    span.set_attribute(
+                                        "langfuse.observation.completion_start_time", utcnow().isoformat()
+                                    )
+                                emitted = True
+                                yield chunk
                 self._record_provider_success()
-                for chunk in buffered:
-                    yield chunk
                 return
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
                 self._record_provider_failure(exc)
+                if emitted:
+                    # The consumer may already have displayed an approved unit.
+                    # Never replay a new answer or append a local fallback to it.
+                    raise
                 if not self._retryable(exc) or attempt >= attempts:
                     logger.warning("[LLM] answer request degraded to local fallback: %s", exc)
                     _console(f"[LLM] answer_degraded fallback=local error={exc}")
@@ -531,6 +592,7 @@ class LLMService:
             "max_tokens": self.settings.llm_max_tokens,
             "stream": True,
         }
+        self._apply_thinking_mode(payload)
         if self.settings.llm_stream_include_usage:
             payload["stream_options"] = {"include_usage": True}
         if force_no_tools:
@@ -547,25 +609,33 @@ class LLMService:
                 logger.info("[LLM] answer response status=%d", response.status_code)
                 _console(f"[LLM] answer_response status={response.status_code}")
                 response.raise_for_status()
+                terminal_received = False
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
                         continue
                     data = line[6:]
                     if data == "[DONE]":
+                        terminal_received = True
                         break
                     event_count += 1
                     try:
                         obj = json.loads(data)
                         record_provider_usage(obj.get("usage"))
+                        record_model_usage(obj.get("usage"))
                         choices = obj.get("choices") or []
                         if not choices:
                             continue
+                        if reason := choices[0].get("finish_reason"):
+                            terminal_received = True
+                            record_provider_finish("answer", reason)
                         delta = choices[0].get("delta", {}).get("content")
                         if delta:
                             content_chars += len(delta)
                             yield delta
                     except Exception:
                         continue
+                if not terminal_received:
+                    raise httpx.RemoteProtocolError("Model answer stream ended without a terminal event")
         logger.info("[LLM] answer stream finished events=%d content_chars=%d duration_ms=%d", event_count, content_chars, int((time.monotonic() - started) * 1000))
         _console(f"[LLM] answer_stream_finished events={event_count} content_chars={content_chars} duration_ms={int((time.monotonic() - started) * 1000)}")
 

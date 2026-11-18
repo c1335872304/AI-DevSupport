@@ -13,7 +13,7 @@ except ImportError:  # optional production dependency
 from app.core.config import get_settings
 from app.core.access import user_orgs
 from app.db.models import User
-from app.knowledge.metadata import ES_FIELD_MAP, normalize_metadata
+from app.knowledge.metadata import ES_FIELD_MAP, TEXT_FALLBACK_FIELDS, normalize_metadata
 
 
 class ElasticsearchService:
@@ -39,6 +39,8 @@ class ElasticsearchService:
             mapping = await self.client.indices.get_mapping(index=index)
             index_mapping = mapping.get(index, {}).get("mappings", {}).get("properties", {})
             required = {
+                "embeddingModel": {"type": "keyword"},
+                "embeddingDimension": {"type": "integer"},
                 "indexVersion": {"type": "keyword"},
                 "category": {"type": "keyword"},
                 "product": {"type": "keyword"},
@@ -46,6 +48,8 @@ class ElasticsearchService:
                 "channel": {"type": "keyword"},
                 "effectiveDate": {"type": "date", "format": "strict_date_optional_time||yyyy-MM-dd"},
                 "knowledgeVersion": {"type": "keyword"},
+                "supersededBy": {"type": "keyword"},
+                "effectiveUntil": {"type": "date"},
                 "errorCode": {"type": "keyword"},
                 "plan": {"type": "keyword"},
             }
@@ -66,7 +70,11 @@ class ElasticsearchService:
                     "fileName": {"type": "keyword"},
                     "chunkId": {"type": "integer"},
                     "parentChunkId": {"type": "integer"},
+                    "supersededBy": {"type": "keyword"},
+                    "effectiveUntil": {"type": "date"},
                     "indexVersion": {"type": "keyword"},
+                    "embeddingModel": {"type": "keyword"},
+                    "embeddingDimension": {"type": "integer"},
                     "textContent": {"type": "text"},
                     "pageNumber": {"type": "integer"},
                     "anchorText": {"type": "text"},
@@ -165,6 +173,24 @@ class ElasticsearchService:
         except NotFoundError:
             return
 
+    async def verify_documents(self, documents: list[dict]) -> None:
+        if not self.client:
+            return
+        for start in range(0, len(documents), 100):
+            batch = documents[start:start + 100]
+            response = await self.client.mget(index=self.settings.elasticsearch_index,
+                ids=[self._document_id(item) for item in batch])
+            actual = response.get("docs", [])
+            if len(actual) != len(batch):
+                raise RuntimeError("Elasticsearch build identity verification failed")
+            for expected, found in zip(batch, actual):
+                if not found.get("found") or found.get("_id") != self._document_id(expected):
+                    raise RuntimeError("Elasticsearch missing expected build chunk")
+                source = found.get("_source", {})
+                if any(source.get(key) != expected.get(key) for key in
+                       ("textContent", "chunkId", "indexVersion", "parentChunkId", "embeddingModel", "embeddingDimension")):
+                    raise RuntimeError("Elasticsearch build content/profile verification failed")
+
     async def delete_other_versions(self, file_md5: str, user_id: str, active_version: str) -> None:
         if not self.client:
             return
@@ -243,10 +269,21 @@ class ElasticsearchService:
             value = metadata.get(public_name)
             if value is None:
                 continue
-            if isinstance(value, list):
-                filters.append({"terms": {es_name: value}})
-            else:
-                filters.append({"term": {es_name: value}})
+            values = value if isinstance(value, list) else [value]
+            exact = {"terms": {es_name: value}} if isinstance(value, list) else {"term": {es_name: value}}
+            if public_name not in TEXT_FALLBACK_FIELDS:
+                filters.append(exact)
+                continue
+            untagged = {"bool": {"should": [
+                {"bool": {"must_not": {"exists": {"field": es_name}}}},
+                {"term": {es_name: ""}},
+            ], "minimum_should_match": 1}}
+            text_match = {"bool": {
+                "filter": [untagged],
+                "should": [{"match_phrase": {"textContent": term}} for term in values],
+                "minimum_should_match": 1,
+            }}
+            filters.append({"bool": {"should": [exact, text_match], "minimum_should_match": 1}})
         effective_at = metadata.get("effective_at")
         if effective_at:
             filters.append({"range": {"effectiveDate": {"lte": effective_at.isoformat()}}})
@@ -272,8 +309,19 @@ class ElasticsearchService:
         # are test data, not customer knowledge, so normal searches exclude the
         # reserved prefix even while a shared legacy index is being migrated.
         fixture_filter = [] if include_evaluation_fixtures else [{"bool": {"must_not": [{"prefix": {"fileName": "fixture-"}}]}}]
-        combined_filter = {"bool": {"filter": [permission, *metadata_filter, *fixture_filter]}}
+        embedding_filter = [
+            {"term": {"embeddingModel": self.settings.embedding_model}},
+            {"term": {"embeddingDimension": self.settings.embedding_dimension}},
+        ]
+        combined_filter = {"bool": {"filter": [permission, *metadata_filter, *fixture_filter, *embedding_filter]}}
         recall = max(top_k * 3, 30)
+        # Technical phrases often occur verbatim in document filenames, while
+        # broad error guides dominate body BM25. Use only query-derived ASCII
+        # phrases; never choose vendor/file IDs from evaluation expectations.
+        import re
+        title_phrases=[re.sub(r'[\s_]+','-',phrase.lower()) for phrase in re.findall(
+            r'(?<![a-z0-9_])[a-z][a-z0-9_-]*(?:\s+[a-z][a-z0-9_-]*)+(?![a-z0-9_])',query,re.I)][:6]
+        title_clauses=[{'wildcard':{'fileName':{'value':f'*{phrase}*','boost':3}}} for phrase in title_phrases if len(phrase)<=80]
 
         semantic = await self.client.search(
             index=index,
@@ -312,8 +360,8 @@ class ElasticsearchService:
             size=recall,
             query={
                 "bool": {
-                    "must": [{"match": {"textContent": {"query": query}}}],
-                    "filter": [permission, *metadata_filter, *fixture_filter],
+                    "must": [{'bool':{'should':[{"match": {"textContent": {"query": query}}},*title_clauses],'minimum_should_match':1}}],
+                    "filter": [permission, *metadata_filter, *fixture_filter, *embedding_filter],
                 }
             },
             source=[
@@ -351,6 +399,9 @@ class ElasticsearchService:
                 docs[doc_id] = hit["_source"]
                 signals[doc_id][f"{channel}Rank"] = rank
                 signals[doc_id][f"{channel}Score"] = float(hit.get("_score") or 0.0)
+        for doc_id,source in docs.items():
+            if any(phrase in str(source.get('fileName','')).lower().replace('_','-') for phrase in title_phrases):
+                fused[doc_id]+=.03 if source.get('chunkId')==0 else .003
         ranked = sorted(fused.items(), key=lambda item: item[1], reverse=True)[:top_k]
         output: list[dict] = []
         for doc_id, score in ranked:

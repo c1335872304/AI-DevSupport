@@ -4,6 +4,8 @@
 
 > 这套编排固定为 `APP_ENV=dev`，默认凭据和端口仅适用于受信任的本机演示，不能直接作为生产部署配置。
 
+> 升级已有 Demo 前先阅读 [RAG 迁移与恢复](RAG_OPERATIONS.md)：备份、隔离旧 API/Worker、迁移后再部署。2026-10-20 本机 Demo 已更新四阶段源码与独立 CPU Docling 环境，迁移及验收证据见 [升级报告](../04-testing/DOCKER_DEMO_UPGRADE_2026-10-20.md)。初始化会保留已有知识库，只有空库才导入官方资料并产生编码调用。
+
 ## 1. 前置条件
 
 在项目根目录执行以下命令：
@@ -27,6 +29,8 @@ docker compose ps
 
 如需使用真实 LLM 或 Embedding，在启动前仅编辑本机的 `backend/.env`，填写相应 API Key。该文件已被 Git 忽略，切勿把密钥放入 `compose.yaml` 或提交到仓库。
 
+PDF/DOCX 解析模型须事先准备在 `backend/data/models/docling`；API、Worker 以只读目录挂载，解释器位于镜像 `/opt/docling/bin/python`。此挂载保留固定模型缓存，构建不下载模型的 main 分支。宿主机代理从容器访问时需使用 `host.docker.internal`；Compose 默认保留当前 `7897` 代理，可设置 `DOCKER_EMBEDDING_HTTP_PROXY` 覆盖，显式空字符串表示直连。
+
 网络、代理、Docker CLI 和远端 Provider 的专项检查见 [NETWORK_TROUBLESHOOTING.md](NETWORK_TROUBLESHOOTING.md)。
 
 ## 2. 启动完整 Demo
@@ -47,6 +51,8 @@ docker compose ps
 | Swagger | http://localhost:8000/docs |
 | WebSocket | `ws://localhost:8000/chat` |
 
+经前端 Nginx 访问时，API 前缀为 `/api/v1`，WebSocket 为 `ws://localhost:9527/proxy-ws/chat`。
+
 本机 Demo 管理员为 `admin / admin123`。仅用于本机演示；任何可被他人访问的部署都必须替换 JWT Secret 与管理员密码，并使用生产环境编排。
 
 ## 3. 观察启动状态与排障
@@ -66,6 +72,14 @@ docker compose ps
 ```
 
 成功条件是 `migrate` 和 `demo-seed` 显示为已完成（退出码 0），长期服务处于 `running` 或 `healthy`。若 API 未启动，优先查看 `migrate`、`demo-seed`、`elasticsearch`、`kafka` 的日志，因为 API 会等待这些依赖完成或健康。
+
+旧 ES 向量可能缺少新版检索必需的模型名和维度。升级后若列表有文档但检索为空，先执行下列只读预检；只有数据库活动版本、ES文档身份、正文和真实向量逐条一致，才允许补齐缺失字段。此操作不编码、不改正文/向量/权限，也不改数据库；已有字段冲突或并发版本变化会停止。
+
+```powershell
+docker compose exec api python scripts/repair_legacy_embedding_metadata.py
+# 预检匹配后才执行
+docker compose exec api python scripts/repair_legacy_embedding_metadata.py --apply
+```
 
 常见问题：
 
@@ -138,8 +152,8 @@ Invoke-WebRequest http://localhost:9527/api/v1/users/me
 # 核心 Compose 回归
 docker compose --profile test run --build --rm test
 
-# 全量后端 pytest
-docker compose --profile test run --build --rm test pytest -q tests
+# 全量测试使用隔离 SQLite，避免测试夹具触碰 Demo 业务数据
+docker compose run --rm --no-deps -e DATABASE_URL=sqlite+aiosqlite:////tmp/docker-tests.sqlite -e DATABASE_AUTO_CREATE_DEV=true -e REDIS_ENABLED=false -e BILLING_MCP_COMPOSE_E2E=false -e BILLING_MCP_ENABLED=false -e TASK_MODE=background -e STORAGE_BACKEND=local -e SEARCH_BACKEND=database -e LOCAL_STORAGE_DIR=/tmp/test-storage -e LLM_API_KEY= -e EMBEDDING_API_KEY= --entrypoint pytest test tests -q
 ```
 
 `--rm` 只删除本次测试容器，不删除数据库、索引或其他命名卷。运行测试前建议确认没有同名的临时 Compose 项目在占用端口或卷。

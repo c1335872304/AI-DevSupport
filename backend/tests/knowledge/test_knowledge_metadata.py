@@ -79,3 +79,7 @@ async def test_elasticsearch_search_excludes_evaluation_fixture_prefix_by_defaul
     serialized = str(fake.calls)
     assert "fixture-" in serialized
     assert "must_not" in serialized
+    for call in fake.calls:
+        filters = call.get("knn", {}).get("filter") or call["query"]["bool"]["filter"]
+        assert "embeddingModel" in str(filters)
+        assert "embeddingDimension" in str(filters)

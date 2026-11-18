@@ -74,6 +74,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       assistant.content = snapshot.content || assistant.content || '';
       assistant.status = nextStatus;
       assistant.generationId = snapshot.generationId;
+      assistant.diagnosisId = snapshot.diagnosisId;
       assistant.conversationId = snapshot.conversationId;
       assistant.timestamp ||= snapshot.updatedAt;
       if (snapshot.referenceMappings && Object.keys(snapshot.referenceMappings).length > 0) {
@@ -96,7 +97,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       conversationId: snapshot.conversationId,
       generationId: snapshot.generationId,
       timestamp: snapshot.updatedAt,
-      referenceMappings: snapshot.referenceMappings
+      referenceMappings: snapshot.referenceMappings,
+      diagnosisId: snapshot.diagnosisId
     });
   }
 

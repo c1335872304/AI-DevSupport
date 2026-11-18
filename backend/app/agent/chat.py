@@ -16,11 +16,10 @@ from app.db.models import ConversationMessage, ConversationSession, GenerationSt
 from app.agent.runtime import agent_runtime
 from app.agent.llm import llm_service
 from app.agent.memory import conversation_memory
+from app.agent.continuation import assemble_turn
 from app.knowledge.rag import rag_service
-from app.agent.trace_store import trace_store
 from app.accounting.usage import estimate_tokens, usage_service
 from app.accounting.llm_usage import capture_llm_usage
-from app.core.observability import observe_generation, trace_span
 
 logger = logging.getLogger(__name__)
 
@@ -94,18 +93,15 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
     generation_id = generation_id or uuid.uuid4().hex
     logger.info("[GEN %s] conversation ready conversation=%s", _gid(generation_id), conversation.conversation_id)
     _console(f"[GEN {_gid(generation_id)}] stage=conversation_ready conversation={conversation.conversation_id[:8]}")
-    redis_entities = await conversation_memory.get_entities(conversation.conversation_id)
-    if redis_entities is not None:
-        remembered_entities = redis_entities
-    else:
+    remembered_entities = {}
+    if not settings.context_system_enabled:
+        redis_entities = await conversation_memory.get_entities(conversation.conversation_id)
         try:
-            remembered_entities = json.loads(conversation.collected_entities_json or "{}")
+            remembered_entities = redis_entities if redis_entities is not None else json.loads(conversation.collected_entities_json or "{}")
             if not isinstance(remembered_entities, dict):
                 remembered_entities = {}
         except (TypeError, json.JSONDecodeError):
             remembered_entities = {}
-    generation_started = time.monotonic()
-    first_token_ms: float | None = None
     now = utcnow()
     generation = GenerationState(
         generation_id=generation_id,
@@ -139,6 +135,7 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
         }
     )
 
+    content = ""
     try:
         generation.status = "STREAMING"
         await db.commit()
@@ -172,32 +169,44 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
             loaded.reverse()
             return loaded
 
-        redis_history = await conversation_memory.get_history(conversation.conversation_id)
-        if redis_history is not None:
-            redis_window = redis_history[-max(1, settings.memory_history_max):]
-            database_history = await load_database_history()
-            if redis_window == database_history:
-                history = redis_window
-                history_source = "redis"
+        turn_context = None
+        shadow_context = None
+        if settings.context_system_enabled or settings.context_shadow_enabled:
+            from app.db.session import SessionLocal
+
+            context_started = time.monotonic()
+            if settings.context_system_enabled:
+                async with SessionLocal() as context_db:
+                    turn_context = await assemble_turn(context_db, user_message, settings)
+                turn_context.metadata["assemblyMs"] = round((time.monotonic() - context_started) * 1000, 2)
             else:
-                # Redis is only a cache.  Reconcile it against durable SQL so a
-                # stale, partial, or newly enabled cache cannot lose context.
-                history = database_history
-                await conversation_memory.replace_history(
-                    conversation.conversation_id, database_history
-                )
-                history_source = "database_reconciled_to_redis"
+                try:
+                    async with asyncio.timeout(0.75), SessionLocal() as context_db:
+                        shadow_context = await assemble_turn(context_db, user_message, settings)
+                    shadow_context.metadata["assemblyMs"] = round((time.monotonic() - context_started) * 1000, 2)
+                except Exception as exc:
+                    logger.warning("[CONTEXT] shadow unavailable: %s", type(exc).__name__)
+                    await send_json({"type": "context_shadow", "generationId": generation_id,
+                                     "status": "unavailable"})
+        if turn_context:
+            history = turn_context.history
+            remembered_entities = turn_context.entities if turn_context.continuing else {}
+            history_source = turn_context.metadata.get("restoredFrom", "database")
+            await send_json({"type": "context_assembled", "generationId": generation_id, **turn_context.metadata})
         else:
             history = await load_database_history()
             history_source = "database"
+            await conversation_memory.replace_history(conversation.conversation_id, history)
+            await conversation_memory.append_message(conversation.conversation_id, "user", question)
         logger.info("[GEN %s] history ready source=%s messages=%d", _gid(generation_id), history_source, len(history))
         _console(f"[GEN {_gid(generation_id)}] stage=history_ready source={history_source} messages={len(history)}")
-        await conversation_memory.append_message(conversation.conversation_id, "user", question)
-
         reservation_tokens = max(
             1,
             estimate_tokens(question)
             + sum(estimate_tokens(str(item.get("content") or "")) for item in history)
+            + sum(estimate_tokens(item["text"]) for item in (
+                [*turn_context.recall, *(turn_context.progress or [])] if turn_context else ()
+            ))
             + max(256, settings.llm_max_tokens),
         )
         try:
@@ -219,12 +228,10 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
         chars_since_checkpoint = 0
 
         async def emit_chunk(chunk: str) -> None:
-            nonlocal content, last_checkpoint_at, chars_since_checkpoint, first_token_ms
+            nonlocal content, last_checkpoint_at, chars_since_checkpoint
             chunk = redact_text(chunk)
             if not chunk:
                 return
-            if first_token_ms is None:
-                first_token_ms = (time.monotonic() - generation_started) * 1000.0
             content += chunk
             chars_since_checkpoint += len(chunk)
             await send_json({"type": "chunk", "chunk": chunk, "generationId": generation_id})
@@ -245,7 +252,7 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
                 chars_since_checkpoint = 0
                 last_checkpoint_at = now_monotonic
 
-        with trace_span("agent.generation", {"generation.id": generation_id, "user.id": str(user.id)}), capture_llm_usage() as usage_meter:
+        with capture_llm_usage() as usage_meter:
             # The target Agent graph is the only conversation execution path.
             logger.info("[GEN %s] entering agent workflow", _gid(generation_id))
             _console(f"[GEN {_gid(generation_id)}] stage=agent_workflow")
@@ -259,6 +266,8 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
                         history=history,
                         conversation_id=conversation.conversation_id,
                         entity_memory=remembered_entities,
+                        turn_context=turn_context,
+                        shadow_context=shadow_context,
                         generation_id=generation_id,
                         send_json=send_json,
                         on_chunk=emit_chunk,
@@ -269,21 +278,17 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
                 raise RuntimeError(
                     f"agent generation timed out after {settings.agent_generation_timeout_seconds:g}s"
                 ) from exc
-            # Normally emit_chunk has already built the same content. Keep the runtime
-            # result authoritative if a provider emitted an unusual empty stream.
-            if not content and agent_content:
-                content = redact_text(agent_content)
-        # Settle the durable reservation before marking the generation complete. This
-        # prevents a successful provider call from being lost when the process crashes
-        # before the old post-response charge step.
+            # The final gate is authoritative even if it replaced an already
+            # approved prefix after citation normalization or evidence expiry.
+            content = redact_text(agent_content)
+        # Commit the debit, answer and completion together before announcing success.
         fallback_tokens = estimate_tokens(question) + sum(estimate_tokens(str(x.get("content") or "")) for x in history) + estimate_tokens(content)
         charged_tokens = usage_meter.total_tokens or fallback_tokens
         accounting_mode = "provider_usage" if usage_meter.total_tokens else "estimated_usage"
         if reservation_active:
             charged_tokens = await usage_service.settle_llm(
-                db, generation_id, charged_tokens, "chat_generation"
+                db, generation_id, charged_tokens, "chat_generation", commit=False,
             )
-            reservation_active = False
         else:
             charged_tokens = await usage_service.charge_llm(
                 db, int(user.id), charged_tokens, "chat_generation", f"{generation_id}:{accounting_mode}"
@@ -303,16 +308,11 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
         )
         conversation.last_message_at = utcnow()
         await db.commit()
-        await conversation_memory.append_message(conversation.conversation_id, "assistant", content)
+        reservation_active = False
+        if not settings.context_system_enabled:
+            await conversation_memory.append_message(conversation.conversation_id, "assistant", content)
         logger.info("[GEN %s] completed chars=%d refs=%d", _gid(generation_id), len(content), len(refs))
         _console(f"[GEN {_gid(generation_id)}] status=COMPLETED chars={len(content)} refs={len(refs)}")
-        observe_generation(
-            "COMPLETED",
-            duration_ms=(time.monotonic() - generation_started) * 1000.0,
-            first_token_ms=first_token_ms,
-            tokens=charged_tokens,
-            token_mode=accounting_mode,
-        )
         await send_json(
             {
                 "type": "completion",
@@ -320,46 +320,37 @@ async def stream_chat(db: AsyncSession, user: User, question: str, send_json, ge
                 "generationId": generation_id,
                 "conversationId": conversation.conversation_id,
                 "referenceMappings": refs,
+                "content": content,
             }
         )
     except asyncio.CancelledError:
         logger.warning("[GEN %s] cancelled", _gid(generation_id))
         _console(f"[GEN {_gid(generation_id)}] status=CANCELLED")
         await db.rollback()
-        if reservation_active:
-            await usage_service.release_llm(db, generation_id, "cancelled_generation")
-            reservation_active = False
-        await trace_store.cancel(generation_id)
         generation = await db.get(GenerationState, generation_id)
-        if generation and generation.status != "CANCELLED":
+        if generation and generation.status in {"PENDING", "STREAMING", "CANCELLED"}:
+            if reservation_active:
+                await usage_service.release_llm(db, generation_id, "cancelled_generation", commit=False)
             generation.status = "CANCELLED"
+            generation.content = content
             generation.error = "Generation cancelled"
             await db.commit()
-        observe_generation(
-            "CANCELLED",
-            duration_ms=(time.monotonic() - generation_started) * 1000.0,
-            first_token_ms=first_token_ms,
-        )
         raise
     except Exception as exc:
         logger.exception("[GEN %s] failed error=%s", _gid(generation_id), exc)
         _console(f"[GEN {_gid(generation_id)}] status=FAILED error={exc}")
         await db.rollback()
-        if reservation_active:
-            await usage_service.release_llm(db, generation_id, "failed_generation")
-            reservation_active = False
-        await trace_store.fail(generation_id, str(exc))
         generation = await db.get(GenerationState, generation_id)
-        if generation:
+        if generation and generation.status in {"PENDING", "STREAMING"}:
+            if reservation_active:
+                await usage_service.release_llm(db, generation_id, "failed_generation", commit=False)
             generation.status = "FAILED"
-            observe_generation(
-                "FAILED",
-                duration_ms=(time.monotonic() - generation_started) * 1000.0,
-                first_token_ms=first_token_ms,
-            )
+            # Keep the already approved prefix available for reconnect/review.
+            generation.content = content
             generation.error = str(exc)
             await db.commit()
         try:
-            await send_json({"code": 500, "error": str(exc), "generationId": generation_id})
+            await send_json({"code": 500, "error": "回答生成中断，请重试；已显示的内容尚未构成完整答复。",
+                             "generationId": generation_id})
         except Exception:
             pass

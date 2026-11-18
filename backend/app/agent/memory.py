@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -43,6 +44,30 @@ class ConversationMemory:
     @staticmethod
     def _entity_key(conversation_id: str) -> str:
         return f"mem:ent:{conversation_id}"
+
+    async def get_context_snapshot(self, user_id: str, conversation_id: str, revision: int) -> dict | None:
+        client = await self._redis()
+        if client is None:
+            return None
+        try:
+            raw = await asyncio.wait_for(client.get(f"mem:ctx:{user_id}:{conversation_id}:{revision}"), 0.3)
+            value = json.loads(raw) if raw else None
+            return value if isinstance(value, dict) and isinstance(value.get("scopes"), dict) else None
+        except Exception:
+            logger.debug("Versioned context cache unavailable", exc_info=True)
+            return None
+
+    async def put_context_snapshot(self, user_id: str, conversation_id: str, revision: int, state: dict) -> None:
+        client = await self._redis()
+        if client is None:
+            return
+        try:
+            await asyncio.wait_for(client.set(
+                f"mem:ctx:{user_id}:{conversation_id}:{revision}", json.dumps(state, ensure_ascii=False),
+                ex=max(60, get_settings().memory_entity_ttl_seconds),
+            ), 0.3)
+        except Exception:
+            logger.debug("Versioned context cache write skipped", exc_info=True)
 
     async def get_history(self, conversation_id: str) -> list[dict] | None:
         client = await self._redis()
@@ -113,12 +138,12 @@ class ConversationMemory:
             logger.warning("[MEMORY] Redis entity memory unavailable; use database fallback: %s", exc)
             return None
 
-    async def update_entities(self, conversation_id: str, new_entities: dict[str, Any]) -> dict[str, str] | None:
+    async def update_entities(self, conversation_id: str, new_entities: dict[str, Any], *, replace: bool = False) -> dict[str, str] | None:
         client = await self._redis()
         if client is None:
             return None
         try:
-            current = await self.get_entities(conversation_id) or {}
+            current = {} if replace else (await self.get_entities(conversation_id) or {})
             current.update(normalize_entities(new_entities))
             await client.set(self._entity_key(conversation_id), json.dumps(current, ensure_ascii=False), ex=max(60, get_settings().memory_entity_ttl_seconds))
             return current
