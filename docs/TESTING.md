@@ -73,6 +73,8 @@ gh run view <run-id> --repo c1335872304/AI-DevSupport --log-failed
 
 候选问法保留原预期边界，需对照当前实现复核后再纳入正式题集。它们的保存与执行结果分别记录，默认 CI 沿用现有冻结题集。
 
+N12 地域专项的离线回归位于 `tests/knowledge/test_region_context.py`、`tests/agent/test_answer_quality_regression.py` 和 `tests/agent/test_document_context.py`。真实复验使用 `python scripts/retest_n12_scope.py --live --output data/checkpoints/n12-fresh-run`，同四题及人工判分见[修复记录](archive/evidence/N12_SCOPE_FAILURE_2026-10-20.md)。显式入口会发送检索片段并产生实际模型用量，默认 CI 不执行。
+
 ## 冻结与产物
 
 Phase 4 校验四份冻结输入及机制任务，Phase A 和官方知识快照由各自回归核验原 SHA-256。`.gitattributes` 保留受哈希约束的文件字节，普通文档整理沿用既有清单。

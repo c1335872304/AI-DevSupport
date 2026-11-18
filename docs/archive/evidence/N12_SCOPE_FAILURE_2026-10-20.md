@@ -1,6 +1,6 @@
-# N12 地域与计费范围失败证据
+# N12 地域与计费范围追溯及修复验收
 
-此记录支撑[维护台账](../../MAINTENANCE.md)中尚未关闭的范围问题，保存 2026-10-20 原问法、审阅与回答。价格和限制属于当时被审阅的历史回答内容。
+当前状态：**已修复并于 2026-11-19 用同四题真实复验通过（4/4）**。下文保留 2026-10-20 原始失败、2026-11-19 修复前失败及修复后首跑，供[维护台账](../../MAINTENANCE.md)追溯。价格和限制仅用于核验既有知识快照，不代表当前供应商报价。
 
 ## 原始记录
 
@@ -149,3 +149,143 @@
 Provider 回执记录输入 44,887 Token、输出 2,128 Token，Embedding 203 Token。四题生成均完成，无已记录的 Provider 错误或截断。未估算金额。原始结果保存在 `backend/data/checkpoints/n12-retest-20261119/`。
 
 相关离线回归 `test_answer_quality_regression.py` 与 `test_vendor_scope.py` 共 36 passed，使用隔离 SQLite 并禁用外部追踪。离线回归通过不能覆盖此次真实模型暴露的地域问题。
+
+## 2026-11-19 修复后真实复验
+
+结论：**PASS 4/4，该项 P2 关闭**。保持同四题、同模型 `deepseek-chat`、同知识库副本和原验收标准，四题各运行一次，未丢弃失败后重试挑选答案。修复前后 manifest 的数据库 SHA-256 相同，未改题目、知识快照、向量或文件元数据。
+
+修复包含两部分。检索从同一所有者、文件和活动版本的完整父块序列恢复原文分区、章节、核对日期和表头单位，适配既有索引；文档分块读取及签名引用预览复用同样上下文。跨地域问题保留原问法，去掉规划器或实体提取错误加入的单地域过滤及未由用户指定的分类过滤，保留厂商、版本、日期和权限约束。生成提示要求数值绑定适用范围，压缩证据时不拆散地域与表格。
+
+相关离线回归共 56 项通过，其中新增 9 项覆盖旧分块、分区关闭、代码围栏、跨地域改写、保留单地域/显式分类、同一来源不同地域不误合并，以及数据库/Elasticsearch 检索、读取和引用一致性。24 条引用均核验所有者、活动构建和子块存在，并保存恢复后的原文上下文及哈希。
+
+### 修复后 N12
+
+问法：现有Qwen文档能否保证text-embedding-v4在2099年仍然免费、批量上限不变？
+
+复核：PASS：拒绝未来保证，免费额度明确限定新加坡，批量条数与 RPM/TPM 分开表述，数值标明北京范围。
+
+原始回答：
+
+现有Qwen文档不能保证text-embedding-v4在2099年仍然免费或批量上限不变。文档只记录了核对日期为2026-10-19的当时规则，核对日期不等于规则生效日，也没有任何面向2099年的免费或限额承诺（来源#1）（来源#5）。
+
+就现有文档记录而言：在新加坡地域的同步接口模型概览中，text-embedding-v4的免费额度为“无免费额度”（来源#1）。在北京地域的同步接口模型概览中，text-embedding-v4的最大行数为10（来源#3）。在北京地域的限流文档中，text-embedding-v4的每分钟调用次数（RPM）为1,800（来源#2）。在北京地域的限流文档中，text-embedding-v4的每分钟消耗Token数（TPM）为1,200,000（来源#2）。这些数值均属于对应地域和章节下的当时记录，不能作为未来长期不变的保证（来源#1）（来源#2）（来源#3）。
+
+如需确认未来价格与限额安排，请以阿里云百炼官方最新公告和您账户的实际计费页面为准。
+
+来源#1: qwen-embedding-api.md
+来源#2: qwen-rate-limits.md
+来源#3: qwen-embedding-api.md
+来源#4: qwen-embedding-api.md
+来源#5: qwen-embedding-v4.md
+来源#6: qwen-rate-limits.md
+
+引用定位：#1 qwen-embedding-api.md / chunk 12、#2 qwen-rate-limits.md / chunk 740、#3 qwen-embedding-api.md / chunk 5、#4 qwen-embedding-api.md / chunk 3、#5 qwen-embedding-v4.md / chunk 0、#6 qwen-rate-limits.md / chunk 746。
+
+原始结果 SHA-256：`2f7068739a5828949077fe953715757360dd52a2039c85725aa7f30294b91443`。
+
+### 修复后 REGION
+
+问法：按现有Qwen文档，text-embedding-v4在北京和新加坡的价格与免费额度是否相同？请分别注明地域、计费单位和资料时间，不要把一个地域泛化成全部地域。
+
+复核：PASS：分别给出北京、新加坡的价格、计费单位、免费额度和资料日期，不再零召回。
+
+原始回答：
+
+按现有 Qwen 文档，text-embedding-v4 在北京和新加坡的价格与免费额度并不相同。
+
+**北京（华北2，北京）**
+- 北京地域 text-embedding-v4 的同步接口单价为每千输入 Token 0.0005 元（来源#6）。
+- 北京地域 text-embedding-v4 的 Batch 调用单价为每千输入 Token 0.00025 元（来源#6）。
+- 北京地域 text-embedding-v4 的免费额度为 100 万 Token，有效期为百炼开通后 90 天内（来源#6）。
+- 上述北京数据来自核对日期 2026-10-19 的资料（来源#6）。
+
+**新加坡**
+- 新加坡地域 text-embedding-v4 的同步接口单价为每千输入 Token 0.000514 元（来源#1）。
+- 新加坡地域 text-embedding-v4 的免费额度为无免费额度（来源#1）。
+- 上述新加坡数据来自核对日期 2026-10-19 的资料（来源#1）。
+
+**计费单位说明**
+- 北京地域的模型价格表以“每百万 tokens”为计费单位，文本输入为 0.5 元每百万 tokens（来源#2）。
+- 新加坡地域的模型价格表以“每百万 tokens”为计费单位，文本输入为 0.514 元每百万 tokens（来源#2）。
+- 上述价格表来自核对日期 2026-10-19 的资料（来源#2）。
+
+如需确认您账户的实际计费与免费额度使用情况，请以百炼控制台的账单和额度页面为准。
+
+来源#1: qwen-embedding-api.md
+来源#2: qwen-embedding-v4.md
+来源#3: qwen-rate-limits.md
+来源#4: qwen-batch.md
+来源#5: qwen-rate-limits.md
+来源#6: qwen-embedding-api.md
+
+引用定位：#1 qwen-embedding-api.md / chunk 12、#2 qwen-embedding-v4.md / chunk 10、#3 qwen-rate-limits.md / chunk 746、#4 qwen-batch.md / chunk 5、#5 qwen-rate-limits.md / chunk 751、#6 qwen-embedding-api.md / chunk 5。
+
+原始结果 SHA-256：`3b2d23bcd5f822fbbc4705b4e1e12fd77e5a4687b619ee23140a8f79437f414d`。
+
+### 修复后 BATCH
+
+问法：按现有Qwen文档，text-embedding-v4单次请求最多提交多少条文本？这与RPM、TPM限流以及Batch API是否受限流是同一个限制吗？请分别说明并引用。
+
+复核：PASS：单次 10 条与 RPM/TPM、Batch API 限流豁免分别说明，限流数值明确北京范围。
+
+原始回答：
+
+**直接结论**
+
+- text-embedding-v4 在输入为字符串列表或文件时，单次请求最多支持 10 条（行）（来源#5）。
+- text-embedding-v4 每条（行）最长支持 8,192 Token（来源#5）。
+- 在华北2（北京）地域，text-embedding-v4 的每分钟调用次数（RPM）为 1,800（来源#1）。
+- 在华北2（北京）地域，text-embedding-v4 的每分钟消耗 Token 数（TPM）为 1,200,000，且仅计输入 Token（来源#1）。
+- 用 Batch API 调用服务时，不受限流限制（来源#1）。
+
+**是否同一个限制**
+
+不是同一个限制。单次请求最多 10 条是请求体批量大小限制（来源#5）。RPM 与 TPM 是每分钟维度的限流条件，超出任一数值时触发限流（来源#2）。Batch API 不受限流限制，属于限流豁免规则（来源#1）。三者分别约束不同维度，不能互相替代。
+
+**核验建议**
+
+如需确认您账号下的实际限流与批量配置，请以对应地域的控制台或配额页面为准。
+
+来源#1: qwen-rate-limits.md
+来源#2: qwen-rate-limits.md
+来源#3: qwen-rate-limits.md
+来源#4: qwen-embedding-api.md
+来源#5: qwen-embedding-api.md
+来源#6: qwen-embedding-api.md
+
+引用定位：#1 qwen-rate-limits.md / chunk 740、#2 qwen-rate-limits.md / chunk 738、#3 qwen-rate-limits.md / chunk 745、#4 qwen-embedding-api.md / chunk 85、#5 qwen-embedding-api.md / chunk 64、#6 qwen-embedding-api.md / chunk 19。
+
+原始结果 SHA-256：`10dece505ae9431f670ccfc10ed578cb5a139113776c601b760ccd0c73bf0158`。
+
+### 修复后 FUTURE
+
+问法：现有Qwen资料可以保证北京地域text-embedding-v4在2099年仍有当前免费额度、单次批量条数不变吗？新加坡地域的价格能直接当成北京价格吗？
+
+复核：PASS：不保证 2099 年免费额度或条数，分别引用两地价格，不再泛化“无免费额度”。
+
+原始回答：
+
+现有资料不能保证北京地域 text-embedding-v4 在 2099 年仍有当前免费额度或单次批量条数不变；这些资料是核对日期为 2026-10-19 的文档快照，不构成对未来版本的承诺（来源#1）。新加坡地域价格不能直接当成北京价格：北京地域 text-embedding-v4 的文本输入价格为 0.5 元/每百万 tokens（来源#4）。新加坡地域（部署范围：国际）的文本输入价格为 0.514 元/每百万 tokens（来源#4）。两地价格分属不同地域表格，不能混用（来源#4）。
+
+如需确认未来版本或当前个人账户的额度与价格，请以届时官方文档和百炼控制台为准。
+
+来源#1: qwen-embedding-api.md
+来源#2: qwen-batch.md
+来源#3: qwen-rate-limits.md
+来源#4: qwen-embedding-v4.md
+来源#5: qwen-rate-limits.md
+来源#6: qwen-rate-limits.md
+
+引用定位：#1 qwen-embedding-api.md / chunk 12、#2 qwen-batch.md / chunk 5、#3 qwen-rate-limits.md / chunk 746、#4 qwen-embedding-v4.md / chunk 10、#5 qwen-rate-limits.md / chunk 751、#6 qwen-rate-limits.md / chunk 747。
+
+原始结果 SHA-256：`12eb04be1c17d38371258f294c1a8829189e06f692605ca5bbd85ffb3705bb47`。
+
+### 修复后用量与复现
+
+本轮 Provider 回执输入 49,464 Token、输出 2,394 Token，Embedding 159 Token。均完成生成，无已记录 Provider 错误或截断，未估算费用。该次调用覆盖后端真实图、检索及生成，不替代浏览器交付或目标环境生产验收。
+
+原始结果、引用审计及逐题复核位于 `backend/data/checkpoints/n12-retest-fixed-20261119/`。知识库副本 SHA-256：`946a11f4d246b069a3419b2d6dd33440be0f49005b4f7e6e2d771eb3442e49d9`。
+
+在已配置模型的 backend 环境，显式运行 `python scripts/retest_n12_scope.py --live --output data/checkpoints/n12-fresh-run` 复现，输出目录需为空。这会调用实际供应商并产生费用。
+
+完整后端回归在无本机 .env 的工作副本中完成：**420 passed，2 skipped**（Compose Billing MCP 与 MySQL 专项依赖单独环境，由隔离集成 CI 覆盖）。新增及现有代码通过致命 Ruff 规则、编译、文档链接与冻结输入校验。

@@ -1,6 +1,6 @@
 # 验收与必要追溯
 
-日常使用[七份手册](../README.md)。这里保留七份有代表性的最终测试报告，覆盖不同验证范围，另保留一条未关闭问题的原始证据。
+日常使用[七份手册](../README.md)。这里保留七份有代表性的最终测试报告，覆盖不同验证范围，另保留一条地域问题修复前后的追溯证据。
 
 | 最终报告 | 保留依据 |
 | --- | --- |
@@ -10,9 +10,9 @@
 | [RAG 最终验收](reports/RAG_PHASE_ONE_ACCEPTANCE.md) | Docling 样本、跨格式检索、构建及权限的集成结果 |
 | [诊断闭环验收](reports/DIAGNOSIS_LOOP_ACCEPTANCE.md) | 正式 HTTP 诊断、修正复查、恢复和幂等交接 |
 | [流式交付验收](reports/LIVE_STREAMING_ACCEPTANCE_2026-10-20.md) | 模型结束前交付正文、质量门和权威正文校准的实测 |
-| [回答质量修复验收](reports/ANSWER_QUALITY_FIX_2026-10-20.md) | 原题及新题复测，包含仍需追踪的地域与计费范围问题 |
+| [回答质量修复验收](reports/ANSWER_QUALITY_FIX_2026-10-20.md) | 原题及新题复测的历史基线 |
 
-[N12 原始失败证据](evidence/N12_SCOPE_FAILURE_2026-10-20.md)保留原问法、审阅、原回答和结果哈希。现行待办见[维护台账](../MAINTENANCE.md)。
+[N12 修复前后证据](evidence/N12_SCOPE_FAILURE_2026-10-20.md)记录原问法、修复前后回答和结果哈希，同四题真实复验 4/4 通过。现行待办见[维护台账](../MAINTENANCE.md)。
 
 正式题集位于 `backend/eval`，回归用例位于 `backend/tests`。旧文档中的 60 条问法已提取为[待复核候选题库](../../backend/eval/customer_service/manual_question_candidates.json)，保留原 ID、问法、预期边界和来源提交，状态为尚未执行的候选输入。
 

@@ -40,6 +40,17 @@ def test_identical_words_do_not_merge_across_versions_or_documents():
         assert len(json.loads(packed.messages[1]["content"])["excerpts"]) == 2
 
 
+def test_restored_scope_and_units_stay_with_identical_price_rows():
+    row = '\n\n<table><tr><td>0.5</td></tr></table>'
+    packed, _ = context('原文适用范围：北京\n原文表头（含单位）：元/百万Token' + row,
+                        '原文适用范围：新加坡\n原文表头（含单位）：美元/千Token' + row,
+                        question='Qwen两个地域价格是否相同？')
+    assert packed.bounded
+    excerpts = json.loads(packed.messages[1]['content'])['excerpts']
+    assert len(excerpts) == 2
+    assert all('适用范围' in unit['text'] and '0.5' in unit['text'] for unit in excerpts)
+
+
 def test_qualifier_after_unrelated_section_and_adjacent_explanation_survive():
     packed, _ = context(
         "Base URL配置方法。",

@@ -315,7 +315,13 @@ async def read_citation(citationId: str, user: User = Depends(current_user), db:
         DocumentParentChunk.end_chunk_id >= vector.chunk_id,
     ).order_by(DocumentParentChunk.parent_chunk_id).limit(1))
     from app.core.config import get_settings
-    context = (parent.text_content if parent else vector.text_content)[:max(500,get_settings().rag_parent_context_max_chars)]
+    from app.knowledge.source_context import load_parent_contexts
+    if parent:
+        _, contexts = await load_parent_contexts(db, file.user_id, file.file_md5, data['build'])
+        context = contexts[parent.parent_chunk_id]
+    else:
+        context = vector.text_content
+    context = context[:max(500,get_settings().rag_parent_context_max_chars)]
     if data.get('scope') == 'document':
         parents = list((await db.scalars(select(DocumentParentChunk).where(
             DocumentParentChunk.file_md5 == file.file_md5,DocumentParentChunk.user_id == file.user_id,

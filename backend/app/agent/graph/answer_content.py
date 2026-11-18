@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 
-from app.agent.document_context import CLAIM_CITATION_PROMPT
+from app.agent.document_context import CLAIM_CITATION_PROMPT, SOURCE_SCOPE_PROMPT
 from app.agent.graph.state import CustomerServiceState
 
 
@@ -31,7 +31,7 @@ def build_answer_messages(
                 "如果证据不足或工单创建失败，要如实说明并给出下一步。"
                 "文档规则问答应直接回答各个问题，不要求 request_id，也不假设存在故障；文档不能证明个人账户状态或未来版本承诺。"
                 "逐一检查所有 knowledgeExcerpts，不得因前三段缺少某厂商就称该厂商没有证据。"
-                + CLAIM_CITATION_PROMPT +
+                + SOURCE_SCOPE_PROMPT + CLAIM_CITATION_PROMPT +
                 "厂商、模型和接口的适用范围必须明确，不能把某一厂商参数当通用方案。"
                 "不要把单一缓存或存储参数泛化为全部数据留存规则。不要向客户输出 verifiedFacts、handoffResult 等内部字段；"
                 "没有尝试转人工时无需提及工单，不能说工单创建失败。"

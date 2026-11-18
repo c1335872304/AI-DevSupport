@@ -116,6 +116,32 @@ def test_same_document_multiple_chunks_keep_mapping_numbers_and_correct_labels()
     assert "来源#2: a.md" in answer and "来源#4: c.md" in answer
 
 
+@pytest.mark.parametrize('question', [
+    'Qwen text-embedding-v4在北京和新加坡价格是否相同？',
+    '比较Qwen cn-beijing与ap-southeast-1的免费额度',
+    'Qwen跨地域的计费差异是什么？',
+])
+def test_region_comparison_cannot_be_narrowed_by_planner_or_extracted_entity(question):
+    call = _scope_knowledge_call(AgentToolCall('x', 'search_knowledge', {
+        'query': 'Qwen北京价格', 'region': 'CN',
+        'filters': {'category': 'billing', 'version': 'v2', 'effective_at': '2026-10-19'},
+    }, 'knowledge'), question, {'region': 'CN'})
+    assert call.arguments['query'] == question
+    assert call.arguments['filters'] == {
+        'product': 'Qwen API', 'version': 'v2', 'effective_at': '2026-10-19',
+    }
+
+
+def test_single_region_and_explicit_comparison_category_remain_constrained():
+    call = AgentToolCall('x', 'search_knowledge', {'query': 'Qwen配置',
+        'filters': {'region': 'APAC', 'category': 'billing'}}, 'knowledge')
+    result = _scope_knowledge_call(call, 'Qwen新加坡配置', {'region': 'APAC'})
+    assert result.arguments['filters']['region'] == 'APAC'
+    result = _scope_knowledge_call(call, '比较Qwen北京和新加坡，仅查billing分类')
+    assert result.arguments['filters']['category'] == 'billing'
+    assert 'region' not in result.arguments['filters']
+
+
 def test_comparison_preserves_second_vendor_and_does_not_turn_rules_into_personal_facts():
     results = [
         {"fileMd5": "a", "fileName": "gpt.md", "chunkId": i, "textContent": f"OpenAI rule {i}"}

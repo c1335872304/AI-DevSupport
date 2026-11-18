@@ -164,7 +164,14 @@ class GetDocumentTool(BaseTool):
                     )
                 )
                 from app.core.config import get_settings
-                text = (parent.text_content if parent else child.text_content)[:min(max_chars,max(500,get_settings().rag_parent_context_max_chars))]
+                from app.knowledge.source_context import load_parent_contexts
+                if parent:
+                    _, contexts = await load_parent_contexts(db, file.user_id, file.file_md5,
+                                                             file.active_vector_version or "legacy")
+                    text = contexts[parent.parent_chunk_id]
+                else:
+                    text = child.text_content
+                text = text[:min(max_chars,max(500,get_settings().rag_parent_context_max_chars))]
                 from app.knowledge.citations import issue_citation
                 return {
                     "fileMd5": file.file_md5,

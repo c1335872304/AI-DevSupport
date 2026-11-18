@@ -333,43 +333,15 @@ class RagService:
             if file_md5 and owner:
                 groups[(file_md5, owner)].append(item)
 
+        from app.knowledge.source_context import load_parent_contexts
+        qualified_contexts = {}
         for (file_md5, owner), items in groups.items():
-            explicit_parent_ids = {
-                int(item["parentChunkId"])
-                for item in items
-                if item.get("parentChunkId") is not None
-            }
-            child_ids = {
-                int(item["chunkId"])
-                for item in items
-                if item.get("chunkId") is not None and item.get("parentChunkId") is None
-            }
-            matchers = []
-            if explicit_parent_ids:
-                matchers.append(DocumentParentChunk.parent_chunk_id.in_(explicit_parent_ids))
-            for child_id in child_ids:
-                matchers.append(
-                    and_(
-                        DocumentParentChunk.start_chunk_id <= child_id,
-                        DocumentParentChunk.end_chunk_id >= child_id,
-                    )
-                )
-            if not matchers:
-                continue
-            rows = list(
-                (
-                    await db.scalars(
-                        select(DocumentParentChunk).where(
-                            DocumentParentChunk.file_md5 == file_md5,
-                            DocumentParentChunk.user_id == owner,
-                            DocumentParentChunk.vector_version == str(items[0].get("indexVersion") or "legacy"),
-                            or_(*matchers),
-                        )
-                    )
-                ).all()
-            )
+            version = str(items[0].get("indexVersion") or "legacy")
+            rows, contexts = await load_parent_contexts(db, owner, file_md5, version)
             for row in rows:
-                parent_lookup[(file_md5, owner, row.parent_chunk_id)] = row
+                key = (file_md5, owner, row.parent_chunk_id)
+                parent_lookup[key] = row
+                qualified_contexts[key] = contexts[row.parent_chunk_id]
 
         selected: list[dict] = []
         seen_contexts: set[tuple] = set()
@@ -409,7 +381,7 @@ class RagService:
             from app.knowledge.citations import issue_citation
             enriched["citationId"] = issue_citation(owner, file_md5, str(item.get("indexVersion") or "legacy"), chunk_id)
             if parent:
-                context_text = parent.text_content[:parent_max_chars]
+                context_text = qualified_contexts[(file_md5, owner, parent.parent_chunk_id)][:parent_max_chars]
                 if parent.location_json and not enriched.get("sourceLocation"):
                     enriched["sourceLocation"] = json.loads(parent.location_json)
                 enriched["textContent"] = context_text

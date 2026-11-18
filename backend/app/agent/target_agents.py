@@ -28,6 +28,18 @@ _DOCUMENT_EXPANSION_REQUEST = re.compile(
     r"\b(?:full document|full text|surrounding context)\b", re.I,
 )
 
+_REGIONS = (
+    r'北京|华北2|cn-beijing', r'新加坡|singapore|ap-southeast-1',
+    r'香港|hong\s*kong|cn-hongkong', r'美国|united states|us-east|us-west',
+    r'上海|cn-shanghai', r'法兰克福|frankfurt|eu-central',
+)
+
+
+def _cross_region_question(question: str) -> bool:
+    return bool(re.search(r'跨(?:地域|区域)|所有(?:地域|区域)|各(?:地域|区域)', question)) or sum(
+        bool(re.search(pattern, question, re.I)) for pattern in _REGIONS
+    ) > 1
+
 
 def _knowledge_read_options(plan, question, outcomes, attempted):
     """Only expose direct document reads for the requested operation and known sources."""
@@ -90,7 +102,18 @@ def _scope_knowledge_call(call: AgentToolCall, question: str, entities=None) -> 
         filters["product"] = entities["product"]
     if entities.get("api_version"):
         filters["version"] = entities["api_version"]
-    if entities.get("region"):
+    if _cross_region_question(question):
+        # Planner/entity extraction often picks just the first region. A
+        # multi-region document can also have no document-level region label.
+        # Search all requested regions in text, retaining product/version scope.
+        query = question
+        arguments['query'] = query
+        filters.pop('region', None)
+        category = filters.get('category')
+        categories = category if isinstance(category, list) else [category]
+        if category and not any(str(value).lower() in question.lower() for value in categories):
+            filters.pop('category', None)
+    elif entities.get("region"):
         filters["region"] = entities["region"]
     if filters or 'filters' in arguments:
         arguments['filters']=filters
