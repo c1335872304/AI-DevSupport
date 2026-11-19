@@ -1,8 +1,0 @@
-AI DevSupport / API 助手
-
-This project originated from PaiSmart (https://github.com/itwanger/PaiSmart).
-It has been substantially modified with a Python/FastAPI backend, agent workflows,
-knowledge processing, diagnostics, support approvals and related tests.
-The product name and current repository metadata refer to AI DevSupport.
-The Apache License in LICENSE is retained. Third-party dependencies retain
-their respective licenses and attribution notices.
