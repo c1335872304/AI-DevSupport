@@ -19,9 +19,9 @@ except ImportError as exc:  # pragma: no cover
 
 
 mcp = MCPServer(
-    "PaiSmart Billing MCP",
+    "API Assistant Billing MCP",
     instructions=(
-        "Read-only Billing MCP for the local PaiSmart demo. "
+        "Read-only Billing MCP for the local API Assistant demo. "
         "It exposes plan, usage and invoice facts only; it never performs refunds, "
         "plan changes, cancellations or other writes."
     ),

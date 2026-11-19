@@ -270,7 +270,7 @@ def parse_args():
         description="Import and index a knowledge manifest (defaults to the official vendor corpus)"
     )
     parser.add_argument(
-        "--username", default="admin", help="Existing PaiSmart user that owns the demo documents"
+        "--username", default="admin", help="Existing API Assistant user that owns the demo documents"
     )
     parser.add_argument(
         "--manifest",

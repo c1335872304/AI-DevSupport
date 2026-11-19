@@ -6,7 +6,7 @@ from app.tools.mcp.billing_server import mcp
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="PaiSmart local Billing MCP server")
+    parser = argparse.ArgumentParser(description="API Assistant local Billing MCP server")
     parser.add_argument("--transport", choices=["stdio", "streamable-http"], default="streamable-http")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8011)

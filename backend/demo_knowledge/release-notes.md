@@ -1,4 +1,4 @@
-# PaiSmart API Platform 版本说明
+# API Assistant API Platform 版本说明
 
 本文档记录 Demo 知识库使用的 API Platform 版本约定。当前文档版本为 `2026.08`，生效日期为 2026-01-01。它用于解释版本和兼容性，不代替客户当前部署状态查询。
 

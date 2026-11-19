@@ -2008,7 +2008,7 @@ wheels = [
 ]
 
 [[package]]
-name = "paismart-python"
+name = "ai-devsupport-backend"
 version = "0.14.0"
 source = { virtual = "." }
 dependencies = [

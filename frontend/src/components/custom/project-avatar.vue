@@ -1,12 +1,12 @@
 <script setup lang="ts">
 defineOptions({
-  name: 'SoybeanAvatar'
+  name: 'ProjectAvatar'
 });
 </script>
 
 <template>
   <div class="size-72px overflow-hidden rd-1/2">
-    <img src="@/assets/imgs/soybean.jpg" class="size-full" />
+    <SvgIcon local-icon="logo" class="size-full" />
   </div>
 </template>
 

@@ -1,5 +1,5 @@
 [project]
-name = "paismart-python"
+name = "ai-devsupport-backend"
 version = "0.14.0"
 description = "Python/FastAPI LangGraph AI customer-service Agent with Skill, parallel Tool Calling, RAG, MCP, and human handoff"
 requires-python = ">=3.11"

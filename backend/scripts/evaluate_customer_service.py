@@ -171,7 +171,7 @@ async def main_async(args) -> None:
         wanted = set(args.case)
         cases = [row for row in cases if str(row.get("id")) in wanted]
     report: dict[str, Any] = {
-        "benchmark": "PaiSmart AI Customer Service Benchmark",
+        "benchmark": "API Assistant AI Customer Service Benchmark",
         "dataset": str(dataset),
         "sixLayers": ["rag", "toolCalling", "agentDecision", "answerQuality", "safety", "performance"],
         "datasetProfile": dataset_profile(cases),
@@ -197,7 +197,7 @@ async def main_async(args) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Run PaiSmart's six-layer AI customer-service benchmark.")
+    parser = argparse.ArgumentParser(description="Run API Assistant's six-layer AI customer-service benchmark.")
     parser.add_argument("--dataset", default="eval/customer_service/benchmark.jsonl", help="Customer-service benchmark JSONL.")
     parser.add_argument("--case", action="append", help="Evaluate only this case id; repeatable.")
     parser.add_argument("--artifact-jsonl", help="Evaluate saved Agent artifacts (answer, toolCalls, skills, timing, usage).")

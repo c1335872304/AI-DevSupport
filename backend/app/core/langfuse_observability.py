@@ -47,7 +47,7 @@ def _provider():
         headers={"Authorization": f"Basic {encoded}", "x-langfuse-ingestion-version": "4"},
         timeout=3,
     )
-    provider = TracerProvider(resource=Resource({"service.name": "paismart-backend"}),
+    provider = TracerProvider(resource=Resource({"service.name": "ai-devsupport-backend"}),
                               id_generator=GenerationIdGenerator())
     provider.add_span_processor(BatchSpanProcessor(exporter))
     return provider

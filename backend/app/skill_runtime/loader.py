@@ -30,7 +30,7 @@ def _parse_scalar(value: str) -> Any:
 
 
 def parse_skill_markdown(text: str) -> tuple[dict[str, Any], str]:
-    """Parse the deliberately small SKILL.md front-matter subset used by PaiSmart.
+    """Parse the deliberately small SKILL.md front-matter subset used by API Assistant.
 
     Values may be JSON literals (recommended for arrays) or plain scalar strings.
     Avoiding a YAML dependency keeps skill discovery available in minimal installs.

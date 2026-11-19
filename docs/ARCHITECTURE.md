@@ -1,6 +1,6 @@
 # 架构
 
-API 助手有聊天和文档入库两条主链路。内部包名、数据库与 Compose 项目中的 `PaiSmart` 为保留的技术标识。
+API 助手有聊天和文档入库两条主链路。
 
 ```mermaid
 flowchart TD

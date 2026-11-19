@@ -125,7 +125,7 @@ async def _persist_entity_memory(conversation_id: str | None, entities: dict[str
 
 
 class CustomerServiceWorkflow:
-    """LangGraph orchestration for one PaiSmart customer-service generation.
+    """LangGraph orchestration for one API Assistant customer-service generation.
 
     LangGraph owns *workflow state and routing*. The existing ToolRegistry still owns
     schema validation, scopes, timeout and execution; AgentRuntime still owns concurrent
