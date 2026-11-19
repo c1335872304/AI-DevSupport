@@ -2,7 +2,7 @@
 
 面向 API 开发者的 AI 客服系统，把文档问答、调用故障诊断、账单核实与人工处理放在同一条会话中。用户可以询问接口接入和计费规则，也可以围绕一次失败请求继续补充信息；系统检索文档、调用获授权的业务工具，并用可追溯的证据回答，必要时创建工单交由客服或管理员处理。
 
-项目包含 Vue 客户端与管理台、FastAPI / WebSocket 服务，以及基于 LangGraph 的多 Agent 运行时。当前已完成源码候选验收，可用于本地演示、开发和进一步接入真实业务系统。
+项目包含 Vue 客户端与管理台、FastAPI / WebSocket 服务，以及基于 LangGraph 的多 Agent 运行时。可用于本地演示、开发和进一步接入真实业务系统。
 
 ## 核心能力
 
@@ -110,9 +110,9 @@ EMBEDDING_DIMENSION=256
 
 文字 PDF / DOCX 解析需要独立 Docling 环境与模型缓存，接入这些格式前按运维手册准备。
 
-## 验证与当前范围
+## 开发验证
 
-本轮源码验收：完整本地后端 **441 项通过、2 项跳过**；真实 MySQL / Elasticsearch / Redis 集成 **81 项通过**；原 P1 的 MySQL 专项和 Billing MCP 协议另行通过。前端全量 ESLint 零错误、零警告，类型、流式重放、生产构建及两项浏览器流程通过。四题真实 LLM / Embedding 复测 **4/4 通过**，请求台账与用量回执一致。成绩对应本轮候选代码和记录的测试配置。
+测试覆盖会话隔离、生成与结算、知识构建、诊断恢复、审批、权限和用量对账，并包含 HTTP 与浏览器业务流程验证。
 
 常用本地检查分别在对应目录执行：
 
@@ -131,7 +131,9 @@ pnpm build
 
 CI 自动执行离线检查、前端与浏览器验收；隔离集成连接临时 MySQL、Elasticsearch、Redis 和 Billing MCP。真实模型评测通过显式命令运行，日常 CI 使用离线夹具。
 
-当前已登记的技术债已关闭。**退款仍是合成支付沙箱**，API 细分诊断使用独立 Demo 业务数据；真实支付渠道、扫描 OCR、截图理解及更大规模负载属于后续接入和验收范围。已有环境升级需执行 `0021_close_runtime_debts` 迁移，目标环境的备份、配置、回滚和放量按发布流程签验。
+## 功能边界
+
+退款使用合成支付沙箱，API 细分诊断使用独立 Demo 业务数据。真实支付渠道需要接入业务系统；扫描 OCR 和截图理解尚未提供。部署时需配置模型、存储与业务依赖，并执行数据库迁移。
 
 ## 代码与文档
 
@@ -146,6 +148,6 @@ deploy/                  隔离测试与部署编排
 docs/                    日常手册和必要验收记录
 ```
 
-需要深入某一部分时再查阅对应手册：[开发](docs/DEVELOPMENT.md)、[架构](docs/ARCHITECTURE.md)、[运维](docs/OPERATIONS.md)、[测试](docs/TESTING.md)、[发布](docs/RELEASING.md)、[维护台账](docs/MAINTENANCE.md)。完整目录见[文档索引](docs/README.md)，本轮测试范围见[候选验收记录](docs/archive/reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
+需要深入某一部分时再查阅对应手册：[开发](docs/DEVELOPMENT.md)、[架构](docs/ARCHITECTURE.md)、[运维](docs/OPERATIONS.md)、[测试](docs/TESTING.md)、[发布](docs/RELEASING.md)、[维护台账](docs/MAINTENANCE.md)。完整目录见[文档索引](docs/README.md)，详细测试范围见[候选验收记录](docs/archive/reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
 
 内部包、数据库与 Compose 中的 `PaiSmart` 为保留的技术标识。
