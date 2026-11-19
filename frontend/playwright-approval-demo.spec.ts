@@ -86,3 +86,48 @@ test('support operator handles ticket transitions with history and no approval p
   await drawer.getByRole('button', { name: '保存处理结果' }).click();
   await expect(drawer.getByText(/IN_PROGRESS → RESOLVED/)).toBeVisible();
 });
+
+test('business progress stays with its generation and retains the requested next step', async ({ page }) => {
+  let push: ((payload: Record<string, unknown>) => void) | undefined;
+  await page.routeWebSocket(/\/chat(?:\?|$)/, socket => {
+    socket.onMessage(raw => {
+      if (raw === '__chat_ping__') {
+        socket.send('__chat_pong__');
+        return;
+      }
+      const payload = JSON.parse(String(raw));
+      if (payload.type === 'auth') socket.send(JSON.stringify({ type: 'connection', sessionId: 'progress-demo' }));
+      if (payload.type === 'message') {
+        socket.send(
+          JSON.stringify({ type: 'start', generationId: 'progress-one', conversationId: payload.conversationId })
+        );
+        push = event => socket.send(JSON.stringify(event));
+      }
+    });
+  });
+  await login(page, 'refund-customer');
+  await page.getByText('客服演示', { exact: true }).click();
+  const input = page.getByPlaceholder('给 API 助手 发送消息，Enter 发送，Shift+Enter 换行');
+  await input.fill('请核对账单和请求记录');
+  await input.press('Enter');
+  await expect.poll(() => Boolean(push)).toBe(true);
+  await expect(page.getByText('正在处理你的问题', { exact: true })).toBeVisible();
+  push!({
+    type: 'workflow_progress',
+    generationId: 'progress-one',
+    phase: 'checking_billing',
+    timestamp: 10,
+    text: 'PRIVATE_REASONING'
+  });
+  await expect(page.getByText('正在核对套餐和账单', { exact: true })).toBeVisible();
+  push!({ type: 'workflow_progress', generationId: 'another-generation', phase: 'checking_request', timestamp: 11 });
+  await expect(page.getByText('正在核对套餐和账单', { exact: true })).toBeVisible();
+  await expect(page.getByText('PRIVATE_REASONING')).toHaveCount(0);
+  push!({ type: 'workflow_progress', generationId: 'progress-one', phase: 'supplementing', timestamp: 12 });
+  await expect(page.getByText('正在补查缺少的证据', { exact: true })).toBeVisible();
+  push!({ type: 'workflow_progress', generationId: 'progress-one', phase: 'waiting_for_user', timestamp: 13 });
+  await expect(page.getByText('等待你补充信息', { exact: true })).toBeVisible();
+  push!({ type: 'completion', generationId: 'progress-one', status: 'finished', content: '请补充请求号。' });
+  await expect(page.getByText('请补充请求号。', { exact: true })).toBeVisible();
+  await expect(page.getByText('等待你补充信息', { exact: true })).toBeVisible();
+});

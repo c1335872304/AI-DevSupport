@@ -55,3 +55,11 @@
 新增专项为 [test_debt_closure.py](../../../backend/tests/e2e/test_debt_closure.py) 与 [test_shared_generation_events.py](../../../backend/tests/e2e/test_shared_generation_events.py)。覆盖原决定不变、执行者失联、失败重试、十二次后暂停及换人恢复、未知用量 NULL、供应商收据去重、状态约束与最小权限。默认 CI 使用离线夹具；真实服务在隔离集成跑。Fast CI 保留 PR、主分支与手动入口，开发分支同一提交不再重复跑 push / PR 两轮。
 
 本地原始检查结果另见 `backend/data/debt-seal-integration.log`、`debt-p1-mysql.log`、`debt-billing-protocol.log`、`debt-browser-confirmed.log` 及 Git 工作副本的 `backend/data/debt-seal-all.log`。远端检查以[原 PR Checks](https://github.com/c1335872304/AI-DevSupport/pull/1/checks)中的实际提交为准。
+
+## 编排扩展验证
+
+专业 Agent 支持按需读取已声明的 Skill 参考材料；每个 Skill 每次生成最多一次读取尝试、4,000 字符和一次追加规划调用，后续复用。证据汇总允许在原权限、工具和步骤预算内补查一轮、最多两项只读工具；诊断执行器已有租约时保持原恢复路径。前端显示独立的业务阶段事件。
+
+新增编排专项 19 项通过，覆盖参考材料边界、依赖补齐、重复与失败调用保护、账期和文档锚点，以及完整运行时。完整离线后端检查 448 passed / 13 skipped，随后补充的一项完整运行时测试另行通过；跳过为需要显式真实服务配置的集成测试。浏览器 3 项通过，包含进度隔离和等待补充信息的展示。前端类型、流式脚本和生产构建通过；ESLint 排除浏览器生成产物，继续对源码执行零警告门禁。
+
+原 N12 / REGION / BATCH / FUTURE 四题真实复测首跑 4/4 通过，无 Provider 错误。15 次 LLM 与 4 次 Embedding 请求均有持久回执和请求 ID，输入 55,709 Token、输出 2,889 Token、Embedding 159 Token。原始结果与逐题哈希保存在 `backend/data/checkpoints/orchestration-live-20261119/`，复核结论见其中 `review.json`。该结果验证四题的范围、单位与未来承诺边界，不代表通用任务成功率或成本降低。

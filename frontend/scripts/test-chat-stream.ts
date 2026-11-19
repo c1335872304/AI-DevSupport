@@ -1,5 +1,6 @@
 import process from 'node:process';
 import assert from 'node:assert/strict';
+import { applyWorkflowProgress, progressLabels } from '../src/utils/chat-progress';
 import { applyStreamContent, findStreamMessage } from '../src/utils/chat-stream';
 
 const a = { role: 'assistant', content: '', status: 'loading', generationId: 'a' } as Api.Chat.Message;
@@ -34,3 +35,23 @@ const replay: Api.Chat.Message = { ...a, status: 'loading', content: 'A' };
 applyStreamContent(replay, { type: 'chunk', chunk: 'B', content: 'AB' });
 applyStreamContent(replay, { type: 'chunk', chunk: 'B', content: 'AB' });
 assert.equal(replay.content, 'AB');
+
+const progress: Api.Chat.Message = { ...a, status: 'loading', workflowProgress: undefined };
+applyWorkflowProgress(progress, { generationId: 'b', phase: 'checking_billing', timestamp: 20 });
+assert.equal(progress.workflowProgress, undefined);
+applyWorkflowProgress(progress, {
+  generationId: 'a',
+  phase: 'checking_billing',
+  timestamp: 20,
+  text: 'private reasoning'
+});
+assert.equal(progressLabels[progress.workflowProgress || ''], '正在核对套餐和账单');
+applyWorkflowProgress(progress, { generationId: 'a', phase: 'checking_request', timestamp: 19 });
+assert.equal(progress.workflowProgress, 'checking_billing');
+applyWorkflowProgress(progress, { generationId: 'a', phase: 'private reasoning', timestamp: 21 });
+assert.equal(progress.workflowProgress, 'checking_billing');
+applyWorkflowProgress(progress, { generationId: 'a', phase: '__proto__', timestamp: 21 });
+assert.equal(progress.workflowProgress, 'checking_billing');
+progress.status = 'finished';
+applyWorkflowProgress(progress, { generationId: 'a', phase: 'checking_request', timestamp: 22 });
+assert.equal(progress.workflowProgress, 'checking_billing');

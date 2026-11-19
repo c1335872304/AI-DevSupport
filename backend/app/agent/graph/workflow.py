@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 from app.agent.action_contracts import handoff_receipt, render_action_answer
 from app.agent.agent_skill_policy import build_target_agent_plans
+from app.agent.evidence_followup import evidence_followup
+from app.agent.progress import NODE_PHASES, publish_progress
 from app.agent.complexity import simple_document_question, usable_document_read
 from app.agent.diagnostic_window import diagnostic_window, render_window_result
 from app.agent.document_context import filter_document_absence_claims, pack_document_context, relabel_evidence
@@ -161,6 +163,8 @@ class CustomerServiceWorkflow:
                 "timestamp": int(time.time() * 1000),
             }
         )
+        if node in NODE_PHASES:
+            await publish_progress(self.send_json, state.get("generation_id"), NODE_PHASES[node])
         return path
 
     async def load_context(self, state: CustomerServiceState) -> dict:
@@ -463,6 +467,7 @@ class CustomerServiceWorkflow:
             for item in state.get("agent_plans") or []
             if isinstance(item, dict)
         ]
+        planning_skill_context = dict(state.get("planning_skill_context") or {})
         initial_dispatch = not plans
         if initial_dispatch:
             plans = build_target_agent_plans(
@@ -539,6 +544,7 @@ class CustomerServiceWorkflow:
                 attempted_call_fingerprints=state.get("executed_tool_fingerprints") or (),
                 max_agents=self.runtime.settings.agent_max_concurrency,
                 completed_agents=completed_agents,
+                skill_context=planning_skill_context,
             )
         executed_tool_count = int(state.get("executed_tool_call_count") or 0)
         remaining_tool_budget = max(0, int(self.runtime.settings.agent_max_tool_calls) - executed_tool_count)
@@ -606,6 +612,7 @@ class CustomerServiceWorkflow:
             }
         )
         return {
+            "planning_skill_context": planning_skill_context,
             "retrieval_query": retrieval_query,
             "query_optimization": optimization.to_dict(),
             "active_skills": active_skills,
@@ -628,6 +635,8 @@ class CustomerServiceWorkflow:
         """Execute scheduler-approved reads, then return to concurrent Agent planning."""
         path = await self._mark_node(state, "target_execute_tools")
         calls = list(state.get("tool_calls") or [])
+        if state.get("evidence_followup_running"):
+            await publish_progress(self.send_json, state["generation_id"], "supplementing")
         trace = state["skill_trace"]
         calls_by_id = {call.id: call for call in calls}
         outcomes: list[tuple[AgentToolCall, "ToolResult"]] = []
@@ -669,7 +678,9 @@ class CustomerServiceWorkflow:
                 'generationId':state['generation_id']})
         if simple_complete:
             replan=False
-        if not replan and not simple_complete:
+        if state.get("evidence_followup_running"):
+            replan = False
+        if not replan and not simple_complete and not state.get("evidence_followup_running"):
             unresolved = "TOOL_BUDGET" if completed_call_count >= max_tool_calls else "MAX_STEPS"
             for plan in state.get("agent_plans") or []:
                 agent_evidence.append(
@@ -690,6 +701,7 @@ class CustomerServiceWorkflow:
             }
         )
         return {
+            "evidence_followup_running": False,
             "references": references,
             "simple_document_candidate":bool(state.get('simple_document_candidate') and simple_complete),
             "simple_document_complete":simple_complete,
@@ -715,6 +727,24 @@ class CustomerServiceWorkflow:
         path = await self._mark_node(state, "target_evidence_join")
         from app.agent.types import AgentEvidence
 
+        calls = evidence_followup(state, self.runtime.registry,
+            max_tools=int(self.runtime.settings.agent_max_tool_calls),
+            max_steps=int(state.get("max_steps") or self.runtime.settings.agent_max_steps))
+        if calls:
+            plans = [AgentPlan(row["agent"], row["skill"], tuple(row.get("allowedTools") or ()), row.get("objective", ""))
+                     for row in state.get("agent_plans") or ()]
+            schedule = shared_tool_scheduler(
+                max_agents=getattr(self.runtime.settings, "agent_max_concurrency", 3),
+                max_tools=getattr(self.runtime.settings, "agent_tool_global_concurrency", 6),
+                max_total_tools=len(calls)).plan([
+                    TargetAgentWork(plan, tuple(call for call in calls if call.source_agent == plan.agent))
+                    for plan in plans], registry=self.runtime.registry)
+            calls = [entry.call for batch in schedule.tool_batches for entry in batch.calls]
+        if calls:
+            await publish_progress(self.send_json, state["generation_id"], "supplementing")
+            return {"tool_calls": calls, "target_scheduled_batches": schedule.to_dict()["toolBatches"],
+                    "evidence_followup_count": 1, "evidence_followup_running": True,
+                    "next_action": "target_execute_tools", "graph_path": path}
         evidence = [
             AgentEvidence(
                 agent=str(item.get("agent") or ""),
@@ -775,7 +805,7 @@ class CustomerServiceWorkflow:
                 "timestamp": int(time.time() * 1000),
             }
         )
-        return {"evidence_summary": summary, "diagnosis_decision": diagnosis_decision, "graph_path": path}
+        return {"evidence_summary": summary, "diagnosis_decision": diagnosis_decision, "next_action": "target_handoff_decision", "graph_path": path}
 
     async def target_handoff_decision(self, state: CustomerServiceState) -> dict:
         path = await self._mark_node(state, "target_handoff_decision")
@@ -821,6 +851,8 @@ class CustomerServiceWorkflow:
         trace.activate("escalation")
         trace.record_batch(1, [call], [result])
         receipt = handoff_receipt(result)
+        if receipt.success:
+            await publish_progress(self.send_json, state["generation_id"], "handed_off")
         return {
             "active_skills": active_skills,
             "skill_trace": trace,
@@ -963,6 +995,10 @@ class CustomerServiceWorkflow:
 
     async def emit_final(self, state: CustomerServiceState) -> dict:
         path = await self._mark_node(state, "emit_final")
+        if state.get("handoff_success"):
+            await publish_progress(self.send_json, state["generation_id"], "handed_off")
+        elif state.get("clarification_question"):
+            await publish_progress(self.send_json, state["generation_id"], "waiting_for_user")
         replaced = False
         final = redact_text(str(state.get("final_answer") or ""))
         if self._streamed_answer:
@@ -1182,7 +1218,9 @@ class CustomerServiceWorkflow:
                 "target_evidence_join": "target_evidence_join",
             },
         )
-        graph.add_edge("target_evidence_join", "target_handoff_decision")
+        graph.add_conditional_edges("target_evidence_join",
+            lambda state: str(state.get("next_action") or "target_handoff_decision"),
+            {"target_execute_tools": "target_execute_tools", "target_handoff_decision": "target_handoff_decision"})
         graph.add_conditional_edges(
             "target_handoff_decision",
             lambda state: str(state.get("next_action") or "target_generate_response"),

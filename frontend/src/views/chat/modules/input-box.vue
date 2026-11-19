@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { applyStreamContent, findStreamMessage } from '@/utils/chat-stream';
+import { applyWorkflowProgress } from '@/utils/chat-progress';
 const chatStore = useChatStore();
 const { connectionStatus, input, isRateLimited, list, rateLimitRemainingSeconds, wsData } = storeToRefs(chatStore);
 
@@ -312,9 +313,13 @@ watch(wsData, val => {
 
   if (!assistant) return;
 
+  if (payload.type === 'workflow_progress') {
+    applyWorkflowProgress(assistant, payload);
+    return;
+  }
   if (payload.type === 'workflow_node') {
     assistant.workflowStage = payload.node;
-    assistant.workflowStageStartedAt = Date.now();
+    if (!assistant.workflowProgress) assistant.workflowStageStartedAt = Date.now();
     return;
   }
   if (payload.type === 'answer_start' || payload.type === 'answer_replace') {

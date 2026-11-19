@@ -4,6 +4,7 @@ import { nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
 import { formatDate } from '@/utils/common';
+import { progressLabels } from '@/utils/chat-progress';
 import { VueMarkdownIt } from '@/vendor/vue-markdown-shiki';
 import DiagnosisPanel from './diagnosis-panel.vue';
 defineOptions({ name: 'ChatMessage' });
@@ -28,8 +29,9 @@ onUnmounted(() => {
 const running = computed(() => ['pending', 'loading'].includes(props.msg.status || ''));
 const progressText = computed(
   () =>
+    progressLabels[props.msg.workflowProgress || ''] ||
     (
-      ({
+      {
         load_context: '正在读取会话上下文',
         extract_entities: '正在理解你的问题',
         routing_policy: '正在选择处理流程',
@@ -42,8 +44,9 @@ const progressText = computed(
         safety: '正在完成最终检查',
         emit_final: '正在整理最终引用',
         persist_trace: '正在保存结果'
-      }) as Record<string, string>
-    )[props.msg.workflowStage || ''] || '正在处理你的问题'
+      } as Record<string, string>
+    )[props.msg.workflowStage || ''] ||
+    '正在处理你的问题'
 );
 const stageSeconds = computed(() =>
   Math.max(0, Math.floor((progressNow.value - (props.msg.workflowStageStartedAt || progressNow.value)) / 1000))
@@ -435,6 +438,17 @@ async function handleSourceFileClick(file: SourceFileClick) {
       <icon-eos-icons:three-dots-loading class="text-4" />
       <span>{{ progressText }}</span>
       <span v-if="stageSeconds > 0">· {{ stageSeconds }} 秒</span>
+    </div>
+    <div
+      v-if="
+        msg.role === 'assistant' &&
+        msg.status === 'finished' &&
+        ['waiting_for_user', 'handed_off'].includes(msg.workflowProgress || '')
+      "
+      class="ml-12 mt-3 text-12px color-gray-500"
+      aria-live="polite"
+    >
+      {{ progressText }}
     </div>
     <DiagnosisPanel
       v-if="msg.role === 'assistant' && (msg.diagnosisId || msg.diagnosis)"

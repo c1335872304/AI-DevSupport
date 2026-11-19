@@ -531,6 +531,8 @@ declare namespace Api {
     }
 
     interface Message {
+      workflowProgress?: string;
+      workflowProgressAt?: number;
       workflowStage?: string;
       workflowStageStartedAt?: number;
       errorMessage?: string;

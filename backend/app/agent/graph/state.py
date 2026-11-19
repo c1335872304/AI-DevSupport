@@ -23,6 +23,9 @@ class CustomerServiceState(TypedDict, total=False):
     diagnosis_decision: dict[str, Any]
 
     # Prompt / skills
+    planning_skill_context: dict[str, Any]
+    evidence_followup_count: int
+    evidence_followup_running: bool
     active_skills: list[str]
     skill_trace: SkillTrace
     intent_classification: dict[str, Any]

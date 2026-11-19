@@ -152,6 +152,10 @@ class AgentRuntime:
                     "timestamp": int(time.time() * 1000),
                 }
             )
+            from app.agent.progress import publish_progress, tool_phase
+            phase = tool_phase(call.name)
+            if phase:
+                await publish_progress(send_json, generation_id, phase)
             async with semaphore:
                 context = ToolExecutionContext(
                     user=user,

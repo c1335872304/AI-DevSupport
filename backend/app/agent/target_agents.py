@@ -15,6 +15,7 @@ from uuid import uuid4
 
 from app.agent.agent_skill_policy import _SkillRegistry
 from app.agent.llm import llm_service
+from app.agent.skill_context import planning_turn
 from app.agent.types import AgentEvidence, AgentPlan, AgentToolCall, tool_call_fingerprint
 from app.knowledge.product_scope import named_products
 
@@ -424,6 +425,7 @@ class TargetSpecialistAgents:
         attempted_tools: set[str],
         attempted_call_fingerprints: set[str],
         fallback_outcomes: list[tuple[AgentToolCall, Any]],
+        skill_context: dict,
     ) -> TargetAgentWork:
         """Ask one domain LLM Agent for Tool calls within its fixed boundary."""
         skill = registry.get(plan.skill)
@@ -471,7 +473,7 @@ class TargetSpecialistAgents:
         proposed: list[AgentToolCall] = []
         skipped_attempted_call = False
         try:
-            async for event in llm_service.stream_agent_turn(messages, allowed_tools):
+            async for event in planning_turn(messages, allowed_tools, skill_name=plan.skill, registry=registry, context=skill_context):
                 if event.get("type") != "tool_calls":
                     continue
                 for raw_call in event.get("tool_calls") or []:
@@ -574,8 +576,10 @@ class TargetSpecialistAgents:
         attempted_call_fingerprints: Iterable[str] = (),
         max_agents: int = 3,
         completed_agents: frozenset[str] = frozenset(),
+        skill_context: dict | None = None,
     ) -> list[TargetAgentWork]:
         """Run up to three selected LLM planning Agents concurrently."""
+        skill_context = {} if skill_context is None else skill_context
         selected = list(plans)[: max(1, max_agents)]
         evidence_rows = [dict(item) for item in agent_evidence if isinstance(item, dict)]
         reference_rows = [dict(item) for item in references if isinstance(item, dict)]
@@ -606,6 +610,7 @@ class TargetSpecialistAgents:
                     attempted_tools=own_attempted,
                     attempted_call_fingerprints=executed_fingerprints,
                     fallback_outcomes=own_outcomes,
+                    skill_context=skill_context,
                 )
             except Exception as exc:
                 # One specialist planning outage must not discard verified work
