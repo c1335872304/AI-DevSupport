@@ -226,7 +226,7 @@ async def run_live_planning_case(
     tool_registry: Any,
     with_skill: bool,
 ) -> dict[str, Any]:
-    """Evaluate real model planning without touching PaiSmart DB or private data.
+    """Evaluate real model planning without touching API Assistant DB or private data.
 
     Knowledge/file tools receive deterministic fixtures. Skill scripts/references are
     represented by fixtures too because this evaluator measures model orchestration,

@@ -20,6 +20,9 @@ ENTITY_KEYS = (
     "ticket_id",
     "order_id",
     "transaction_id",
+    "api_version",
+    "product",
+    "region",
 )
 
 _ENTITY_RE: dict[str, re.Pattern[str]] = {
@@ -27,7 +30,7 @@ _ENTITY_RE: dict[str, re.Pattern[str]] = {
     "error_code": re.compile(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b"),
     # Do not use ``\b`` here: in Python, Chinese characters are word
     # characters, so ``返回401`` would otherwise fail the boundary check.
-    "http_status": re.compile(r"(?<!\d)[1-5]\d{2}(?!\d)"),
+    "http_status": re.compile(r"(?<![A-Za-z0-9_])[1-5]\d{2}(?![A-Za-z0-9_])"),
     "endpoint": re.compile(r"/v\d+(?:/[A-Za-z0-9._~-]+)+"),
     "app_id": re.compile(r"\b(?:app_[A-Za-z0-9][A-Za-z0-9_-]*|app[_ -]?id\s*[:=：]?\s*[A-Za-z0-9][A-Za-z0-9_-]*)\b", re.I),
     "api_key_id": re.compile(r"\b(?:key_[A-Za-z0-9][A-Za-z0-9_-]*|api[_ -]?key[_ -]?id\s*[:=：]?\s*[A-Za-z0-9][A-Za-z0-9_-]*)\b", re.I),
@@ -81,47 +84,57 @@ def extract_entities(text: str) -> dict[str, str]:
     return found
 
 
+def topic_changed(question: str) -> bool:
+    question = question or ""
+    if re.search(r"换个|换一个|另一个问题|新问题|不说这个|先不查", question):
+        return True
+    unrelated = re.search(r"退款|发票|账单|订单|套餐|介绍.*政策", question)
+    same_incident = re.search(r"刚才|这个|那个|401|429|限流|鉴权|调用|请求|故障", question)
+    return bool(unrelated and not same_incident)
+
+
 def history_entities(history: list[dict] | None) -> dict[str, str]:
-    """Extract from user turns only, avoiding assistant-generated guesses."""
+    """Use only contiguous user topic; assistant text never establishes IDs."""
     found: dict[str, str] = {}
     for item in history or []:
-        if item.get("role") == "user":
-            found.update(extract_entities(str(item.get("content") or "")))
+        if item.get("role") != "user":
+            continue
+        text = str(item.get("content") or "")
+        current = extract_entities(text)
+        changed = any(current.get(k) and found.get(k) and current[k] != found[k]
+                      for k in ("request_id", "app_id"))
+        if topic_changed(text) or changed:
+            found = {}
+        found.update(current)
     return found
 
 
 def looks_like_follow_up(question: str, history: list[dict] | None = None) -> bool:
-    if not history:
+    if not history or topic_changed(question):
         return False
-    normalized = (question or "").strip()
-    markers = ("这个", "那个", "它", "刚才", "上面", "前面", "为什么", "那", "所以", "继续", "呢", "怎么办")
-    return len(normalized) <= 80 or any(marker in normalized for marker in markers)
+    markers = ("这个", "那个", "它", "刚才", "上面", "前面", "为什么", "那", "所以", "继续", "呢", "怎么办", "还是", "已经", "已修改", "已修正", "已恢复", "重试")
+    return any(marker in (question or "") for marker in markers)
 
 
 def resolve_entities(
-    question: str,
-    history: list[dict] | None,
+    question: str, history: list[dict] | None,
     model_entities: dict[str, Any] | None = None,
     remembered_entities: dict[str, Any] | None = None,
     follow_up: bool | None = None,
 ) -> tuple[dict[str, str], dict[str, str]]:
-    """Merge current entities with the original version's historical memory.
-
-    Current values always win. Historical values are used for a follow-up; the
-    memory is still retained by the caller for a later follow-up after a topic
-    switch. Sources are exposed for trace/debugging and never contain secrets.
-    """
-    current = extract_entities(question)
-    current.update(normalize_entities(model_entities))
-    follow_up = looks_like_follow_up(question, history) if follow_up is None else follow_up
-    previous = normalize_entities(remembered_entities)
-    previous.update(history_entities(history))
-    resolved = dict(previous) if follow_up else {}
+    """Explicit current IDs win over model extraction and scoped history."""
+    current = {k: v for k, v in normalize_entities(model_entities).items() if v in (question or "")}
+    current.update(extract_entities(question))
+    previous = history_entities(history) if history else normalize_entities(remembered_entities)
+    boundary = topic_changed(question) or any(
+        current.get(k) and current[k] != previous.get(k) for k in ("request_id", "app_id")
+    )
+    inherit = not boundary and (looks_like_follow_up(question, history) if follow_up is None else bool(follow_up))
+    resolved = dict(previous) if inherit else {}
     resolved.update(current)
     sources = {key: "current" for key in current}
-    if follow_up:
-        for key in resolved:
-            sources.setdefault(key, "history")
+    for key in resolved:
+        sources.setdefault(key, "history")
     return resolved, sources
 
 

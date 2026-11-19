@@ -3,7 +3,7 @@ name: api-diagnostic
 description: API 与接口故障诊断专业工作流；适用于 request_id、HTTP 错误码、API Key、限流、上传和接口调用异常，不处理退款或合同变更。
 triggers: ["api", "request_id", "request id", "API Key", "api key", "接口", "接口报错", "接口失败", "HTTP 401", "HTTP 403", "HTTP 429", "401", "403", "429", "限流", "QPS", "请求失败", "上传失败"]
 negative_triggers: ["已经解决", "不用排查", "只问退款政策"]
-allowed_tools: ["query_call_log", "query_api_key_status", "query_recent_call_stats", "query_error_code", "search_knowledge", "get_support_handoff", "read_skill_reference", "run_skill_script"]
+allowed_tools: ["query_request_observation", "query_call_log", "query_api_key_status", "query_recent_call_stats", "query_error_code", "search_knowledge", "get_support_handoff", "read_skill_reference", "run_skill_script"]
 references: ["references/api-evidence-order.md", "references/api-error-safety.md"]
 scripts: ["classify_api_incident", "build_api_diagnostic_plan", "audit_api_diagnostic"]
 evals: ["eval/routing.jsonl", "eval/behavior.jsonl", "eval/answer.jsonl"]
@@ -31,3 +31,7 @@ priority: 80
 - API Key、Token、Authorization 和完整请求头只能脱敏展示。
 - 只声称真实只读 Tool 返回 SUCCESS 后确认过的状态。
 - 给出最多 1–4 个最小诊断步骤；达到停止条件时转人工。
+
+## Demo API闭环
+
+对独立Demo API，细分根因必须由匹配服务版本、请求、应用和事件时间的query_request_observation支持；只有HTTP状态、错误码释义或当前Key状态不能证明历史根因。修正后新请求须重新核对归属、接口和时间。诊断状态与建议以程序的结构化decision为准，不从用户反馈直接确认已解决。

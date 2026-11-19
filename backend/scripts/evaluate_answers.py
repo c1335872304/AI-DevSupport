@@ -192,7 +192,7 @@ async def main_async(args) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Evaluate PaiSmart final answers: deterministic grounding/citations/completeness plus optional LLM judge and Skill A/B."
+        description="Evaluate API Assistant final answers: deterministic grounding/citations/completeness plus optional LLM judge and Skill A/B."
     )
     parser.add_argument("--skill", action="append", help="Skill to evaluate; repeat to select multiple. Default: all skills.")
     parser.add_argument("--case", action="append", help="Evaluate only this case id; repeat to select multiple.")

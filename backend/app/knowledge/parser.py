@@ -6,9 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from docx import Document
 from openpyxl import load_workbook
-from pypdf import PdfReader
 from pptx import Presentation
 
 from app.core.config import get_settings
@@ -18,6 +16,7 @@ from app.core.config import get_settings
 class ParsedBlock:
     text: str
     page_number: int | None = None
+    location: dict | None = None
 
 
 @dataclass
@@ -25,6 +24,7 @@ class ParentChunkDraft:
     parent_chunk_id: int
     text: str
     page_number: int | None = None
+    location: dict | None = None
 
 
 @dataclass
@@ -33,24 +33,79 @@ class ChildChunkDraft(ParsedBlock):
 
 
 class DocumentParser:
+    def profile(self) -> dict:
+        import hashlib
+        from app.knowledge.docling_adapter import artifacts_directory
+        artifacts = artifacts_directory()
+        manifest = artifacts / "manifest.json" if artifacts else None
+        return {"adapter": "structured-v3", "docling": "2.58.0", "ocr": False,
+                "artifacts_path": str(artifacts) if artifacts else None,
+                "model_manifest": hashlib.sha256(manifest.read_bytes()).hexdigest() if manifest and manifest.is_file() else None,
+                "chunk_size": self.settings.chunk_size, "min_chunk_size": self.settings.min_chunk_size,
+                "chunk_overlap": self.settings.chunk_overlap,
+                "parent_chunk_size": self.settings.parent_chunk_size}
+
     def __init__(self) -> None:
         self.settings = get_settings()
 
     def parse(self, filename: str, data: bytes) -> list[ParsedBlock]:
         suffix = Path(filename).suffix.lower()
-        if suffix == ".pdf":
-            return self._pdf(data)
-        if suffix == ".docx":
-            return self._docx(data)
+        if suffix in {".pdf", ".docx"}:
+            return self.parse_with_artifacts(filename, data)[0]
         if suffix in {".xlsx", ".xlsm"}:
             return self._xlsx(data)
         if suffix == ".pptx":
             return self._pptx(data)
         if suffix in {".html", ".htm"}:
-            return [ParsedBlock(BeautifulSoup(data, "html.parser").get_text("\n"))]
+            soup = BeautifulSoup(data, "html.parser")
+            for tag in soup(["script", "style", "nav"]): tag.decompose()
+            return self._markdown(soup.get_text("\n"))
+        if suffix == ".md":
+            return self._markdown(data.decode("utf-8", errors="strict"))
         if suffix in {".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".xml", ".log"}:
             return [ParsedBlock(data.decode("utf-8", errors="ignore"))]
         return [ParsedBlock(data.decode("utf-8", errors="ignore"))]
+
+    @staticmethod
+    def _markdown(text):
+        blocks, headings, buffer = [], [], []
+        fence, kind, offset, start = None, "text", 0, 0
+        def flush():
+            nonlocal buffer, start
+            value = "".join(buffer).strip()
+            if value:
+                blocks.append(ParsedBlock(value, location={"blockId": f"md:{len(blocks)}", "type": kind,
+                    "titlePath": list(headings), "order": len(blocks), "charStart": start, "charEnd": offset}))
+            buffer = []
+            start = offset
+        for line in text.splitlines(keepends=True):
+            marker = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+            heading = re.match(r"^(#{1,6})\s+(.+)", line)
+            is_table = line.lstrip().startswith("|")
+            if fence:
+                buffer.append(line); offset += len(line)
+                if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence):
+                    flush(); fence = None; kind = "text"
+                continue
+            if marker:
+                flush(); fence = marker[1]; kind = "code"; start = offset
+            elif heading:
+                flush(); level = len(heading[1]); headings = headings[:level-1] + [heading[2].strip()]
+                kind = "text"; start = offset
+            elif is_table and kind != "table":
+                flush(); kind = "table"; start = offset
+            elif not is_table and kind == "table":
+                flush(); kind = "text"; start = offset
+            buffer.append(line); offset += len(line)
+        flush()
+        return blocks
+
+    def parse_with_artifacts(self, filename, data):
+        if Path(filename).suffix.lower() not in {".pdf", ".docx"}:
+            return self.parse(filename, data), None
+        from app.knowledge.docling_adapter import convert_document
+        result = convert_document(filename, data)
+        return [ParsedBlock(b["text"], b.get("page_number"), b.get("location")) for b in result["blocks"]], result
 
     def chunk(self, blocks: list[ParsedBlock]) -> list[ParsedBlock]:
         """Backward-compatible child-only chunking API."""
@@ -80,8 +135,8 @@ class DocumentParser:
             for parent_text in parent_pieces:
                 current_parent_id = parent_id
                 parent_id += 1
-                parents.append(ParentChunkDraft(current_parent_id, parent_text, block.page_number))
-                child_pieces = self._split_text(
+                parents.append(ParentChunkDraft(current_parent_id, parent_text, block.page_number, block.location))
+                child_pieces = [parent_text] if block.location and block.location.get("type") in {"code", "table"} and len(parent_text) <= parent_size else self._split_text(
                     parent_text,
                     child_size,
                     child_overlap,
@@ -92,6 +147,7 @@ class DocumentParser:
                         ChildChunkDraft(
                             text=child_text,
                             page_number=block.page_number,
+                            location=block.location,
                             parent_chunk_id=current_parent_id,
                         )
                     )
@@ -149,16 +205,6 @@ class DocumentParser:
                 if marker in {"\n\n", "\n", "。", "！", "？", ". ", "! ", "? "}:
                     break
         return max(candidates, default=end)
-
-    @staticmethod
-    def _pdf(data: bytes) -> list[ParsedBlock]:
-        reader = PdfReader(io.BytesIO(data))
-        return [ParsedBlock((page.extract_text() or "").strip(), i + 1) for i, page in enumerate(reader.pages)]
-
-    @staticmethod
-    def _docx(data: bytes) -> list[ParsedBlock]:
-        doc = Document(io.BytesIO(data))
-        return [ParsedBlock("\n".join(p.text for p in doc.paragraphs if p.text.strip()))]
 
     @staticmethod
     def _xlsx(data: bytes) -> list[ParsedBlock]:

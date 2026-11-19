@@ -21,8 +21,9 @@ declare global {
   const UploadStatus: typeof import('../enum/index')['UploadStatus']
   const acceptHMRUpdate: typeof import('pinia')['acceptHMRUpdate']
   const addThemeVarsToGlobal: typeof import('../store/modules/theme/shared')['addThemeVarsToGlobal']
-  const buildInviteChannelGuide: typeof import('../constants/invite-channel')['buildInviteChannelGuide']
-  const buildInviteCodeShareMessage: typeof import('../constants/invite-channel')['buildInviteCodeShareMessage']
+  const applyStreamContent: typeof import('../utils/chat-stream')['applyStreamContent']
+  const approvalApi: typeof import('../service/api/support-approval')['approvalApi']
+  const approvalLabel: typeof import('../service/api/support-approval')['approvalLabel']
   const calculateMD5: typeof import('../utils/common')['calculateMD5']
   const chunkSize: typeof import('../constants/common')['chunkSize']
   const clearAuthStorage: typeof import('../store/modules/auth/shared')['clearAuthStorage']
@@ -39,13 +40,9 @@ declare global {
   const effectScope: typeof import('vue')['effectScope']
   const enableStatusOptions: typeof import('../constants/common')['enableStatusOptions']
   const extractTabsByAllRoutes: typeof import('../store/modules/tab/shared')['extractTabsByAllRoutes']
-  const fetchCreateInviteCode: typeof import('../service/api/invite-code')['fetchCreateInviteCode']
   const fetchCreateRechargeOrder: typeof import('../service/api/recharge')['fetchCreateRechargeOrder']
   const fetchCustomBackendError: typeof import('../service/api/auth')['fetchCustomBackendError']
-  const fetchDeleteInviteCode: typeof import('../service/api/invite-code')['fetchDeleteInviteCode']
-  const fetchDisableInviteCode: typeof import('../service/api/invite-code')['fetchDisableInviteCode']
   const fetchGetConstantRoutes: typeof import('../service/api/route')['fetchGetConstantRoutes']
-  const fetchGetInviteCodeList: typeof import('../service/api/invite-code')['fetchGetInviteCodeList']
   const fetchGetOrgTagList: typeof import('../service/api/org-tag')['fetchGetOrgTagList']
   const fetchGetOrgTagTree: typeof import('../service/api/org-tag')['fetchGetOrgTagTree']
   const fetchGetUserInfo: typeof import('../service/api/auth')['fetchGetUserInfo']
@@ -58,11 +55,11 @@ declare global {
   const fetchRechargePackages: typeof import('../service/api/recharge')['fetchRechargePackages']
   const fetchRefreshToken: typeof import('../service/api/auth')['fetchRefreshToken']
   const fetchRegister: typeof import('../service/api/auth')['fetchRegister']
-  const fetchUpdateInviteCode: typeof import('../service/api/invite-code')['fetchUpdateInviteCode']
   const fileSize: typeof import('../utils/common')['fileSize']
   const filterAuthRoutesByRoles: typeof import('../store/modules/route/shared')['filterAuthRoutesByRoles']
   const filterTabsById: typeof import('../store/modules/tab/shared')['filterTabsById']
   const filterTabsByIds: typeof import('../store/modules/tab/shared')['filterTabsByIds']
+  const findStreamMessage: typeof import('../utils/chat-stream')['findStreamMessage']
   const findTabByRouteName: typeof import('../store/modules/tab/shared')['findTabByRouteName']
   const formatDate: typeof import('../utils/common')['formatDate']
   const getActivePinia: typeof import('pinia')['getActivePinia']
@@ -87,7 +84,6 @@ declare global {
   const h: typeof import('vue')['h']
   const initThemeSettings: typeof import('../store/modules/theme/shared')['initThemeSettings']
   const inject: typeof import('vue')['inject']
-  const inviteChannelConfig: typeof import('../constants/invite-channel')['inviteChannelConfig']
   const isPC: typeof import('../utils/agent')['isPC']
   const isProxy: typeof import('vue')['isProxy']
   const isReactive: typeof import('vue')['isReactive']
@@ -207,6 +203,9 @@ declare global {
   // @ts-ignore
   export type { FlatResponseData } from '~/packages/axios/src'
   import('~/packages/axios/src')
+  // @ts-ignore
+  export type { ApprovalItem, ApprovalReview, ApprovalOptions } from '../service/api/support-approval'
+  import('../service/api/support-approval')
   // @ts-ignore
   export type { ECOption } from '../hooks/common/echarts'
   import('../hooks/common/echarts')

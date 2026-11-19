@@ -13,7 +13,7 @@ def _require_active(context: ToolExecutionContext, skill: str) -> None:
 class ActivateSkillTool(BaseTool):
     name = "activate_skill"
     description = (
-        "Activate one PaiSmart Skill from the Skill Catalog when its workflow is useful. "
+        "Activate one API Assistant Skill from the Skill Catalog when its workflow is useful. "
         "Activation changes guidance only; it never grants additional data permissions."
     )
     input_schema = {
@@ -60,7 +60,7 @@ class ActivateSkillTool(BaseTool):
 class ReadSkillReferenceTool(BaseTool):
     name = "read_skill_reference"
     description = (
-        "Read one reference explicitly declared by an active PaiSmart Skill. "
+        "Read one reference explicitly declared by an active API Assistant Skill. "
         "Use only when the active SKILL.md says the detailed reference is needed."
     )
     input_schema = {
@@ -85,7 +85,7 @@ class ReadSkillReferenceTool(BaseTool):
 class RunSkillScriptTool(BaseTool):
     name = "run_skill_script"
     description = (
-        "Run one trusted deterministic script declared by an active PaiSmart Skill. "
+        "Run one trusted deterministic script declared by an active API Assistant Skill. "
         "Scripts are repository-owned, execute without a shell, and receive only JSON arguments."
     )
     input_schema = {

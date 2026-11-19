@@ -2,36 +2,22 @@ from __future__ import annotations
 
 import secrets
 import hashlib
-import json
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import admin_user
 from app.core.response import ok
 from app.core.security import hash_password
 from app.core.time import utcnow
-from app.db.models import ConversationMessage, InviteCode, OrganizationTag, RechargePackage, User, UserTokenRecord, MCPAccessToken
+from app.db.models import ConversationMessage, OrganizationTag, RechargePackage, User, UserTokenRecord, MCPAccessToken
 from app.db.session import get_db
 from app.accounting.rate_limit import rate_limit_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-class InviteCreate(BaseModel):
-    code: str | None = None
-    maxUses: int = 1
-    count: int | None = None
-    expiresAt: datetime | None = None
-
-
-class InviteUpdate(BaseModel):
-    code: str
-    maxUses: int
-    expiresAt: datetime | None = None
 
 
 class OrgCreate(BaseModel):
@@ -153,72 +139,6 @@ async def list_users(
         for u in rows
     ]
     return ok({"content": data, "data": data, "number": page, "size": size, "totalElements": total})
-
-
-@router.post("/invite-codes")
-async def create_invite(payload: InviteCreate, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    count = max(1, payload.count or 1)
-    created = []
-    for _ in range(count):
-        code = payload.code if count == 1 and payload.code else secrets.token_urlsafe(8)
-        item = InviteCode(code=code, max_uses=payload.maxUses, expires_at=payload.expiresAt)
-        db.add(item)
-        created.append(item)
-    await db.commit()
-    return ok([{"id": x.id, "code": x.code, "maxUses": x.max_uses} for x in created])
-
-
-@router.get("/invite-codes")
-async def list_invites(
-    page: int = Query(1, ge=1), size: int = Query(10, ge=1), admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)
-):
-    items = list((await db.scalars(select(InviteCode).order_by(InviteCode.id.desc()))).all())
-    total = len(items)
-    rows = items[(page - 1) * size : page * size]
-    data = [
-        {
-            "id": x.id,
-            "code": x.code,
-            "maxUses": x.max_uses,
-            "usedCount": x.used_count,
-            "enabled": x.enabled,
-            "expiresAt": x.expires_at.isoformat() if x.expires_at else None,
-            "createdAt": x.created_at.isoformat(),
-        }
-        for x in rows
-    ]
-    return ok({"content": data, "data": data, "number": page, "size": size, "totalElements": total})
-
-
-@router.patch("/invite-codes/{invite_id}/disable")
-async def disable_invite(invite_id: int, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    item = await db.get(InviteCode, invite_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Invite code not found")
-    item.enabled = False
-    await db.commit()
-    return ok(message="Disabled")
-
-
-@router.delete("/invite-codes/{invite_id}")
-async def delete_invite(invite_id: int, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    item = await db.get(InviteCode, invite_id)
-    if item:
-        await db.delete(item)
-        await db.commit()
-    return ok(message="Deleted")
-
-
-@router.put("/invite-codes/{invite_id}")
-async def update_invite(invite_id: int, payload: InviteUpdate, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    item = await db.get(InviteCode, invite_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Invite code not found")
-    item.code = payload.code
-    item.max_uses = payload.maxUses
-    item.expires_at = payload.expiresAt
-    await db.commit()
-    return ok(message="Updated")
 
 
 @router.get("/conversation")
@@ -536,56 +456,34 @@ async def delete_package(package_id: int, admin: User = Depends(admin_user), db:
         await db.commit()
     return ok(message="Deleted")
 
-@router.get("/agent-runs")
-async def list_agent_runs(
-    limit: int = Query(50, ge=1, le=200),
-    admin: User = Depends(admin_user),
-    db: AsyncSession = Depends(get_db),
-):
-    from app.db.models import AgentRun
-    rows = list((await db.scalars(select(AgentRun).order_by(AgentRun.started_at.desc()).limit(limit))).all())
-    return ok([{
-        "runId": row.run_id,
-        "generationId": row.generation_id,
-        "userId": row.user_id,
-        "question": row.question,
-        "status": row.status,
-        "activeSkills": json.loads(row.active_skills_json) if row.active_skills_json else [],
-        "trace": json.loads(row.trace_json) if row.trace_json else None,
-        "error": row.error,
-        "startedAt": row.started_at.isoformat(),
-        "completedAt": row.completed_at.isoformat() if row.completed_at else None,
-    } for row in rows])
+
+from typing import Literal
 
 
-@router.get("/agent-runs/{run_id}")
-async def get_agent_run(run_id: str, admin: User = Depends(admin_user), db: AsyncSession = Depends(get_db)):
-    from app.db.models import AgentRun, ToolExecution
-    row = await db.get(AgentRun, run_id)
+class UserRoleUpdate(BaseModel):
+    role: Literal["USER", "SUPPORT", "ADMIN"]
+
+
+@router.patch("/users/{user_id}/role")
+async def change_user_role(user_id: int, body: UserRoleUpdate, admin: User = Depends(admin_user),
+                           db: AsyncSession = Depends(get_db)):
+    from app.db.models import UserRoleAudit
+    if db.bind.dialect.name == "sqlite":
+        await db.execute(update(User).where(User.id == admin.id).values(token_version=User.token_version))
+    admins = (await db.scalars(select(User).where(User.role == "ADMIN").order_by(User.id).with_for_update())).all()
+    actor = await db.get(User, admin.id, populate_existing=True)
+    if not actor or actor.role != "ADMIN":
+        raise HTTPException(403, "Administrator role changed")
+    row = await db.get(User, user_id, populate_existing=True)
     if not row:
-        raise HTTPException(status_code=404, detail="Agent run not found")
-    tools = list((await db.scalars(
-        select(ToolExecution).where(ToolExecution.run_id == run_id).order_by(ToolExecution.id.asc())
-    )).all())
-    return ok({
-        "runId": row.run_id,
-        "generationId": row.generation_id,
-        "userId": row.user_id,
-        "question": row.question,
-        "status": row.status,
-        "activeSkills": json.loads(row.active_skills_json) if row.active_skills_json else [],
-        "trace": json.loads(row.trace_json) if row.trace_json else None,
-        "error": row.error,
-        "startedAt": row.started_at.isoformat(),
-        "completedAt": row.completed_at.isoformat() if row.completed_at else None,
-        "tools": [{
-            "toolCallId": item.tool_call_id,
-            "tool": item.tool_name,
-            "step": item.step,
-            "status": item.status,
-            "durationMs": item.duration_ms,
-            "arguments": json.loads(item.arguments_json) if item.arguments_json else {},
-            "error": item.error,
-            "createdAt": item.created_at.isoformat(),
-        } for item in tools],
-    })
+        raise HTTPException(404, "User not found")
+    if row.role == "ADMIN" and body.role != "ADMIN" and len(admins) <= 1:
+        raise HTTPException(409, "At least one administrator is required")
+    if row.id == admin.id and body.role != "ADMIN":
+        raise HTTPException(409, "Cannot demote your own administrator account")
+    if row.role != body.role:
+        db.add(UserRoleAudit(user_id=str(row.id), actor_id=str(admin.id), previous_role=row.role, new_role=body.role))
+        row.role = body.role
+        row.token_version += 1
+        await db.commit()
+    return ok({"userId": row.id, "role": row.role})

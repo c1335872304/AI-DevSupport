@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import LLMTokenReservation, User, UserTokenRecord
+from app.db.models import GenerationState, LLMTokenReservation, User, UserTokenRecord
 
 
 def estimate_tokens(text: str) -> int:
@@ -27,7 +27,7 @@ class UsageService:
         # Lock the balance row for the duration of the ledger write. Without this,
         # two concurrent generations can both read the same balance and overwrite
         # one another's deduction on transactional databases.
-        user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
+        user = await db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
         if not user:
             return 0
         before = int(user.llm_token_balance or 0)
@@ -44,10 +44,20 @@ class UsageService:
     async def reserve_llm(self, db: AsyncSession, user_id: int, generation_id: str, tokens: int, reason: str) -> int:
         """Reserve a worst-case budget before an external LLM request starts."""
         amount = max(1, int(tokens))
+        generation = await db.get(GenerationState, generation_id)
+        if generation:
+            active = await db.execute(update(GenerationState).where(
+                GenerationState.generation_id == generation_id,
+                GenerationState.status.in_(("PENDING", "STREAMING")),
+            ).values(updated_at=GenerationState.updated_at))
+            if not active.rowcount:
+                raise HTTPException(409, "Generation already stopped")
         existing = await db.get(LLMTokenReservation, generation_id)
         if existing:
-            return int(existing.reserved_tokens or 0)
-        user = await db.scalar(select(User).where(User.id == user_id).with_for_update())
+            reserved = int(existing.reserved_tokens or 0)
+            await db.commit()
+            return reserved
+        user = await db.scalar(select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True))
         if not user or int(user.llm_token_balance or 0) < amount:
             raise HTTPException(status_code=402, detail="Insufficient LLM token balance for this request")
         before = int(user.llm_token_balance or 0)
@@ -67,18 +77,33 @@ class UsageService:
         await db.commit()
         return amount
 
-    async def settle_llm(self, db: AsyncSession, generation_id: str, actual_tokens: int, reason: str = "chat_generation") -> int:
+    async def settle_llm(
+        self, db: AsyncSession, generation_id: str, actual_tokens: int,
+        reason: str = "chat_generation", *, commit: bool = True,
+    ) -> int:
         """Settle a reservation and return unused budget after a successful request."""
-        reservation = await db.get(LLMTokenReservation, generation_id)
+        # A conditional write serializes settlement/release even on SQLite and
+        # forces a current read when another session already changed the reservation.
+        await db.execute(update(LLMTokenReservation).where(
+            LLMTokenReservation.generation_id == generation_id,
+            LLMTokenReservation.status == "RESERVED",
+        ).values(updated_at=LLMTokenReservation.updated_at))
+        reservation = await db.scalar(select(LLMTokenReservation).where(
+            LLMTokenReservation.generation_id == generation_id,
+        ).with_for_update().execution_options(populate_existing=True))
         if not reservation or reservation.status != "RESERVED":
-            return int(reservation.settled_tokens or 0) if reservation else 0
+            settled = int(reservation.settled_tokens or 0) if reservation else 0
+            if commit:
+                await db.commit()
+            return settled
         reserved = max(1, int(reservation.reserved_tokens or 0))
         requested = max(0, int(actual_tokens))
-        user = await db.scalar(select(User).where(User.id == int(reservation.user_id)).with_for_update())
+        user = await db.scalar(select(User).where(User.id == int(reservation.user_id)).with_for_update().execution_options(populate_existing=True))
         if not user:
             reservation.status = "SETTLED"
             reservation.settled_tokens = 0
-            await db.commit()
+            if commit:
+                await db.commit()
             return 0
         before = int(user.llm_token_balance or 0)
         if requested <= reserved:
@@ -105,15 +130,29 @@ class UsageService:
         ))
         reservation.settled_tokens = charged
         reservation.status = "SETTLED"
-        await db.commit()
+        if commit:
+            await db.commit()
         return charged
 
-    async def release_llm(self, db: AsyncSession, generation_id: str, reason: str = "failed_generation") -> int:
+    async def release_llm(
+        self, db: AsyncSession, generation_id: str,
+        reason: str = "failed_generation", *, commit: bool = True,
+    ) -> int:
         """Return a still-reserved budget; safe to call repeatedly."""
-        reservation = await db.get(LLMTokenReservation, generation_id)
+        # A conditional write serializes settlement/release even on SQLite and
+        # forces a current read when another session already changed the reservation.
+        await db.execute(update(LLMTokenReservation).where(
+            LLMTokenReservation.generation_id == generation_id,
+            LLMTokenReservation.status == "RESERVED",
+        ).values(updated_at=LLMTokenReservation.updated_at))
+        reservation = await db.scalar(select(LLMTokenReservation).where(
+            LLMTokenReservation.generation_id == generation_id,
+        ).with_for_update().execution_options(populate_existing=True))
         if not reservation or reservation.status != "RESERVED":
+            if commit:
+                await db.commit()
             return 0
-        user = await db.scalar(select(User).where(User.id == int(reservation.user_id)).with_for_update())
+        user = await db.scalar(select(User).where(User.id == int(reservation.user_id)).with_for_update().execution_options(populate_existing=True))
         if user:
             before = int(user.llm_token_balance or 0)
             refund = max(0, int(reservation.reserved_tokens or 0))
@@ -125,7 +164,8 @@ class UsageService:
             ))
         reservation.status = "RELEASED"
         reservation.settled_tokens = 0
-        await db.commit()
+        if commit:
+            await db.commit()
         return int(reservation.reserved_tokens or 0)
 
     async def summary_for_user(self, db: AsyncSession, user: User) -> dict:

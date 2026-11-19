@@ -19,7 +19,7 @@ async function openConversation(conversationId: string) {
 }
 
 onMounted(() => {
-  void chatStore.loadSessions();
+  chatStore.loadSessions().catch(console.error);
 });
 </script>
 
@@ -27,9 +27,7 @@ onMounted(() => {
   <div class="h-full p-4 md:p-6">
     <NCard title="我的聊天记录" :bordered="false" class="h-full rounded-16px shadow-sm">
       <template #header-extra>
-        <NButton secondary size="small" :loading="sessionsLoading" @click="chatStore.loadSessions()">
-          刷新
-        </NButton>
+        <NButton secondary size="small" :loading="sessionsLoading" @click="chatStore.loadSessions()">刷新</NButton>
       </template>
       <NSpin :show="sessionsLoading">
         <NList bordered hoverable>

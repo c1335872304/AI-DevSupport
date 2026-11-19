@@ -20,7 +20,7 @@ except ImportError as exc:  # pragma: no cover
 settings = get_settings()
 
 
-class PaiSmartTokenVerifier(TokenVerifier):
+class SupportTokenVerifier(TokenVerifier):
     async def verify_token(self, token: str) -> AccessToken | None:
         resolved = await resolve_mcp_principal(token)
         if not resolved:
@@ -37,20 +37,20 @@ class PaiSmartTokenVerifier(TokenVerifier):
 
 server_kwargs = {
     "instructions": (
-        "PaiSmart MCP exposes permission-checked tools from the same ToolRegistry as the in-app Agent Runtime. "
+        "API Assistant MCP exposes permission-checked tools from the same ToolRegistry as the in-app Agent Runtime. "
         "Streamable HTTP uses per-client bearer tokens; stdio uses the explicitly configured MCP_SERVICE_USERNAME."
     )
 }
 if settings.mcp_auth_enabled:
     server_kwargs.update(
-        token_verifier=PaiSmartTokenVerifier(),
+        token_verifier=SupportTokenVerifier(),
         auth=AuthSettings(
             issuer_url=AnyHttpUrl(settings.mcp_auth_issuer_url),
             resource_server_url=AnyHttpUrl(settings.mcp_resource_server_url),
             required_scopes=[settings.mcp_required_scope],
         ),
     )
-mcp = MCPServer("PaiSmart Knowledge Tools", **server_kwargs)
+mcp = MCPServer("API Assistant Knowledge Tools", **server_kwargs)
 
 
 async def _service_user() -> User:
@@ -87,19 +87,19 @@ async def _execute(name: str, arguments: dict):
 
 @mcp.tool()
 async def search_knowledge(query: str, top_k: int = 6) -> dict:
-    """Search knowledge-base content visible to the authenticated PaiSmart principal."""
+    """Search knowledge-base content visible to the authenticated API Assistant principal."""
     return await _execute("search_knowledge", {"query": query, "top_k": top_k})
 
 
 @mcp.tool()
 async def list_documents(keyword: str = "", limit: int = 20) -> dict:
-    """List knowledge-base documents visible to the authenticated PaiSmart principal."""
+    """List knowledge-base documents visible to the authenticated API Assistant principal."""
     return await _execute("list_documents", {"keyword": keyword, "limit": limit})
 
 
 @mcp.tool()
 async def get_document(file_md5: str, chunk_id: int | None = None, max_chars: int = 5000) -> dict:
-    """Read one accessible PaiSmart document or context around a known child chunk."""
+    """Read one accessible API Assistant document or context around a known child chunk."""
     arguments = {"file_md5": file_md5, "max_chars": max_chars}
     if chunk_id is not None:
         arguments["chunk_id"] = chunk_id

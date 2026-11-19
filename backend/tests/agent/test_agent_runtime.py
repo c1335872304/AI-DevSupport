@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 
 import pytest
 
 from app.agent.runtime import AgentRuntime
 from app.agent.types import AgentToolCall
 from app.db.models import User
-from app.agent.llm import llm_service
-from app.agent.trace_store import trace_store
+from app.support.billing import requested_billing_month
 from app.tools.base import BaseTool, ToolExecutionContext
 from app.tools.registry import ToolRegistry
 
@@ -43,14 +43,10 @@ class _FailingTool(BaseTool):
 
 
 @pytest.mark.asyncio
-async def test_agent_runtime_executes_same_turn_tools_in_parallel(monkeypatch):
+async def test_agent_runtime_executes_same_turn_tools_in_parallel():
     tracker = {"active": 0, "max_active": 0, "started": set(), "gate": asyncio.Event()}
     registry = ToolRegistry([_ParallelProbeTool("tool_a", tracker), _ParallelProbeTool("tool_b", tracker)])
     runtime = AgentRuntime(registry)
-    async def no_trace(*_args, **_kwargs):
-        return None
-
-    monkeypatch.setattr(trace_store, "tool", no_trace)
     events = []
     user = User(id=1, username="tester", password="x", role="USER")
 
@@ -70,7 +66,7 @@ async def test_agent_runtime_executes_same_turn_tools_in_parallel(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_parallel_batch_keeps_partial_failure(monkeypatch):
+async def test_parallel_batch_keeps_partial_failure():
     tracker = {"active": 0, "max_active": 0, "started": set(), "gate": asyncio.Event()}
     good = _ParallelProbeTool("good", tracker)
 
@@ -80,10 +76,6 @@ async def test_parallel_batch_keeps_partial_failure(monkeypatch):
     good.execute = good_execute  # type: ignore[method-assign]
     registry = ToolRegistry([good, _FailingTool()])
     runtime = AgentRuntime(registry)
-    async def no_trace(*_args, **_kwargs):
-        return None
-
-    monkeypatch.setattr(trace_store, "tool", no_trace)
     events = []
     user = User(id=1, username="tester", password="x", role="USER")
     results = await runtime._execute_parallel(
@@ -99,6 +91,14 @@ async def test_parallel_batch_keeps_partial_failure(monkeypatch):
     assert final["good"]["status"] == "success"
     assert final["bad"]["status"] == "failed"
     assert final["bad"]["resultStatus"] == "ERROR"
+
+
+def test_current_billing_month_uses_demo_timezone_across_new_year():
+    before = datetime(2026, 12, 31, 15, 59, tzinfo=timezone.utc)
+    after = datetime(2026, 12, 31, 16, 0, tzinfo=timezone.utc)
+    assert requested_billing_month("帮我查本月用量", now=before) == "2026-12"
+    assert requested_billing_month("帮我查本月用量", now=after) == "2027-01"
+    assert requested_billing_month("比较上月和本月用量", now=after) is None
 
 
 def test_registry_exposes_llm_tool_schemas():

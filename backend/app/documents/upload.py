@@ -9,7 +9,7 @@ from app.core.access import user_orgs
 from app.core.time import utcnow
 from app.db.models import ChunkInfo, FileUpload, OrganizationTag, User
 from app.documents.storage import storage_service
-from app.knowledge.metadata import apply_metadata_to_file
+from app.knowledge.metadata import apply_metadata_to_file, stage_metadata
 
 _MD5_RE = re.compile(r"^[0-9a-fA-F]{32}$")
 
@@ -86,13 +86,23 @@ class UploadService:
             db.add(upload)
             await db.flush()
         else:
+            if upload.deleted_at is not None:
+                raise ValueError("This document identity was deleted; use a new document revision")
+            if upload.status == 1 and upload.file_name != file_name:
+                raise ValueError(
+                    "Identical content already exists under another document name; create an independent document instead"
+                )
+            upload.input_revision = FileUpload.input_revision + 1
             upload.file_name = file_name or upload.file_name
             upload.total_size = total_size or upload.total_size
             if org_tag is not None:
                 upload.org_tag = resolved_org_tag
             upload.is_public = is_public
             if knowledge_metadata:
-                apply_metadata_to_file(upload, knowledge_metadata)
+                if upload.active_vector_version:
+                    stage_metadata(upload, knowledge_metadata)
+                else:
+                    apply_metadata_to_file(upload, knowledge_metadata)
 
         key = f"chunks/{user.id}/{file_md5}/{chunk_index:08d}.part"
         await storage_service.put_bytes(key, chunk_bytes)
@@ -189,6 +199,7 @@ class UploadService:
             await storage_service.delete(key)
             raise ValueError("Merged file MD5 mismatch")
         upload.storage_key = key
+        upload.source_md5 = merged_md5
         upload.status = 1
         upload.merged_at = utcnow()
         upload.process_status = "PENDING"

@@ -3,6 +3,22 @@ import { nanoid } from '~/packages/utils/src';
 
 const maxConcurrentChunksPerFile = 4;
 
+function knowledgeUploadMetadata(metadata: Api.KnowledgeBase.UploadTask['knowledgeMetadata']) {
+  const fields = {
+    knowledgeCategory: 'category',
+    knowledgeProduct: 'product',
+    knowledgeRegion: 'region',
+    knowledgeChannel: 'channel',
+    knowledgeEffectiveDate: 'effective_date',
+    knowledgeVersion: 'version',
+    knowledgeErrorCode: 'error_code',
+    knowledgePlan: 'plan'
+  } as const;
+  return Object.fromEntries(
+    Object.entries(fields).map(([target, source]) => [target, metadata?.[source] || undefined])
+  );
+}
+
 export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () => {
   const tasks = ref<Api.KnowledgeBase.UploadTask[]>([]);
   const activeUploads = ref<Set<string>>(new Set());
@@ -32,14 +48,7 @@ export const useKnowledgeBaseStore = defineStore(SetupStoreId.KnowledgeBase, () 
         fileName: task.fileName,
         orgTag: task.orgTag,
         isPublic: task.isPublic ?? false,
-        knowledgeCategory: task.knowledgeMetadata?.category || undefined,
-        knowledgeProduct: task.knowledgeMetadata?.product || undefined,
-        knowledgeRegion: task.knowledgeMetadata?.region || undefined,
-        knowledgeChannel: task.knowledgeMetadata?.channel || undefined,
-        knowledgeEffectiveDate: task.knowledgeMetadata?.effective_date || undefined,
-        knowledgeVersion: task.knowledgeMetadata?.version || undefined,
-        knowledgeErrorCode: task.knowledgeMetadata?.error_code || undefined,
-        knowledgePlan: task.knowledgeMetadata?.plan || undefined
+        ...knowledgeUploadMetadata(task.knowledgeMetadata)
       },
       headers: {
         'Content-Type': 'multipart/form-data',

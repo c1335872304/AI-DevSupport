@@ -56,6 +56,9 @@ services:
       MINIO_SECURE: "false"
       ELASTICSEARCH_URL: http://elasticsearch:9200
       ELASTICSEARCH_INDEX: paismart_knowledge
+      # Preserve the existing Docker proxy while leaving backend/.env untouched.
+      # An explicitly empty DOCKER_EMBEDDING_HTTP_PROXY enables direct access.
+      EMBEDDING_HTTP_PROXY: ${DOCKER_EMBEDDING_HTTP_PROXY-http://host.docker.internal:7897}
       BILLING_MCP_ENABLED: "false"
     depends_on:
       mysql:
@@ -76,6 +79,7 @@ services:
       - "8000:8000"
     volumes:
       - api_data:/app/data
+      - ./backend/data/models/docling:/app/data/models/docling:ro
     depends_on:
       demo-seed:
         condition: service_completed_successfully
@@ -113,13 +117,7 @@ services:
     build: *runtime_build
     env_file:
       - ./backend/.env
-    command:
-      - sh
-      - -c
-      - >-
-        python -c "import asyncio; from app.db.init_db import init_db; asyncio.run(init_db())"
-        && python scripts/seed_support_demo.py --username admin
-        && python scripts/seed_demo_knowledge.py --username admin
+    command: ["python", "scripts/bootstrap_demo.py"]
     environment:
       <<: *backend_environment
       BILLING_MCP_ENABLED: "false"
@@ -138,6 +136,8 @@ services:
     env_file:
       - ./backend/.env
     command: ["python", "-m", "app.workers.file_processor"]
+    volumes:
+      - ./backend/data/models/docling:/app/data/models/docling:ro
     healthcheck:
       disable: true
     environment:

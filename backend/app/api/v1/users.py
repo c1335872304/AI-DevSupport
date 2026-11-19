@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import select, update
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import current_user, user_orgs
 from app.core.response import ok
 from app.core.security import create_access_token, create_refresh_token, hash_password, verify_password
-from app.core.time import utcnow
-from app.db.models import InviteCode, OrganizationTag, User, UserTokenRecord
+from app.db.models import OrganizationTag, User, UserTokenRecord
 from app.db.session import get_db
 from app.accounting.rate_limit import rate_limit_service
 from app.accounting.usage import usage_service
@@ -20,7 +20,6 @@ router = APIRouter(prefix="/users", tags=["users"])
 class UserRequest(BaseModel):
     username: str
     password: str
-    inviteCode: str | None = None
 
 
 class PrimaryOrgRequest(BaseModel):
@@ -38,36 +37,10 @@ async def register(payload: UserRequest, request: Request = None, db: AsyncSessi
     client_host = request.client.host if request and request.client else "unknown"
     await rate_limit_service.check(db, "register", client_host)
     username = payload.username.strip()
-    invite_code = (payload.inviteCode or "").strip()
     if not username or not payload.password:
         raise HTTPException(status_code=400, detail="Username and password cannot be empty")
-    if not invite_code:
-        raise HTTPException(status_code=400, detail="INVITE_CODE_REQUIRED")
     if await db.scalar(select(User).where(User.username == username)):
         raise HTTPException(status_code=409, detail="Username already exists")
-
-    invite = await db.scalar(select(InviteCode).where(InviteCode.code == invite_code))
-    if not invite or not invite.enabled:
-        raise HTTPException(status_code=400, detail="INVITE_CODE_INVALID")
-    if invite.expires_at and invite.expires_at <= utcnow():
-        raise HTTPException(status_code=400, detail="INVITE_CODE_EXPIRED")
-    if invite.used_count >= invite.max_uses:
-        raise HTTPException(status_code=400, detail="INVITE_CODE_EXHAUSTED")
-
-    # Consume the code atomically so two concurrent registrations cannot both use
-    # the final remaining slot. The user insert and invite consumption commit together.
-    consumed = await db.execute(
-        update(InviteCode)
-        .where(
-            InviteCode.id == invite.id,
-            InviteCode.enabled.is_(True),
-            InviteCode.used_count < InviteCode.max_uses,
-        )
-        .values(used_count=InviteCode.used_count + 1)
-    )
-    if consumed.rowcount != 1:
-        await db.rollback()
-        raise HTTPException(status_code=400, detail="INVITE_CODE_EXHAUSTED")
 
     user = User(
         username=username,
@@ -77,7 +50,13 @@ async def register(payload: UserRequest, request: Request = None, db: AsyncSessi
         primary_org="default",
     )
     db.add(user)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        if await db.scalar(select(User.id).where(User.username == username)) is not None:
+            raise HTTPException(status_code=409, detail="Username already exists") from None
+        raise
     return ok(message="User registered successfully")
 
 

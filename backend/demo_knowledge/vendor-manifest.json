@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "description": "Attributed Chinese summaries of official vendor API documentation; separate from local simulated business policies.",
+  "checkedAt": "2026-10-19",
+  "evaluationDataset": "eval/vendor_knowledge_rag.jsonl",
+  "documents": [
+    {
+      "file": "vendor-openai-authentication.md",
+      "vendor": "OpenAI",
+      "sourceUrl": "https://developers.openai.com/api/reference/overview",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "24438183f2659dc269533ac103b3b96e6ac9f4807ccf571681aef8e538c4b9d8",
+      "metadata": {
+        "category": "authentication",
+        "product": "OpenAI API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI 如何安全配置认证并记录请求号？"
+      ]
+    },
+    {
+      "file": "vendor-openai-errors.md",
+      "vendor": "OpenAI",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/error-codes",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "cdd68cfb22a3fcd7cdd7ca03406182d4dbf13b623f86f0bfc06cab4fb53c0abe",
+      "metadata": {
+        "category": "error_code",
+        "product": "OpenAI API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI 的 429 除了请求太快，还可能是什么原因？"
+      ]
+    },
+    {
+      "file": "vendor-openai-rate-limits.md",
+      "vendor": "OpenAI",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/rate-limits",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "b5de92583416360f36b1b4fb44ed615170ff85affaeeab33eae09691d4687f7f",
+      "metadata": {
+        "category": "rate_limit",
+        "product": "OpenAI API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI 的 Retry-After 与请求和 Tokens 限流应如何处理？"
+      ]
+    },
+    {
+      "file": "vendor-anthropic-authentication.md",
+      "vendor": "Anthropic",
+      "sourceUrl": "https://platform.claude.com/docs/en/api/overview",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "8075e1e755a13fb2b4b8b3b61935cd58995981c3b4847bded7797ff33ae07566",
+      "metadata": {
+        "category": "authentication",
+        "product": "Anthropic Claude API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Anthropic Claude API 认证、版本头和 request-id 怎么设置？"
+      ]
+    },
+    {
+      "file": "vendor-anthropic-errors.md",
+      "vendor": "Anthropic",
+      "sourceUrl": "https://platform.claude.com/docs/en/api/errors",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "400a1d8cfa5229632ea8f07a9bf85f1616dc06eb1f66374909267b0081277662",
+      "metadata": {
+        "category": "error_code",
+        "product": "Anthropic Claude API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Anthropic 返回 529 或流式请求先返回 200 后出错，应怎样理解？"
+      ]
+    },
+    {
+      "file": "vendor-anthropic-rate-limits.md",
+      "vendor": "Anthropic",
+      "sourceUrl": "https://platform.claude.com/docs/en/api/rate-limits",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "cb6d993d4e4fba8b26e92adeb40e37fd7ace1b8b5e1a6665daa986f2dbeee895",
+      "metadata": {
+        "category": "rate_limit",
+        "product": "Anthropic Claude API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Anthropic ITPM OTPM 是什么，支出上限能否只靠重试恢复？"
+      ]
+    },
+    {
+      "file": "vendor-deepseek-authentication.md",
+      "vendor": "DeepSeek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "fa4deb05012e6150691dd929927ae697ba1389751260d3c66d0ee48e207713cd",
+      "metadata": {
+        "category": "authentication",
+        "product": "DeepSeek API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 的 OpenAI 和 Anthropic 兼容接口各用哪个基础地址？"
+      ]
+    },
+    {
+      "file": "vendor-deepseek-errors.md",
+      "vendor": "DeepSeek",
+      "sourceUrl": "https://api-docs.deepseek.com/quick_start/error_codes/",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "9d5a6028ba0bf3fbaa524ea47b076e25a4878c3e866d8dacf12174e8c53417fe",
+      "metadata": {
+        "category": "error_code",
+        "product": "DeepSeek API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 的 401、402 和 429 有什么不同？"
+      ]
+    },
+    {
+      "file": "vendor-deepseek-rate-limits.md",
+      "vendor": "DeepSeek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/",
+      "checkedAt": "2026-10-19",
+      "contentType": "attributed_summary",
+      "sha256": "51d2eaf399875cc7360e102487b17cdbe1381784c54467bbec0c9bfc956ac945",
+      "metadata": {
+        "category": "rate_limit",
+        "product": "DeepSeek API",
+        "region": "GLOBAL",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 同账号更换 API Key 是否可以增加并发限额？"
+      ]
+    }
+  ]
+}

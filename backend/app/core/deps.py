@@ -62,3 +62,9 @@ async def websocket_user(websocket: WebSocket, token: str, db: AsyncSession) -> 
     if not user or int(payload.get("ver", 0)) != int(user.token_version or 0):
         return None
     return user
+
+
+async def support_user(user: User = Depends(current_user)) -> User:
+    if user.role not in {"ADMIN", "SUPPORT"}:
+        raise HTTPException(status_code=403, detail="Support role required")
+    return user

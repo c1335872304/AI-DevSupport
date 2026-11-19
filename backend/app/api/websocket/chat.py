@@ -7,15 +7,16 @@ import time
 import uuid
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.core.config import get_settings
 from app.core.redaction import redact_text
 from app.core.deps import websocket_user
 from app.accounting.rate_limit import rate_limit_service
-from app.db.models import GenerationState
+from app.db.models import ConversationSession, GenerationState
 from app.db.session import SessionLocal
 from app.agent.chat import stream_chat
+from app.accounting.usage import usage_service
 from app.agent.generation import generation_runtime
 
 router = APIRouter()
@@ -177,17 +178,36 @@ async def chat_socket(websocket: WebSocket):
         nonlocal subscription_generation, subscription_queue, pump_task
         await detach()
         subscription_generation = generation_id
-        subscription_queue = generation_runtime.subscribe(generation_id)
+        subscription_queue, stream_snapshot = await generation_runtime.subscribe_shared(generation_id)
         logger.info("[WS] subscribed generation=%s", _gid(generation_id))
 
         async def pump() -> None:
             assert subscription_queue is not None
+            last_content = stream_snapshot.get("streamContent", "") if stream_snapshot else ""
             while True:
-                payload = await subscription_queue.get()
-                if not await socket_send(payload):
+                try:
+                    payload = await asyncio.wait_for(subscription_queue.get(), timeout=1)
+                except asyncio.TimeoutError:
+                    async with SessionLocal() as db:
+                        state = await db.get(GenerationState, generation_id)
+                    if state and state.user_id == str(user.id):
+                        if state.status in {"PENDING", "STREAMING"} and len(state.content or "") <= len(last_content):
+                            continue
+                        payload = {"type": "answer_replace", "generationId": generation_id, "content": state.content}
+                        if state.status not in {"PENDING", "STREAMING"}:
+                            payload.update(type="completion", status="finished" if state.status == "COMPLETED" else ("cancelled" if state.status == "CANCELLED" else "error"),
+                                           referenceMappings=json.loads(state.reference_mappings_json or '{}'))
+                    else:
+                        continue
+                if isinstance(payload.get("content"), str):
+                    last_content = payload["content"]
+                elif payload.get("type") == "chunk":
+                    last_content += payload.get("chunk", "")
+                if not await socket_send(payload) or payload.get("type") == "completion":
                     return
 
         pump_task = asyncio.create_task(pump(), name=f"ws-pump:{generation_id}")
+        return stream_snapshot
 
     await socket_send({"type": "connection", "sessionId": uuid.uuid4().hex})
 
@@ -200,10 +220,10 @@ async def chat_socket(websocket: WebSocket):
             .order_by(GenerationState.updated_at.desc())
         )
     if active:
-        await attach(active.generation_id)
+        latest_stream = await attach(active.generation_id)
         await socket_send({
             "type": "resume", "generationId": active.generation_id,
-            "conversationId": active.conversation_id, "content": active.content,
+            "conversationId": active.conversation_id, "content": latest_stream.get("streamContent", active.content) if latest_stream else active.content,
             "status": active.status,
         })
 
@@ -227,16 +247,43 @@ async def chat_socket(websocket: WebSocket):
                 generation_id = str(payload.get("generationId") or subscription_generation or "").strip()
                 logger.info("[WS] stop requested generation=%s", _gid(generation_id))
                 if generation_id:
-                    await generation_runtime.cancel(generation_id)
                     async with SessionLocal() as db:
                         state = await db.get(GenerationState, generation_id)
-                        if state and state.user_id == str(user.id) and state.status in {"PENDING", "STREAMING"}:
-                            state.status = "CANCELLED"
-                            await db.commit()
+                        owned = state is not None and state.user_id == str(user.id)
+                    if not owned:
+                        await socket_send({"code": 404, "error": "未找到此生成任务"})
+                        continue
+                    await generation_runtime.cancel(generation_id)
+                    async with SessionLocal() as db:
+                        stopped = await db.execute(update(GenerationState).where(
+                            GenerationState.generation_id == generation_id,
+                            GenerationState.user_id == str(user.id),
+                            GenerationState.status.in_(("PENDING", "STREAMING")),
+                        ).values(status="CANCELLED"))
+                        if stopped.rowcount:
+                            await usage_service.release_llm(db, generation_id, "remote_stop", commit=False)
+                        await db.commit()
                 await socket_send({"type": "stop", "generationId": generation_id or None})
                 continue
 
-            question = text.strip()
+            conversation_id = None
+            if isinstance(payload, dict):
+                if payload.get("type") != "message" or not isinstance(payload.get("question"), str):
+                    await socket_send({"code": 422, "error": "Invalid chat message"})
+                    continue
+                conversation_id = payload.get("conversationId")
+                if not isinstance(conversation_id, str) or not conversation_id.strip():
+                    await socket_send({"code": 422, "error": "conversationId is required"})
+                    continue
+                async with SessionLocal() as db:
+                    conversation = await db.get(ConversationSession, conversation_id)
+                    if not conversation or conversation.user_id != str(user.id) or conversation.status != "ACTIVE":
+                        await socket_send({"code": 404, "error": "Active conversation not found"})
+                        continue
+                question = payload["question"].strip()
+            else:
+                # Older clients send plain text and retain the legacy active-session behavior.
+                question = text.strip()
             if not question:
                 continue
             if len(question) > max(1, settings.chat_max_input_chars):
@@ -278,13 +325,18 @@ async def chat_socket(websocket: WebSocket):
             logger.info("[WS] generation scheduled generation=%s", _gid(generation_id))
             _console(f"[WS] generation scheduled generation={_gid(generation_id)}")
 
-            async def run_generation(gid: str = generation_id, q: str = question) -> None:
+            async def run_generation(gid: str = generation_id, q: str = question, cid: str | None = conversation_id) -> None:
                 async with SessionLocal() as db:
-                    await stream_chat(
-                        db, user, q,
-                        lambda event: generation_runtime.publish(gid, event),
-                        generation_id=gid,
-                    )
+                    try:
+                        await stream_chat(
+                            db, user, q,
+                            lambda event: generation_runtime.publish(gid, event),
+                            generation_id=gid, conversation_id=cid,
+                        )
+                    except HTTPException as exc:
+                        await generation_runtime.publish(gid, {
+                            "code": exc.status_code, "error": str(exc.detail), "generationId": gid,
+                        })
 
             await generation_runtime.start(generation_id, run_generation)
     except WebSocketDisconnect:

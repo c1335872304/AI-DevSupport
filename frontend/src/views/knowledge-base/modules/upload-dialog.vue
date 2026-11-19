@@ -24,8 +24,14 @@ function createDefaultModel(): Api.KnowledgeBase.Form {
     uploadMaxSizeMb: null,
     isPublic: false,
     knowledgeMetadata: {
-      category: null, product: 'API Platform', region: 'GLOBAL', channel: null,
-      effective_date: null, version: null, error_code: null, plan: null
+      category: null,
+      product: 'API Platform',
+      region: 'GLOBAL',
+      channel: null,
+      effective_date: null,
+      version: null,
+      error_code: null,
+      plan: null
     },
     fileList: []
   };
@@ -138,7 +144,10 @@ function onUpdate(option: unknown) {
       </NFormItem>
       <NDivider title-placement="left">客服知识元数据（可选）</NDivider>
       <NFormItem label="知识类别">
-        <NInput v-model:value="model.knowledgeMetadata.category" placeholder="如 authentication / rate_limit / billing" />
+        <NInput
+          v-model:value="model.knowledgeMetadata.category"
+          placeholder="如 authentication / rate_limit / billing"
+        />
       </NFormItem>
       <NFormItem label="产品">
         <NInput v-model:value="model.knowledgeMetadata.product" placeholder="如 API Platform" />

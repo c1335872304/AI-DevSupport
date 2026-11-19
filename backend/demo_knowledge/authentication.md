@@ -1,6 +1,6 @@
 # API 认证、Key 生命周期与权限手册
 
-PaiSmart OpenAPI Demo 使用 API Key 识别应用。本文只描述通用认证事实；某个客户当前 Key 是否有效，必须通过 `query_api_key_status` 查询实时业务数据。客服、知识库和模型都不得从 Key 字符串本身推断客户状态。
+API Assistant OpenAPI Demo 使用 API Key 识别应用。本文只描述通用认证事实；某个客户当前 Key 是否有效，必须通过 `query_api_key_status` 查询实时业务数据。客服、知识库和模型都不得从 Key 字符串本身推断客户状态。
 
 ## 1. 认证请求规范
 

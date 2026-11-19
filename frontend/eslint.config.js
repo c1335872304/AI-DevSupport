@@ -2,6 +2,7 @@ import { defineConfig } from '@soybeanjs/eslint-config';
 
 export default defineConfig(
   { vue: true, unocss: true },
+  { ignores: ['test-results/**', 'playwright-report/**'] },
   {
     rules: {
       'vue/multi-word-component-names': [
@@ -20,6 +21,7 @@ export default defineConfig(
       ],
       'unocss/order-attributify': 'off',
       'no-warning-comments': 'off',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
       'vue/no-v-html': 'off'
     }
   }

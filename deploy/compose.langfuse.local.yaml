@@ -1,0 +1,19 @@
+services:
+  api:
+    ports: !reset []
+    env_file:
+      - ../langfuse/local-langfuse/ai-devsupport.env
+    environment:
+      LANGFUSE_ENABLED: "true"
+      LANGFUSE_BASE_URL: http://paismart-langfuse:3000
+    volumes:
+      - ./backend/app:/app/app:ro
+      - ./backend/skills:/app/skills:ro
+    networks:
+      default:
+      langfuse:
+
+networks:
+  langfuse:
+    external: true
+    name: paismart-langfuse

@@ -8,13 +8,117 @@ calls. The shared scheduler is the only component allowed to execute them.
 
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 from uuid import uuid4
 
 from app.agent.agent_skill_policy import _SkillRegistry
 from app.agent.llm import llm_service
+from app.agent.skill_context import planning_turn
 from app.agent.types import AgentEvidence, AgentPlan, AgentToolCall, tool_call_fingerprint
+from app.knowledge.product_scope import named_products
+
+
+_DOCUMENT_CATALOG_REQUEST = re.compile(
+    r"列出.{0,16}(?:文档|文件)|(?:有哪些|哪些可用).{0,12}(?:文档|文件)|(?:文档|文件)列表|"
+    r"\b(?:list|which)\s+(?:available\s+)?(?:documents|files)\b", re.I,
+)
+_DOCUMENT_EXPANSION_REQUEST = re.compile(
+    r"(?:全文|完整原文|完整文档|前后文|上一段|下一段|(?:查看|展开|读取).{0,8}上下文)|"
+    r"\b(?:full document|full text|surrounding context)\b", re.I,
+)
+
+_REGIONS = (
+    r'北京|华北2|cn-beijing', r'新加坡|singapore|ap-southeast-1',
+    r'香港|hong\s*kong|cn-hongkong', r'美国|united states|us-east|us-west',
+    r'上海|cn-shanghai', r'法兰克福|frankfurt|eu-central',
+)
+
+
+def _cross_region_question(question: str) -> bool:
+    return bool(re.search(r'跨(?:地域|区域)|所有(?:地域|区域)|各(?:地域|区域)', question)) or sum(
+        bool(re.search(pattern, question, re.I)) for pattern in _REGIONS
+    ) > 1
+
+
+def _knowledge_read_options(plan, question, outcomes, attempted):
+    """Only expose direct document reads for the requested operation and known sources."""
+    allowed = set(plan.allowed_tools)
+    if not _DOCUMENT_CATALOG_REQUEST.search(question) or "list_documents" in attempted:
+        allowed.discard("list_documents")
+    expand = bool(_DOCUMENT_EXPANSION_REQUEST.search(question))
+    anchors = set()
+    search_attempts = 0
+    usable_retrieval = False
+    for call, result in outcomes:
+        if call.name != "search_knowledge":
+            continue
+        search_attempts += 1
+        if result.status != "SUCCESS" or not isinstance(result.data, dict):
+            continue
+        if result.data.get("status") not in (None, "OK") or any(
+            result.data.get(key) for key in ("conflicts", "missingFields", "warnings")
+        ):
+            continue
+        for item in result.data.get("results") or ():
+            if not isinstance(item, dict):
+                continue
+            file_md5 = str(item.get("fileMd5") or "").lower()
+            if not re.fullmatch(r"[0-9a-f]{32}", file_md5):
+                continue
+            has_excerpt = bool(str(item.get("textContent") or item.get("text") or "").strip())
+            usable_retrieval |= has_excerpt
+            if expand or not has_excerpt:
+                anchors.add((file_md5, item.get("chunkId") if type(item.get("chunkId")) is int else None))
+                if expand:
+                    anchors.add((file_md5, None))
+    if not anchors or "get_document" in attempted:
+        allowed.discard("get_document")
+    if usable_retrieval or search_attempts >= 2:
+        allowed.discard("search_knowledge")
+    return allowed, anchors
+
+
+def _scope_knowledge_call(call: AgentToolCall, question: str, entities=None) -> AgentToolCall:
+    entities = entities or {}
+    products = named_products(question)
+    if call.name!='search_knowledge':
+        return call
+    arguments=dict(call.arguments)
+    filters=dict(arguments.get('filters') or {})
+    from app.knowledge.metadata import metadata_filter_schema
+    for key in metadata_filter_schema()['properties']:
+        if key in arguments:
+            filters.setdefault(key,arguments.pop(key))
+    query=str(arguments.get('query') or question)
+    # The raw user question owns vendor scope; planner arguments and rewrites
+    # cannot silently switch it or turn a comparison into a single-vendor search.
+    if products and set(named_products(query))!=set(products):
+        query=question
+    arguments['query']=query
+    if products:
+        filters['product']=products[0] if len(products)==1 else products
+    elif entities.get("product"):
+        filters["product"] = entities["product"]
+    if entities.get("api_version"):
+        filters["version"] = entities["api_version"]
+    if _cross_region_question(question):
+        # Planner/entity extraction often picks just the first region. A
+        # multi-region document can also have no document-level region label.
+        # Search all requested regions in text, retaining product/version scope.
+        query = question
+        arguments['query'] = query
+        filters.pop('region', None)
+        category = filters.get('category')
+        categories = category if isinstance(category, list) else [category]
+        if category and not any(str(value).lower() in question.lower() for value in categories):
+            filters.pop('category', None)
+    elif entities.get("region"):
+        filters["region"] = entities["region"]
+    if filters or 'filters' in arguments:
+        arguments['filters']=filters
+    return AgentToolCall(call.id,call.name,arguments,call.source_agent,call.source_skill)
 
 
 def _call_matches_attempted_fingerprint(call: AgentToolCall, attempted: set[str]) -> bool:
@@ -180,7 +284,7 @@ class ApiDiagnosticTargetAgent(TargetSpecialistAgent):
             if error_code and "query_error_code" not in attempted_tools:
                 calls.append(self._call(plan, "query_error_code", {"code": error_code}))
             if endpoint and http_status == 429 and "query_recent_call_stats" not in attempted_tools:
-                calls.append(self._call(plan, "query_recent_call_stats", {"endpoint": endpoint, "minutes": 60}))
+                calls.append(self._call(plan, "query_recent_call_stats", {"endpoint": endpoint, "app_id": app_id, "minutes": 60, "window": "incident", "request_id": data.get("requestId") or call.arguments.get("request_id")}))
         return tuple(calls)
 
 
@@ -208,6 +312,8 @@ class KnowledgeTargetAgent(TargetSpecialistAgent):
     name = "knowledge"
 
     def initial_calls(self, plan: AgentPlan, question: str, entities: dict[str, str]) -> tuple[AgentToolCall, ...]:
+        if _DOCUMENT_CATALOG_REQUEST.search(question) and "list_documents" in plan.allowed_tools:
+            return (self._call(plan, "list_documents", {}),)
         return (self._call(plan, "search_knowledge", {"query": question, "top_k": 6}),)
 
     def follow_up_calls(
@@ -275,6 +381,20 @@ class TargetSpecialistAgents:
                     derived[key] = value
 
         allowed = {**entities, **derived}
+        if name == "query_api_key_status":
+            return bool(arguments.get("app_id") or arguments.get("api_key_id")) and all(
+                not arguments.get(key) or arguments[key] == allowed.get(key) for key in ("app_id", "api_key_id")
+            )
+        if name == "query_recent_call_stats":
+            for argument in ("app_id", "request_id"):
+                if arguments.get(argument) and arguments[argument] != allowed.get(argument):
+                    return False
+            if arguments.get("window") == "incident" and not arguments.get("request_id"):
+                return False
+            if arguments.get("window") == "explicit" and any(
+                not allowed.get(key) or arguments.get(key) != allowed.get(key) for key in ("start_at", "end_at")
+            ):
+                return False
         expected = {
             "query_call_log": ("request_id", "request_id"),
             "query_error_code": ("error_code", "code"),
@@ -305,6 +425,7 @@ class TargetSpecialistAgents:
         attempted_tools: set[str],
         attempted_call_fingerprints: set[str],
         fallback_outcomes: list[tuple[AgentToolCall, Any]],
+        skill_context: dict,
     ) -> TargetAgentWork:
         """Ask one domain LLM Agent for Tool calls within its fixed boundary."""
         skill = registry.get(plan.skill)
@@ -342,17 +463,23 @@ class TargetSpecialistAgents:
             },
             {"role": "user", "content": question},
         ]
-        allowed_tools = tool_registry.llm_tools(plan.allowed_tools)
+        allowed_names = set(plan.allowed_tools)
+        document_anchors: set[tuple[str, int | None]] = set()
+        if plan.agent == "knowledge":
+            allowed_names, document_anchors = _knowledge_read_options(plan, question, fallback_outcomes, attempted_tools)
+        if not allowed_names:
+            return TargetAgentWork(plan=plan)
+        allowed_tools = tool_registry.llm_tools(name for name in plan.allowed_tools if name in allowed_names)
         proposed: list[AgentToolCall] = []
         skipped_attempted_call = False
         try:
-            async for event in llm_service.stream_agent_turn(messages, allowed_tools):
+            async for event in planning_turn(messages, allowed_tools, skill_name=plan.skill, registry=registry, context=skill_context):
                 if event.get("type") != "tool_calls":
                     continue
                 for raw_call in event.get("tool_calls") or []:
                     name = str(getattr(raw_call, "name", "") or "").strip()
                     arguments = getattr(raw_call, "arguments", {})
-                    if name not in plan.allowed_tools or not isinstance(arguments, dict):
+                    if name not in allowed_names or not isinstance(arguments, dict):
                         continue
                     if plan.agent == "api_diagnostic" and not self._api_call_has_diagnostic_anchor(
                         name, arguments, entities, fallback_outcomes,
@@ -405,7 +532,29 @@ class TargetSpecialistAgents:
 
         unique: list[AgentToolCall] = []
         seen: set[str] = set()
+        from app.agent.action_contracts import bind_request_scope
+        from app.support.billing import requested_billing_month
+
+        requested_month = requested_billing_month(question)
+        references_prior_period = re.search(r"刚才.{0,5}(?:账期|账单|用量)|(?:同一|这个|那个)账期", question)
+        single_month = (entities.get("month") or requested_month) if requested_month or references_prior_period else None
         for call in proposed:
+            if call.name not in allowed_names:
+                continue
+            if plan.agent == "knowledge" and call.name == "get_document":
+                file_md5 = str(call.arguments.get("file_md5") or "").strip().lower()
+                chunk_id = call.arguments.get("chunk_id")
+                if chunk_id is not None and type(chunk_id) is not int:
+                    continue
+                if (file_md5, chunk_id) not in document_anchors or any(item.name == "get_document" for item in unique):
+                    continue
+            if plan.agent == "knowledge" and call.name in {"list_documents", "search_knowledge"} and any(
+                item.name == call.name for item in unique
+            ):
+                continue
+            call = bind_request_scope(_scope_knowledge_call(call, question, entities), single_month)
+            if _call_matches_attempted_fingerprint(call,attempted_call_fingerprints):
+                continue
             key = tool_call_fingerprint(call)
             if key not in seen:
                 seen.add(key)
@@ -426,8 +575,11 @@ class TargetSpecialistAgents:
         fallback_outcomes: Iterable[tuple[AgentToolCall, Any]] = (),
         attempted_call_fingerprints: Iterable[str] = (),
         max_agents: int = 3,
+        completed_agents: frozenset[str] = frozenset(),
+        skill_context: dict | None = None,
     ) -> list[TargetAgentWork]:
         """Run up to three selected LLM planning Agents concurrently."""
+        skill_context = {} if skill_context is None else skill_context
         selected = list(plans)[: max(1, max_agents)]
         evidence_rows = [dict(item) for item in agent_evidence if isinstance(item, dict)]
         reference_rows = [dict(item) for item in references if isinstance(item, dict)]
@@ -435,6 +587,8 @@ class TargetSpecialistAgents:
         executed_fingerprints = set(attempted_call_fingerprints)
 
         async def plan_for(plan: AgentPlan) -> TargetAgentWork:
+            if plan.agent in completed_agents:
+                return TargetAgentWork(plan=plan)
             if not plan.allowed_tools:
                 return TargetAgentWork(plan=plan)
             own_evidence = [item for item in evidence_rows if item.get("agent") == plan.agent]
@@ -456,6 +610,7 @@ class TargetSpecialistAgents:
                     attempted_tools=own_attempted,
                     attempted_call_fingerprints=executed_fingerprints,
                     fallback_outcomes=own_outcomes,
+                    skill_context=skill_context,
                 )
             except Exception as exc:
                 # One specialist planning outage must not discard verified work

@@ -1,0 +1,745 @@
+{
+  "description": "Curated official body sources; GPT means OpenAI API, Qwen means Alibaba Cloud Model Studio.",
+  "sources": [
+    {
+      "id": "gpt-overview",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：接入认证与请求追踪",
+      "category": "authentication",
+      "url": "https://developers.openai.com/api/reference/overview",
+      "sampleQuestions": [
+        "OpenAI 如何配置 Bearer 认证并通过请求号排障？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/reference/overview.md",
+      "expectedTitle": "API Overview",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-quickstart",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：快速开始",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/quickstart",
+      "sampleQuestions": [
+        "GPT API 第一次调用需要怎样安装 SDK 和配置环境变量？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/quickstart.md",
+      "expectedTitle": "quickstart",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-text",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：文本生成",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/text",
+      "sampleQuestions": [
+        "GPT 文本生成中 instructions 和 input 应如何使用？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/text.md",
+      "expectedTitle": "Text",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-conversation-state",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：多轮会话状态",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/conversation-state",
+      "sampleQuestions": [
+        "OpenAI Responses 如何保持多轮会话上下文？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/conversation-state.md",
+      "expectedTitle": "Conversation",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-streaming",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：流式响应",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/streaming-responses",
+      "sampleQuestions": [
+        "OpenAI Responses 流式文本应如何处理增量事件？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/streaming-responses.md",
+      "expectedTitle": "Streaming",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-function-calling",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：工具调用",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/function-calling",
+      "sampleQuestions": [
+        "GPT 工具调用怎样关联 call_id 与函数执行结果？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/function-calling.md",
+      "expectedTitle": "Function",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-structured-outputs",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：结构化输出",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/structured-outputs",
+      "sampleQuestions": [
+        "OpenAI Structured Outputs 与 JSON mode 有什么区别？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/structured-outputs.md",
+      "expectedTitle": "Structured",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-reasoning",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：推理模型",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/reasoning",
+      "sampleQuestions": [
+        "GPT 推理模型如何设置 reasoning effort 和控制推理消耗？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/reasoning.md",
+      "expectedTitle": "Reasoning",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-reasoning-practices",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：推理最佳实践",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/reasoning-best-practices",
+      "sampleQuestions": [
+        "GPT 推理模型的提示词应如何设计？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/reasoning-best-practices.md",
+      "expectedTitle": "Reasoning",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-prompt-engineering",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：提示工程",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/prompt-engineering",
+      "sampleQuestions": [
+        "OpenAI 提示工程如何组织指令、示例与上下文？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/prompt-engineering.md",
+      "expectedTitle": "Prompt",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-prompt-caching",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：提示缓存",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/prompt-caching",
+      "sampleQuestions": [
+        "OpenAI Prompt Caching 怎样命中缓存并查看缓存用量？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/prompt-caching.md",
+      "expectedTitle": "Prompt",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-embeddings",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：文本向量",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/embeddings",
+      "sampleQuestions": [
+        "OpenAI Embeddings 怎样生成文本向量并用于相似度检索？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/embeddings.md",
+      "expectedTitle": "embedding",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-retrieval",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：检索",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/retrieval",
+      "sampleQuestions": [
+        "OpenAI Retrieval 如何通过 vector store 搜索文档？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/retrieval.md",
+      "expectedTitle": "Retrieval",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-file-search",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：文件搜索",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/tools-file-search",
+      "sampleQuestions": [
+        "OpenAI file search 如何配置向量库并引用搜索结果？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/tools-file-search.md",
+      "expectedTitle": "File search",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-errors",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：错误码",
+      "category": "error_code",
+      "url": "https://developers.openai.com/api/docs/guides/error-codes",
+      "sampleQuestions": [
+        "OpenAI 401 和不同 429 错误应如何区分原因？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/error-codes.md",
+      "expectedTitle": "Error",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-rate-limits",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：速率限制",
+      "category": "rate_limit",
+      "url": "https://developers.openai.com/api/docs/guides/rate-limits",
+      "sampleQuestions": [
+        "OpenAI RPM TPM 和 Retry-After 如何用于处理限流？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/rate-limits.md",
+      "expectedTitle": "Rate",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-batch",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：批量请求",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/batch",
+      "sampleQuestions": [
+        "OpenAI Batch API 如何提交与读取异步批量任务？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/batch.md",
+      "expectedTitle": "Batch",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-background",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：后台执行",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/background",
+      "sampleQuestions": [
+        "OpenAI background 模式如何轮询与取消响应？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/background.md",
+      "expectedTitle": "Background",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-webhooks",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：Webhook 回调",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/webhooks",
+      "sampleQuestions": [
+        "OpenAI Webhook 如何验证签名并处理重复事件？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/webhooks.md",
+      "expectedTitle": "Webhook",
+      "minChars": 200
+    },
+    {
+      "id": "gpt-responses-migration",
+      "provider": "gpt",
+      "label": "GPT / OpenAI API：Responses 迁移",
+      "category": "api_usage",
+      "url": "https://developers.openai.com/api/docs/guides/migrate-to-responses",
+      "sampleQuestions": [
+        "从 Chat Completions 迁移 Responses 时工具和流式输出要怎样修改？"
+      ],
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/migrate-to-responses.md",
+      "expectedTitle": "Responses",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-quickstart",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：首次调用",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/first-api-call-to-qwen",
+      "sampleQuestions": [
+        "Qwen 首次 API 调用如何配置 SDK、地域和凭据？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/first-api-call-to-qwen.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-api-key",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：获取 API Key",
+      "category": "authentication",
+      "url": "https://help.aliyun.com/zh/model-studio/get-api-key",
+      "sampleQuestions": [
+        "Qwen 百炼在哪里创建 API Key，地域有什么要求？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/get-api-key.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-batch",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：批量推理",
+      "category": "authentication",
+      "url": "https://help.aliyun.com/zh/model-studio/batch-interfaces-compatible-with-openai",
+      "sampleQuestions": [
+        "Qwen 如何通过 OpenAI 兼容批量接口提交和查询任务？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/batch-interfaces-compatible-with-openai.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-sdk",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：安装 SDK",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/install-sdk",
+      "sampleQuestions": [
+        "Qwen 使用 OpenAI SDK 或 DashScope SDK 如何安装？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/install-sdk.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-base-url",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：接入地址",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/base-url",
+      "sampleQuestions": [
+        "Qwen 不同地域与协议应选择哪个 base URL？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/base-url.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-regions",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：地域说明",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/regions",
+      "sampleQuestions": [
+        "Qwen API Key 与部署地域不匹配时应核对什么？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/regions.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-chat-completions",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：Chat Completions 参数",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions",
+      "sampleQuestions": [
+        "Qwen OpenAI 兼容 Chat Completions 的请求和返回字段有哪些？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-dashscope",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：DashScope 参数",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/qwen-api-via-dashscope",
+      "sampleQuestions": [
+        "Qwen DashScope 原生接口如何配置请求和输出？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-dashscope.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-responses",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：Responses 参数",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-responses",
+      "sampleQuestions": [
+        "Qwen Responses API 如何配置 tools、stream 和 conversation？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-responses.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-streaming",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：流式输出",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/stream",
+      "sampleQuestions": [
+        "Qwen 流式输出如何获得最后一个包中的 usage？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/stream.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-function-calling",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：Function Calling",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/qwen-function-calling",
+      "sampleQuestions": [
+        "Qwen Function Calling 如何执行工具并回传结果？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-function-calling.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-structured-outputs",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：结构化输出",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/qwen-structured-output",
+      "sampleQuestions": [
+        "Qwen JSON Object 和 JSON Schema 模式如何配置？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-structured-output.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-thinking",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：深度思考",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/deep-thinking",
+      "sampleQuestions": [
+        "Qwen enable_thinking 和 reasoning_content 应如何处理？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/deep-thinking.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-multi-round",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：多轮对话",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/multi-round-conversation",
+      "sampleQuestions": [
+        "Qwen 多轮对话如何传递历史 messages？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/multi-round-conversation.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-context-cache",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：上下文缓存",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/context-cache",
+      "sampleQuestions": [
+        "Qwen 上下文缓存如何命中并降低重复输入成本？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/context-cache.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-embedding-api",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：向量接口",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/text-embedding-synchronous-api",
+      "sampleQuestions": [
+        "Qwen 文本向量同步接口如何配置输入与维度？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/text-embedding-synchronous-api.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-embedding-v4",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：text-embedding-v4",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/text-embedding-v4",
+      "sampleQuestions": [
+        "Qwen text-embedding-v4 支持什么输入与使用方式？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/text-embedding-v4.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-rate-limits",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：限流",
+      "category": "rate_limit",
+      "url": "https://help.aliyun.com/zh/model-studio/rate-limit",
+      "sampleQuestions": [
+        "Qwen RPM TPM 限流应如何排查和降低请求速率？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/rate-limit.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-errors",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：错误码",
+      "category": "error_code",
+      "url": "https://help.aliyun.com/zh/model-studio/error-code",
+      "sampleQuestions": [
+        "Qwen InvalidApiKey、Throttling 和参数错误如何排查？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/error-code.md",
+      "minChars": 200
+    },
+    {
+      "id": "qwen-prompt-engineering",
+      "provider": "qwen",
+      "label": "Qwen / 阿里云百炼：提示工程",
+      "category": "api_usage",
+      "url": "https://help.aliyun.com/zh/model-studio/prompt-engineering-guide",
+      "sampleQuestions": [
+        "Qwen 提示词如何设置角色、示例和格式要求？"
+      ],
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/prompt-engineering-guide.md",
+      "minChars": 200
+    },
+    {
+      "id": "deepseek-quickstart",
+      "provider": "deepseek",
+      "label": "DeepSeek API：首次调用",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/",
+      "sampleQuestions": [
+        "DeepSeek 如何配置 OpenAI 兼容 base URL 和 API Key？"
+      ],
+      "expectedTitle": "首次|First",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-errors",
+      "provider": "deepseek",
+      "label": "DeepSeek API：错误码",
+      "category": "error_code",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/error_codes/",
+      "sampleQuestions": [
+        "DeepSeek 的 401、402、429 和 503 分别怎么处理？"
+      ],
+      "expectedTitle": "错误|Error",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-rate-limits",
+      "provider": "deepseek",
+      "label": "DeepSeek API：限速与隔离",
+      "category": "rate_limit",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/",
+      "sampleQuestions": [
+        "DeepSeek 账号并发与 user_id 隔离如何计算？"
+      ],
+      "expectedTitle": "限速|Rate",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-token-usage",
+      "provider": "deepseek",
+      "label": "DeepSeek API：Token 用量",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/token_usage/",
+      "sampleQuestions": [
+        "DeepSeek 的 Token 用量如何计算？"
+      ],
+      "expectedTitle": "Token",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-models-pricing",
+      "provider": "deepseek",
+      "label": "DeepSeek API：模型与价格",
+      "category": "billing",
+      "url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "sampleQuestions": [
+        "DeepSeek 模型输入输出、缓存与计费说明在哪里查询？"
+      ],
+      "expectedTitle": "模型|Model",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-chat-completions",
+      "provider": "deepseek",
+      "label": "DeepSeek API：Chat Completions 参数",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/api/create-chat-completion/",
+      "sampleQuestions": [
+        "DeepSeek Chat Completions 的 messages tools response_format 参数是什么？"
+      ],
+      "expectedTitle": "Chat",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-responses",
+      "provider": "deepseek",
+      "label": "DeepSeek API：Responses 参数",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/api/create-response/",
+      "sampleQuestions": [
+        "DeepSeek Responses API 的请求与输出如何使用？"
+      ],
+      "expectedTitle": "Response",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-fim-api",
+      "provider": "deepseek",
+      "label": "DeepSeek API：补全接口参数",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/api/create-completion/",
+      "sampleQuestions": [
+        "DeepSeek FIM completions 的 prompt suffix 如何设置？"
+      ],
+      "expectedTitle": "FIM|补全|Completion",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-balance",
+      "provider": "deepseek",
+      "label": "DeepSeek API：余额查询",
+      "category": "billing",
+      "url": "https://api-docs.deepseek.com/zh-cn/api/get-user-balance/",
+      "sampleQuestions": [
+        "DeepSeek API 如何查询账户余额？"
+      ],
+      "expectedTitle": "Balance|余额",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-models",
+      "provider": "deepseek",
+      "label": "DeepSeek API：模型列表",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/api/list-models/",
+      "sampleQuestions": [
+        "DeepSeek 如何通过接口查询可用模型列表？"
+      ],
+      "expectedTitle": "Model|模型",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-thinking",
+      "provider": "deepseek",
+      "label": "DeepSeek API：思考模式",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/",
+      "sampleQuestions": [
+        "DeepSeek 思考模式怎样配置并处理 reasoning_content？"
+      ],
+      "expectedTitle": "思考|Thinking",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-tool-calling",
+      "provider": "deepseek",
+      "label": "DeepSeek API：工具调用",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/tool_calls/",
+      "sampleQuestions": [
+        "DeepSeek 工具调用如何定义函数、执行并返回结果？"
+      ],
+      "expectedTitle": "Tool|工具|Function",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-json-output",
+      "provider": "deepseek",
+      "label": "DeepSeek API：JSON 输出",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/json_mode/",
+      "sampleQuestions": [
+        "DeepSeek JSON Output 如何设置 response_format 和提示词？"
+      ],
+      "expectedTitle": "JSON",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-multi-round",
+      "provider": "deepseek",
+      "label": "DeepSeek API：多轮对话",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/multi_round_chat/",
+      "sampleQuestions": [
+        "DeepSeek 多轮对话怎样发送历史消息？"
+      ],
+      "expectedTitle": "多轮|Multi",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-context-cache",
+      "provider": "deepseek",
+      "label": "DeepSeek API：上下文缓存",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache/",
+      "sampleQuestions": [
+        "DeepSeek 上下文缓存如何生效并查看命中 Token？"
+      ],
+      "expectedTitle": "缓存|Cach",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-vision",
+      "provider": "deepseek",
+      "label": "DeepSeek API：视觉输入",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/vision/",
+      "sampleQuestions": [
+        "DeepSeek 视觉输入如何传递图片？"
+      ],
+      "expectedTitle": "图像|视觉|Vision",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-files",
+      "provider": "deepseek",
+      "label": "DeepSeek API：文件使用",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/files_api/",
+      "sampleQuestions": [
+        "DeepSeek Files API 如何上传和引用文件？"
+      ],
+      "expectedTitle": "文件|File",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-prefix-completion",
+      "provider": "deepseek",
+      "label": "DeepSeek API：前缀续写",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/chat_prefix_completion/",
+      "sampleQuestions": [
+        "DeepSeek Chat Prefix Completion 如何指定 assistant 前缀？"
+      ],
+      "expectedTitle": "前缀|Prefix",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-fim-guide",
+      "provider": "deepseek",
+      "label": "DeepSeek API：FIM 补全指南",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/fim_completion/",
+      "sampleQuestions": [
+        "DeepSeek FIM 如何根据前缀和后缀补全中间代码？"
+      ],
+      "expectedTitle": "FIM|补全",
+      "minChars": 150
+    },
+    {
+      "id": "deepseek-anthropic-protocol",
+      "provider": "deepseek",
+      "label": "DeepSeek API：Anthropic 兼容协议",
+      "category": "api_usage",
+      "url": "https://api-docs.deepseek.com/zh-cn/guides/anthropic_api/",
+      "sampleQuestions": [
+        "DeepSeek Anthropic 兼容入口与官方 Anthropic 接口有什么适用范围差别？"
+      ],
+      "expectedTitle": "Anthropic",
+      "minChars": 150
+    }
+  ]
+}

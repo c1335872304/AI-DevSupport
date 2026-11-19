@@ -35,6 +35,112 @@ def test_grounded_refund_answer_passes():
     assert result.metrics["groundedness"] == 1.0
 
 
+@pytest.mark.parametrize(("clause_citation", "passed"), [
+    ("", False), ("（来源#2）", False), ("（来源#1）", True),
+])
+def test_high_score_cannot_mask_a_missing_required_claim_citation(clause_citation, passed):
+    case = {"id": "clause-citations", "evidence": [
+                {"sourceId": 1, "textContent": "最多三次。仅适用于 v2。"},
+                {"sourceId": 2, "textContent": "认证使用访问令牌。"},
+            ],
+            "rubric": {"requiredFacts": [{"anyOf": ["最多三次"], "sourceIds": [1]}]}}
+    result = evaluate_answer(f"最多三次{clause_citation}；仅适用于 v2（来源#1）。\n\n来源#1: doc.md", case)
+    assert result.score >= result.details["passScore"]
+    assert result.passed is passed
+    assert result.details["citations"]["passedFactCount"] == int(passed)
+
+
+def test_whole_answer_fact_match_does_not_borrow_a_navigation_citation():
+    case = {"id": "navigation", "evidence": [{"sourceId": 1, "textContent": "每批支持十行。每行上限是百字。"}],
+            "rubric": {"requiredFacts": [{"allOf": ["十行", "百字"], "sourceIds": [1]}]}}
+    result = evaluate_answer("每批支持十行。每行上限是百字。\n\n来源#1: doc.md", case)
+    assert result.details["facts"][0]["matched"]
+    assert not result.details["facts"][0]["citationPass"]
+    assert not result.passed
+
+
+def test_later_explicitly_cited_restating_unit_satisfies_required_fact():
+    case = {"id": "restated-claim",
+            "evidence": [{"sourceId": 1, "textContent": "请配置环境变量。"}],
+            "rubric": {"requiredFacts": [{"anyOf": ["环境变量"], "sourceIds": [1]}]}}
+    answer = "先说明环境变量的设置方式。\n\n配置环境变量（来源#1）。"
+    result = evaluate_answer(answer, case)
+    assert result.passed
+    assert result.details["facts"][0]["unitCitations"] == [1]
+
+
+def test_source_list_title_cannot_satisfy_a_required_fact():
+    case = {"id": "source-title",
+            "evidence": [{"sourceId": 1, "textContent": "请配置环境变量。"}],
+            "rubric": {"requiredFacts": [{"anyOf": ["环境变量"], "sourceIds": [1]}]}}
+    answer = "先说明配置方式。\n\n- 来源#1: 环境变量.md"
+    result = evaluate_answer(answer, case)
+    assert not result.passed
+    assert not result.details["facts"][0]["matched"]
+
+
+def test_same_line_post_punctuation_citation_only_applies_to_preceding_clause():
+    case = {"id": "post-punctuation",
+            "evidence": [{"sourceId": 1, "textContent": "支持重试三次。"}],
+            "rubric": {"requiredFacts": [
+                {"anyOf": ["重试三次"], "sourceIds": [1]},
+                {"anyOf": ["适用于 v2"], "sourceIds": [1]},
+            ]}}
+    result = evaluate_answer("支持重试三次。 （来源#1）仅适用于 v2。\n\n来源#1: guide.md", case)
+    assert [fact["citationPass"] for fact in result.details["facts"]] == [True, False]
+    assert not result.passed
+
+
+def test_material_date_accepts_equivalent_month_format_but_not_a_different_month():
+    case = {"id": "date-format", "rubric": {}}
+    evidence = [{"textContent": "规则于2026年10月生效。"}]
+    known = evaluate_answer("规则于 2026 年 10 月生效。", case, evidence=evidence)
+    changed = evaluate_answer("规则于 2026 年 11 月生效。", case, evidence=evidence)
+    assert known.details["hallucination"]["unsupportedMaterialNumbers"] == []
+    assert changed.details["hallucination"]["unsupportedMaterialNumbers"] == ["2026-11"]
+
+
+def test_strict_document_reads_derive_only_from_frozen_evidence():
+    from app.evaluation.customer_service_live import _fixture_for
+
+    file_md5 = "a" * 32
+    case = {"strictToolFixtures": True, "evidence": [
+        {"fileMd5": file_md5, "fileName": "guide.md", "chunkId": 7,
+         "pageNumber": 2, "textContent": "The frozen excerpt."},
+    ]}
+    listing = _fixture_for(case, AgentToolCall("list", "list_documents", {"keyword": "guide"}), 0)
+    assert listing["data"]["documents"] == [{"fileMd5": file_md5, "fileName": "guide.md"}]
+    read = _fixture_for(case, AgentToolCall("read", "get_document", {"file_md5": file_md5, "chunk_id": 7}), 0)
+    assert read["data"]["text"] == "The frozen excerpt."
+    denied = _fixture_for(case, AgentToolCall("other", "get_document", {"file_md5": "b" * 32}), 0)
+    assert denied["status"] == "DENIED"
+
+
+@pytest.mark.parametrize(("page", "unsupported"), [(1, []), (9, ["9页"])])
+def test_only_verified_citation_page_is_excluded_from_business_numbers(page, unsupported):
+    references = {"1": {"pageNumber": 1, "textContent": "文档说明应使用指数退避。"}}
+    result = evaluate_answer(
+        f"文档说明应使用指数退避（来源#1: retry.md | 第{page}页）。",
+        {"id": "citation-page", "rubric": {}},
+        evidence=list(references.values()),
+        references=references,
+    )
+    assert result.details["hallucination"]["unsupportedMaterialNumbers"] == unsupported
+
+
+@pytest.mark.parametrize(("source", "groundedness"), [(1, 1.0), (2, 0.0)])
+def test_bullet_group_uses_matching_tail_citation(source, groundedness):
+    result = evaluate_answer(
+        f"- 每批最多 10 行。\n- 支持 256 维。\n\n（来源#{source}）",
+        {"id": "group", "rubric": {"requiredFacts": [
+            {"anyOf": ["10 行"], "sourceIds": [1]},
+            {"anyOf": ["256 维"], "sourceIds": [1]},
+        ]}},
+        references={"1": {"textContent": "每批最多 10 行，支持 256 维。"}, "2": {"textContent": "认证配置。"}},
+    )
+    assert result.metrics["groundedness"] == groundedness
+
+
 def test_customer_specific_order_status_must_not_be_invented():
     case = _case("customer-support", "cs-answer-2")
     bad = "你的订单已经发货。下一步请等待物流更新（来源#1: account-data-boundary.md）。"

@@ -1,0 +1,1568 @@
+{
+  "version": 2,
+  "description": "Official body snapshots for GPT/OpenAI, Qwen and DeepSeek; not summaries.",
+  "checkedAt": "2026-10-19",
+  "evaluationDataset": "eval/vendor_full_rag.jsonl",
+  "documents": [
+    {
+      "file": "gpt-overview.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/reference/overview",
+      "downloadUrl": "https://developers.openai.com/api/reference/overview.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "API Overview",
+      "rawFile": "raw/gpt-overview.md",
+      "rawSha256": "a046d08b9f57f2d8e5e540c2a9ae201b93a6c64647679e81bea0eabe787f58b7",
+      "bodySha256": "a046d08b9f57f2d8e5e540c2a9ae201b93a6c64647679e81bea0eabe787f58b7",
+      "sha256": "37e11432698c66239180cc3f8c7b71b3870167d146f809b0b12aaef562e208e2",
+      "bodyChars": 8257,
+      "bytes": 8685,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "authentication",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI 如何配置 Bearer 认证并通过请求号排障？"
+      ]
+    },
+    {
+      "file": "gpt-quickstart.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/quickstart",
+      "downloadUrl": "https://developers.openai.com/api/docs/quickstart.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Developer quickstart",
+      "rawFile": "raw/gpt-quickstart.md",
+      "rawSha256": "fc1344f72d90a7d1f28b311824315724350c859473226a7a3b28930b20bca7b0",
+      "bodySha256": "fc1344f72d90a7d1f28b311824315724350c859473226a7a3b28930b20bca7b0",
+      "sha256": "5aaf44a5c408db15bf857504225030e4e247907a7be3a6e5f9c11b8c416d436b",
+      "bodyChars": 54811,
+      "bytes": 55250,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "GPT API 第一次调用需要怎样安装 SDK 和配置环境变量？"
+      ]
+    },
+    {
+      "file": "gpt-text.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/text",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/text.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Text generation",
+      "rawFile": "raw/gpt-text.md",
+      "rawSha256": "05dc04c0cec1b95dc20f27748c7ecd9f3e2b9e3418cf5b3a4f329ef16aa550d7",
+      "bodySha256": "05dc04c0cec1b95dc20f27748c7ecd9f3e2b9e3418cf5b3a4f329ef16aa550d7",
+      "sha256": "db12c4d681f9aa5fb7b977e4f562f76b34d909e435ea158c70b00db5a3f537d9",
+      "bodyChars": 19253,
+      "bytes": 19671,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "GPT 文本生成中 instructions 和 input 应如何使用？"
+      ]
+    },
+    {
+      "file": "gpt-conversation-state.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/conversation-state",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/conversation-state.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Conversation state",
+      "rawFile": "raw/gpt-conversation-state.md",
+      "rawSha256": "cbe2dd7fbc94538a5823ba4108e048789481cbca9628d832f347091d2c159702",
+      "bodySha256": "cbe2dd7fbc94538a5823ba4108e048789481cbca9628d832f347091d2c159702",
+      "sha256": "3efb82b9fd00a9c7cc321e2cf2cb4df631cd7c70108fd60d0508fc33e609b697",
+      "bodyChars": 24941,
+      "bytes": 25384,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Responses 如何保持多轮会话上下文？"
+      ]
+    },
+    {
+      "file": "gpt-streaming.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/streaming-responses",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/streaming-responses.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Streaming API responses",
+      "rawFile": "raw/gpt-streaming.md",
+      "rawSha256": "7e147ae8c9e2ef2a30ecd7f3502a4c350e929487c7e51643cef2e4fb66281f7f",
+      "bodySha256": "7e147ae8c9e2ef2a30ecd7f3502a4c350e929487c7e51643cef2e4fb66281f7f",
+      "sha256": "53b58ee469bd6ab78077c576c9efc09c6f6c808dd843fe8078dae1dc2c58f254",
+      "bodyChars": 7108,
+      "bytes": 7545,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Responses 流式文本应如何处理增量事件？"
+      ]
+    },
+    {
+      "file": "gpt-function-calling.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/function-calling",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/function-calling.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Function calling",
+      "rawFile": "raw/gpt-function-calling.md",
+      "rawSha256": "ce460da5635ff6b235fd45bb94a425975fc438f5e47ba71705e7ebf689172ae1",
+      "bodySha256": "ce460da5635ff6b235fd45bb94a425975fc438f5e47ba71705e7ebf689172ae1",
+      "sha256": "b8a10ede2b9b4dc15752fd66543a46bbb329b44cd4ae10c9809841b9000c925d",
+      "bodyChars": 77540,
+      "bytes": 78000,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "GPT 工具调用怎样关联 call_id 与函数执行结果？"
+      ]
+    },
+    {
+      "file": "gpt-structured-outputs.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/structured-outputs",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/structured-outputs.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Structured model outputs",
+      "rawFile": "raw/gpt-structured-outputs.md",
+      "rawSha256": "09aa3814251cf168070294ace79d677091de04b330055048392548d604aa7104",
+      "bodySha256": "09aa3814251cf168070294ace79d677091de04b330055048392548d604aa7104",
+      "sha256": "ba8b90f6ec85d0f59000adb6f883af64765371e68e51c0368fb0155e9da9260c",
+      "bodyChars": 136308,
+      "bytes": 136773,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Structured Outputs 与 JSON mode 有什么区别？"
+      ]
+    },
+    {
+      "file": "gpt-reasoning.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/reasoning",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/reasoning.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Reasoning models",
+      "rawFile": "raw/gpt-reasoning.md",
+      "rawSha256": "a561487dd41db8828b5b9920d77275bdced3c3c07ba1fb9f3c3230c5aaeb925b",
+      "bodySha256": "a561487dd41db8828b5b9920d77275bdced3c3c07ba1fb9f3c3230c5aaeb925b",
+      "sha256": "a1db20514c9f99ee0ad7232bc66c89993b4400e45fe5c7f6882c511945f7a4c0",
+      "bodyChars": 70761,
+      "bytes": 71199,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "GPT 推理模型如何设置 reasoning effort 和控制推理消耗？"
+      ]
+    },
+    {
+      "file": "gpt-reasoning-practices.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/reasoning-best-practices",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/reasoning-best-practices.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Reasoning best practices",
+      "rawFile": "raw/gpt-reasoning-practices.md",
+      "rawSha256": "00d3f8ee705eb2340513512da669b45aa534ea8c8412e65470cf576aa59baa76",
+      "bodySha256": "00d3f8ee705eb2340513512da669b45aa534ea8c8412e65470cf576aa59baa76",
+      "sha256": "117cf7d9cf6c04e61905fac69a1cb79c40f033638bce4ebd4be9267b5c15c799",
+      "bodyChars": 17069,
+      "bytes": 17648,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "GPT 推理模型的提示词应如何设计？"
+      ]
+    },
+    {
+      "file": "gpt-prompt-engineering.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/prompt-engineering",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/prompt-engineering.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Prompt engineering",
+      "rawFile": "raw/gpt-prompt-engineering.md",
+      "rawSha256": "3a077358aaa7a23464ccaae32d684467d2972491c5889517ae1a72753e9d1e6d",
+      "bodySha256": "3a077358aaa7a23464ccaae32d684467d2972491c5889517ae1a72753e9d1e6d",
+      "sha256": "e4fa16923204e439edbae4c7280f1906db39bc2a13688536cb6b600167a56b79",
+      "bodyChars": 37398,
+      "bytes": 37845,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI 提示工程如何组织指令、示例与上下文？"
+      ]
+    },
+    {
+      "file": "gpt-prompt-caching.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/prompt-caching",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/prompt-caching.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Prompt caching",
+      "rawFile": "raw/gpt-prompt-caching.md",
+      "rawSha256": "74dc45350d5de0e7eef80b0b09d67b733a73170275f1bacb0760e066a4254480",
+      "bodySha256": "74dc45350d5de0e7eef80b0b09d67b733a73170275f1bacb0760e066a4254480",
+      "sha256": "a3e0877e088972873affead37facac7858d796bc1f5e4790a2207360f37d032f",
+      "bodyChars": 48144,
+      "bytes": 48592,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Prompt Caching 怎样命中缓存并查看缓存用量？"
+      ]
+    },
+    {
+      "file": "gpt-embeddings.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/embeddings",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/embeddings.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Vector embeddings",
+      "rawFile": "raw/gpt-embeddings.md",
+      "rawSha256": "9635f921b0aac2afd529e3634d017c596f55b4599e6f6b0f725e529e344e0710",
+      "bodySha256": "9635f921b0aac2afd529e3634d017c596f55b4599e6f6b0f725e529e344e0710",
+      "sha256": "a1d9a4c34cd81e00274a52f1a4babb5f1b05f103e6b6a20e16a416859a861a9a",
+      "bodyChars": 58091,
+      "bytes": 58517,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Embeddings 怎样生成文本向量并用于相似度检索？"
+      ]
+    },
+    {
+      "file": "gpt-retrieval.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/retrieval",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/retrieval.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Retrieval",
+      "rawFile": "raw/gpt-retrieval.md",
+      "rawSha256": "70156ddbe924bd678deac23f11fb3d1477e95583f0f2143ef97fdafcfd2af78e",
+      "bodySha256": "70156ddbe924bd678deac23f11fb3d1477e95583f0f2143ef97fdafcfd2af78e",
+      "sha256": "32efac1c200349ffa9c4e6aac6c4f77714b620534ae5088eb03df6942060bbcd",
+      "bodyChars": 56467,
+      "bytes": 56878,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Retrieval 如何通过 vector store 搜索文档？"
+      ]
+    },
+    {
+      "file": "gpt-file-search.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/tools-file-search",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/tools-file-search.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "File search",
+      "rawFile": "raw/gpt-file-search.md",
+      "rawSha256": "999dff6bd78d4467ae332789f730c73c35f3b46314a365d296f2825f2191ae14",
+      "bodySha256": "999dff6bd78d4467ae332789f730c73c35f3b46314a365d296f2825f2191ae14",
+      "sha256": "fdbab43a04d8d2cb7b96e775f63123e90582caf828b3c446e45a2b261dab2439",
+      "bodyChars": 28111,
+      "bytes": 28534,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI file search 如何配置向量库并引用搜索结果？"
+      ]
+    },
+    {
+      "file": "gpt-errors.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/error-codes",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/error-codes.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Error codes",
+      "rawFile": "raw/gpt-errors.md",
+      "rawSha256": "ca56d0600fdfd00b2c48011233317c3eb7a8e8e5e6aeb958bb2777ea8a042982",
+      "bodySha256": "ca56d0600fdfd00b2c48011233317c3eb7a8e8e5e6aeb958bb2777ea8a042982",
+      "sha256": "6a2123530522ef061c357f5174dd2948857dccbb3a6e8b210dfd17921f0b5db3",
+      "bodyChars": 32170,
+      "bytes": 32584,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "error_code",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI 401 和不同 429 错误应如何区分原因？"
+      ]
+    },
+    {
+      "file": "gpt-rate-limits.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/rate-limits",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/rate-limits.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Rate limits",
+      "rawFile": "raw/gpt-rate-limits.md",
+      "rawSha256": "eef6761e0308740574930ebe15d576f48f05ea13fdbb45fad0a43c2355f9dde8",
+      "bodySha256": "eef6761e0308740574930ebe15d576f48f05ea13fdbb45fad0a43c2355f9dde8",
+      "sha256": "544c6ea6729c48b9211749d9d9fbe0bc41d70e139d62c9a46e4e8b88051b34a4",
+      "bodyChars": 22734,
+      "bytes": 23155,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "rate_limit",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI RPM TPM 和 Retry-After 如何用于处理限流？"
+      ]
+    },
+    {
+      "file": "gpt-batch.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/batch",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/batch.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Batch API",
+      "rawFile": "raw/gpt-batch.md",
+      "rawSha256": "ecfdc628228599980e001243660306a7a8d426540fb6093f31668823933ee00a",
+      "bodySha256": "ecfdc628228599980e001243660306a7a8d426540fb6093f31668823933ee00a",
+      "sha256": "171a10a5cd0f22c1ddab965edeed80915ad48a83443ef45a2558264fb84fd5a8",
+      "bodyChars": 21469,
+      "bytes": 21878,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Batch API 如何提交与读取异步批量任务？"
+      ]
+    },
+    {
+      "file": "gpt-background.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/background",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/background.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Background mode",
+      "rawFile": "raw/gpt-background.md",
+      "rawSha256": "5cb4c94641af0b8cc9d2d43fee0e55ff53fada04ddc70950b47603da09b0b529",
+      "bodySha256": "5cb4c94641af0b8cc9d2d43fee0e55ff53fada04ddc70950b47603da09b0b529",
+      "sha256": "eebbc1f4075f0f9542387313059e86315a6fcb00b628eb8b45a226320cde6282",
+      "bodyChars": 19988,
+      "bytes": 20408,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI background 模式如何轮询与取消响应？"
+      ]
+    },
+    {
+      "file": "gpt-webhooks.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/webhooks",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/webhooks.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Webhooks",
+      "rawFile": "raw/gpt-webhooks.md",
+      "rawSha256": "77219d6ebd4bd4bca7f2c4c25a1c3e77cdf27f4219f80e19bae563af92d5a727",
+      "bodySha256": "77219d6ebd4bd4bca7f2c4c25a1c3e77cdf27f4219f80e19bae563af92d5a727",
+      "sha256": "31fc8a8df4d72c29c5b666516c162f6c7258c1dbd34067e203fbc252c9daffe2",
+      "bodyChars": 16426,
+      "bytes": 16839,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "OpenAI Webhook 如何验证签名并处理重复事件？"
+      ]
+    },
+    {
+      "file": "gpt-responses-migration.md",
+      "vendor": "OpenAI",
+      "provider": "gpt",
+      "sourceUrl": "https://developers.openai.com/api/docs/guides/migrate-to-responses",
+      "downloadUrl": "https://developers.openai.com/api/docs/guides/migrate-to-responses.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Migrate to the Responses API",
+      "rawFile": "raw/gpt-responses-migration.md",
+      "rawSha256": "e53f316cc7b600cc42c8df903f2d3a2276f7843dc4f77c987965375e4b560c1f",
+      "bodySha256": "e53f316cc7b600cc42c8df903f2d3a2276f7843dc4f77c987965375e4b560c1f",
+      "sha256": "2b69c57530b2744131f6565fe25942f4c8a7215aa83e2dbcd4eb344fbef2959d",
+      "bodyChars": 63040,
+      "bytes": 63489,
+      "metadata": {
+        "product": "OpenAI API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "从 Chat Completions 迁移 Responses 时工具和流式输出要怎样修改？"
+      ]
+    },
+    {
+      "file": "qwen-quickstart.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/first-api-call-to-qwen",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/first-api-call-to-qwen.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "首次调用千问API",
+      "rawFile": "raw/qwen-quickstart.md",
+      "rawSha256": "cd7fb670915b30ff597eac378fa60710163434e671759eb99a2e79431436d604",
+      "bodySha256": "cd7fb670915b30ff597eac378fa60710163434e671759eb99a2e79431436d604",
+      "sha256": "fed76fa99488fe814b9e6ed15dea66c6a1e9fe4ee0a440721696b7ff77fbc23e",
+      "bodyChars": 42389,
+      "bytes": 53989,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 首次 API 调用如何配置 SDK、地域和凭据？"
+      ]
+    },
+    {
+      "file": "qwen-api-key.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/get-api-key",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/get-api-key.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "获取与配置 API Key",
+      "rawFile": "raw/qwen-api-key.md",
+      "rawSha256": "4dff121942fc89f031a3f8bfbaa1dadbfac534e7ab68213e576189cb81915eb6",
+      "bodySha256": "4dff121942fc89f031a3f8bfbaa1dadbfac534e7ab68213e576189cb81915eb6",
+      "sha256": "90977a7660f2980752bce876c863a52104adba70d6aeeef14e6ae7e7d5183041",
+      "bodyChars": 10845,
+      "bytes": 16067,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "authentication",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 百炼在哪里创建 API Key，地域有什么要求？"
+      ]
+    },
+    {
+      "file": "qwen-batch.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/batch-interfaces-compatible-with-openai",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/batch-interfaces-compatible-with-openai.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "OpenAI兼容-Batch（文件输入）",
+      "rawFile": "raw/qwen-batch.md",
+      "rawSha256": "c63c889d11c85ee6c52ad26b7a3c640eac2f2b9f82def6513eba419d489938c5",
+      "bodySha256": "c63c889d11c85ee6c52ad26b7a3c640eac2f2b9f82def6513eba419d489938c5",
+      "sha256": "1a69f325d11860a4c8c8f73902037d5f17d11e048409ac24e67f52ed491dc15a",
+      "bodyChars": 102399,
+      "bytes": 125689,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "authentication",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 如何通过 OpenAI 兼容批量接口提交和查询任务？"
+      ]
+    },
+    {
+      "file": "qwen-sdk.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/install-sdk",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/install-sdk.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "安装SDK",
+      "rawFile": "raw/qwen-sdk.md",
+      "rawSha256": "3d0358c23ccec12ad17442c16c42b1fed2cc21f02058588cd43ff90db1f80bff",
+      "bodySha256": "3d0358c23ccec12ad17442c16c42b1fed2cc21f02058588cd43ff90db1f80bff",
+      "sha256": "9feb4404ebd3d8da2df58e20e1e3639e2d81b3e344771660486982f0c12e83c6",
+      "bodyChars": 4255,
+      "bytes": 5817,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 使用 OpenAI SDK 或 DashScope SDK 如何安装？"
+      ]
+    },
+    {
+      "file": "qwen-base-url.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/base-url",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/base-url.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Base URL总览",
+      "rawFile": "raw/qwen-base-url.md",
+      "rawSha256": "1bf3592677c851d7c3f183ef6cc3608bacf2b66d28dc1f80fbb725f3d9088cd0",
+      "bodySha256": "1bf3592677c851d7c3f183ef6cc3608bacf2b66d28dc1f80fbb725f3d9088cd0",
+      "sha256": "c6ac486615a1c97edcb62f13400dcd1de2f88737bc48cf9b955bd5d5af599e36",
+      "bodyChars": 7700,
+      "bytes": 9060,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 不同地域与协议应选择哪个 base URL？"
+      ]
+    },
+    {
+      "file": "qwen-regions.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/regions",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/regions.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "选择地域、服务部署范围和接入域名",
+      "rawFile": "raw/qwen-regions.md",
+      "rawSha256": "5bbafbac80aad9f4c73293e40200b196c3f18898b9297b8a6309e53521c3c5aa",
+      "bodySha256": "5bbafbac80aad9f4c73293e40200b196c3f18898b9297b8a6309e53521c3c5aa",
+      "sha256": "869c9920e30430ad78c857e86488d2ee3a10a59eaa1bf663c453e41a70087642",
+      "bodyChars": 16384,
+      "bytes": 19935,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen API Key 与部署地域不匹配时应核对什么？"
+      ]
+    },
+    {
+      "file": "qwen-chat-completions.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-chat-completions.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "OpenAI兼容-Chat",
+      "rawFile": "raw/qwen-chat-completions.md",
+      "rawSha256": "b682bbbecf3c1af640dd3ed0e2ea46590cb77626817aa164aac2a3e38fbd1697",
+      "bodySha256": "b682bbbecf3c1af640dd3ed0e2ea46590cb77626817aa164aac2a3e38fbd1697",
+      "sha256": "8fd2152c9aec27dc7592aa11fe4ef6b75feaf4442a203e15d6a30854a88412fe",
+      "bodyChars": 103745,
+      "bytes": 132187,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen OpenAI 兼容 Chat Completions 的请求和返回字段有哪些？"
+      ]
+    },
+    {
+      "file": "qwen-dashscope.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-dashscope",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-dashscope.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "DashScope API 参考",
+      "rawFile": "raw/qwen-dashscope.md",
+      "rawSha256": "d957781fe682fafbd4cf2ee9a23e83d4f4d8e5e7d67d75683c06f925cf55b0c8",
+      "bodySha256": "d957781fe682fafbd4cf2ee9a23e83d4f4d8e5e7d67d75683c06f925cf55b0c8",
+      "sha256": "ffbb2f0e98fe2f031d48b31dc89ce868b728d05bc746f91daba36b1e3c471cfd",
+      "bodyChars": 124344,
+      "bytes": 150546,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen DashScope 原生接口如何配置请求和输出？"
+      ]
+    },
+    {
+      "file": "qwen-responses.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-responses",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-api-via-openai-responses.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "创建响应",
+      "rawFile": "raw/qwen-responses.md",
+      "rawSha256": "61cf53c135314f540f3ef3b76e8849ecc3f3a186dbf83c0a4f7766cc93cc70b5",
+      "bodySha256": "61cf53c135314f540f3ef3b76e8849ecc3f3a186dbf83c0a4f7766cc93cc70b5",
+      "sha256": "557e978ea38dda1f452fa2f910505c82859977afc7582765bc3b74134e825886",
+      "bodyChars": 92787,
+      "bytes": 114729,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen Responses API 如何配置 tools、stream 和 conversation？"
+      ]
+    },
+    {
+      "file": "qwen-streaming.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/stream",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/stream.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "流式输出",
+      "rawFile": "raw/qwen-streaming.md",
+      "rawSha256": "fd917a8ad076cd86be2759338d44e6020b4b9ad891f129dbb12647136d51a13c",
+      "bodySha256": "fd917a8ad076cd86be2759338d44e6020b4b9ad891f129dbb12647136d51a13c",
+      "sha256": "af38295d233791b4db192ccd3deff32b74551c8184de9f43cf6ee200e7606e1c",
+      "bodyChars": 56170,
+      "bytes": 70004,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 流式输出如何获得最后一个包中的 usage？"
+      ]
+    },
+    {
+      "file": "qwen-function-calling.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/qwen-function-calling",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-function-calling.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "Function Calling",
+      "rawFile": "raw/qwen-function-calling.md",
+      "rawSha256": "6e3325f435507a80fb2c46b70d1c159d7b07f6e74c7a4d438ec07690f8ecb4fa",
+      "bodySha256": "6e3325f435507a80fb2c46b70d1c159d7b07f6e74c7a4d438ec07690f8ecb4fa",
+      "sha256": "cee2618370c5ebc8959d142f9cc6dd06469c2107d12b5afb3f770356024634e8",
+      "bodyChars": 165025,
+      "bytes": 197908,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen Function Calling 如何执行工具并回传结果？"
+      ]
+    },
+    {
+      "file": "qwen-structured-outputs.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/qwen-structured-output",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/qwen-structured-output.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "结构化输出",
+      "rawFile": "raw/qwen-structured-outputs.md",
+      "rawSha256": "b7e6a6e25fdbbbca44aea1113c9ba943377f7a68d7ac357d26cfb8dbce96388e",
+      "bodySha256": "b7e6a6e25fdbbbca44aea1113c9ba943377f7a68d7ac357d26cfb8dbce96388e",
+      "sha256": "65ca42e73913cd98b6371c42c0231814994608643ab3cdb38a66d336e91b85ae",
+      "bodyChars": 80337,
+      "bytes": 97125,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen JSON Object 和 JSON Schema 模式如何配置？"
+      ]
+    },
+    {
+      "file": "qwen-thinking.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/deep-thinking",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/deep-thinking.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "深度思考",
+      "rawFile": "raw/qwen-thinking.md",
+      "rawSha256": "60c4764c1ffd27aa95f0900832a24a046f37aac120d44e7e49820214ceda539b",
+      "bodySha256": "60c4764c1ffd27aa95f0900832a24a046f37aac120d44e7e49820214ceda539b",
+      "sha256": "cf408972316782109bf99127e0f7da28604b02d479c134faed0264184e3e3899",
+      "bodyChars": 96439,
+      "bytes": 123066,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen enable_thinking 和 reasoning_content 应如何处理？"
+      ]
+    },
+    {
+      "file": "qwen-multi-round.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/multi-round-conversation",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/multi-round-conversation.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "多轮对话",
+      "rawFile": "raw/qwen-multi-round.md",
+      "rawSha256": "9e912865362cf5f5b295fcce042110d96456736b2476efa30d9f3a2f7c91d628",
+      "bodySha256": "9e912865362cf5f5b295fcce042110d96456736b2476efa30d9f3a2f7c91d628",
+      "sha256": "fe5097c01251df8b8980f4b5afe1507dc4f9d7b7be50792b7919b72a6de40ea0",
+      "bodyChars": 46647,
+      "bytes": 55261,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 多轮对话如何传递历史 messages？"
+      ]
+    },
+    {
+      "file": "qwen-context-cache.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/context-cache",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/context-cache.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "上下文缓存（Context Cache）",
+      "rawFile": "raw/qwen-context-cache.md",
+      "rawSha256": "130dbe6a301a58df1880bac88154f10f9271ffe04aefd1d817df65191d26f612",
+      "bodySha256": "130dbe6a301a58df1880bac88154f10f9271ffe04aefd1d817df65191d26f612",
+      "sha256": "a3d89eff702218cce02acdb5a3dc197dff82b659d6cac44716af247f411a9a0e",
+      "bodyChars": 49957,
+      "bytes": 69096,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 上下文缓存如何命中并降低重复输入成本？"
+      ]
+    },
+    {
+      "file": "qwen-embedding-api.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/text-embedding-synchronous-api",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/text-embedding-synchronous-api.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "同步接口API详情",
+      "rawFile": "raw/qwen-embedding-api.md",
+      "rawSha256": "9cadda992c1e12c8fd0da6a6b7167ac5931e5cb314a9fafe0d48e0847983e653",
+      "bodySha256": "9cadda992c1e12c8fd0da6a6b7167ac5931e5cb314a9fafe0d48e0847983e653",
+      "sha256": "afd54dab732015408fbe9e318d3fbcc2df47e16dc19a4446f962bfb4d3c7e957",
+      "bodyChars": 47559,
+      "bytes": 56138,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 文本向量同步接口如何配置输入与维度？"
+      ]
+    },
+    {
+      "file": "qwen-embedding-v4.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/text-embedding-v4",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/text-embedding-v4.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "text-embedding-v4",
+      "rawFile": "raw/qwen-embedding-v4.md",
+      "rawSha256": "7472015a30c4dc74c809f8ea912599d7c8e599dbb1861ecdebc7216eeb010e10",
+      "bodySha256": "7472015a30c4dc74c809f8ea912599d7c8e599dbb1861ecdebc7216eeb010e10",
+      "sha256": "c0006109a8911272f9de83e453debe5127b7aec1b823fc53a73b5b583a98b2ed",
+      "bodyChars": 5858,
+      "bytes": 7463,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen text-embedding-v4 支持什么输入与使用方式？"
+      ]
+    },
+    {
+      "file": "qwen-rate-limits.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/rate-limit",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/rate-limit.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "限流",
+      "rawFile": "raw/qwen-rate-limits.md",
+      "rawSha256": "258fe484ff642b3ec72d6212d62e8d448d71265441acba862f58830841846bfa",
+      "bodySha256": "258fe484ff642b3ec72d6212d62e8d448d71265441acba862f58830841846bfa",
+      "sha256": "aee67ec1117fd207bfc5c5f49eaf6e28979a8e1aef79e8147432d76884a1a3d6",
+      "bodyChars": 349893,
+      "bytes": 377859,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "rate_limit",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen RPM TPM 限流应如何排查和降低请求速率？"
+      ]
+    },
+    {
+      "file": "qwen-errors.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/error-code",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/error-code.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "错误码",
+      "rawFile": "raw/qwen-errors.md",
+      "rawSha256": "8bafa64fbc6e8e5ee0042eef328869002103d183845f4ae014fd3cca60018587",
+      "bodySha256": "8bafa64fbc6e8e5ee0042eef328869002103d183845f4ae014fd3cca60018587",
+      "sha256": "79d82a3ebb292d997388d9c847162ce4bd00eb25817cee4ab5be55d0e2289798",
+      "bodyChars": 99518,
+      "bytes": 143651,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "error_code",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen InvalidApiKey、Throttling 和参数错误如何排查？"
+      ]
+    },
+    {
+      "file": "qwen-prompt-engineering.md",
+      "vendor": "Alibaba Cloud",
+      "provider": "qwen",
+      "sourceUrl": "https://help.aliyun.com/zh/model-studio/prompt-engineering-guide",
+      "downloadUrl": "https://help.aliyun.com/zh/model-studio/prompt-engineering-guide.md",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "native_markdown",
+      "sourceTitle": "文生文Prompt指南",
+      "rawFile": "raw/qwen-prompt-engineering.md",
+      "rawSha256": "ad125920fb697d366cae4b98710f32cdc4b5c030f7c4b2e7ba484aef850df471",
+      "bodySha256": "ad125920fb697d366cae4b98710f32cdc4b5c030f7c4b2e7ba484aef850df471",
+      "sha256": "b4e1d8c1f5b4e587e9ea7e107e02c487df46bde09382614d73287f34b681a0a1",
+      "bodyChars": 30007,
+      "bytes": 51950,
+      "metadata": {
+        "product": "Qwen API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "Qwen 提示词如何设置角色、示例和格式要求？"
+      ]
+    },
+    {
+      "file": "deepseek-quickstart.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "首次调用 API",
+      "rawFile": "raw/deepseek-quickstart.html",
+      "rawSha256": "659e6fa1ac5376505a386754c917c14989278c3de2231b6101f60a74acd8505c",
+      "bodySha256": "a7c2dbd9e243499744f85c8b7fe466ce5caea9b44876eac78809f37c183cf3bb",
+      "sha256": "173705dcd261bd0f2b412a96badf81c9b72cbd7991a175b282c9b6777a1453b3",
+      "bodyChars": 2704,
+      "bytes": 3623,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 如何配置 OpenAI 兼容 base URL 和 API Key？"
+      ]
+    },
+    {
+      "file": "deepseek-errors.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/error_codes/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/error_codes/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "错误码",
+      "rawFile": "raw/deepseek-errors.html",
+      "rawSha256": "ef24acfb8d037990b5e05d5cdae4af877ad274f6be53c8c015b00419d183aabd",
+      "bodySha256": "e5530deb6275dd6ce9277d77bd0da552b83bba7ac016c6eaf27d1bc856e9ef56",
+      "sha256": "1ca5114d90b333ea2ba63af7cc24791d2d0a17b60d89e54485a86c44316d65c2",
+      "bodyChars": 502,
+      "bytes": 1527,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "error_code",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 的 401、402、429 和 503 分别怎么处理？"
+      ]
+    },
+    {
+      "file": "deepseek-rate-limits.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/rate_limit/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "限速与隔离",
+      "rawFile": "raw/deepseek-rate-limits.html",
+      "rawSha256": "3a6cbb433422145b3ab51451cecab3fd81927db91886c5ef1de6bb0bfe5d1dbc",
+      "bodySha256": "0347d6d800fd0f4d437b2bae08c5da759fd17d9fa2435ca004a26b7194eca3e4",
+      "sha256": "8e6f97e172be399aa3a84a0eb7022645cd990abcffdc2cc237f8d6c8a9615db4",
+      "bodyChars": 2061,
+      "bytes": 3833,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "rate_limit",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 账号并发与 user_id 隔离如何计算？"
+      ]
+    },
+    {
+      "file": "deepseek-token-usage.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/token_usage/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/token_usage/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "Token 用量计算",
+      "rawFile": "raw/deepseek-token-usage.html",
+      "rawSha256": "cc55b768da495f627b5b6aeeec6e06ab233afe95b02bbd6d86f67e5a59122ddc",
+      "bodySha256": "f9a4b4a829280eed982d96f00f35eedcf584472c7462699df80d53f114c8163b",
+      "sha256": "9bddbf30de010026f329d00cc3f4d7eb90bdf0870efe6dd107e9385bedfbe169",
+      "bodyChars": 657,
+      "bytes": 1710,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 的 Token 用量如何计算？"
+      ]
+    },
+    {
+      "file": "deepseek-models-pricing.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "模型 & 价格",
+      "rawFile": "raw/deepseek-models-pricing.html",
+      "rawSha256": "556097caba8adfeeed6455714bffd731c7f60db520fcee06a922eba5840663a3",
+      "bodySha256": "cc746e3a762c35c7b79cce9a6f13754b5b741e525415e5edfe4be729c5c5ff40",
+      "sha256": "9bb7406694067f58fd477f111c0a106066f0f39f5fff3783bb70e92225105e9e",
+      "bodyChars": 1911,
+      "bytes": 3643,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "billing",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 模型输入输出、缓存与计费说明在哪里查询？"
+      ]
+    },
+    {
+      "file": "deepseek-chat-completions.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/api/create-chat-completion/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/api/create-chat-completion/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "Chat Completions API",
+      "rawFile": "raw/deepseek-chat-completions.html",
+      "rawSha256": "a57733fd2622f7fe5b4a5864e91b1048761972795b875db99b8871c9bb2dfedc",
+      "bodySha256": "4edbfbd715984eb5e5b88af5ac28b0424655122dca14af7eb434432f40d510aa",
+      "sha256": "73ad7b091e129deebb1eccdb3bac0215507d41272b67bc5e748b0c9a8a3fbb0e",
+      "bodyChars": 22233,
+      "bytes": 30676,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek Chat Completions 的 messages tools response_format 参数是什么？"
+      ]
+    },
+    {
+      "file": "deepseek-responses.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/api/create-response/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/api/create-response/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "Responses API",
+      "rawFile": "raw/deepseek-responses.html",
+      "rawSha256": "32d6c73f6c188ee923fb6e07514fb810dd3a5d117c460ca3fd9edf764fb39ffa",
+      "bodySha256": "32cb0c21a3f5cc4084041d7b1f1080d19e1781820a36df024ffea378becd1a19",
+      "sha256": "8bff8cb028ac875d2c102613495bc2360fe8ae31b56f16d0a28734c2ff1119c9",
+      "bodyChars": 12761,
+      "bytes": 17293,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek Responses API 的请求与输出如何使用？"
+      ]
+    },
+    {
+      "file": "deepseek-fim-api.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/api/create-completion/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/api/create-completion/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "FIM 补全 API（Beta）",
+      "rawFile": "raw/deepseek-fim-api.html",
+      "rawSha256": "90cf06dad0d61cffbb5d5fb21f3acbc2838d5068cbf1d5aa7c30a71ca9396883",
+      "bodySha256": "8381a83b2561d8ed585ab1689df1e6e53481a7b5bf59ebfd13a32b6b07df8613",
+      "sha256": "26f79baab1dd975901a5519deaa46cf9c15f40c497120cae0f459602f880e57c",
+      "bodyChars": 4224,
+      "bytes": 6507,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek FIM completions 的 prompt suffix 如何设置？"
+      ]
+    },
+    {
+      "file": "deepseek-balance.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/api/get-user-balance/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/api/get-user-balance/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "查询余额",
+      "rawFile": "raw/deepseek-balance.html",
+      "rawSha256": "0450772c0e77075e00385c3eb0b0c24091627a675dd78b281af2358962f75680",
+      "bodySha256": "8b5cbf1df2145edb8dc581eb8d332df96a5ef112241619f5d64ae630fb3b76a4",
+      "sha256": "3beae9668ff8d91363064b8d77bc670aac9db4a05d58354bec377d9890239dd4",
+      "bodyChars": 800,
+      "bytes": 1354,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "billing",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek API 如何查询账户余额？"
+      ]
+    },
+    {
+      "file": "deepseek-models.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/api/list-models/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/api/list-models/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "获取模型列表",
+      "rawFile": "raw/deepseek-models.html",
+      "rawSha256": "23838427d22da8acf74c34d9cfea6cc1b8b7c13a3179f346cec30b159aeaa9f6",
+      "bodySha256": "be44bcf6d7df737ab8e0679f318941b33eaf9af60e7f4a8ea6060965273abf5b",
+      "sha256": "a90105632dcd8e744c1ac21ec230e12217314cf1eede164a4c48d34830b866da",
+      "bodyChars": 3224,
+      "bytes": 4691,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 如何通过接口查询可用模型列表？"
+      ]
+    },
+    {
+      "file": "deepseek-thinking.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/thinking_mode/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "思考模式",
+      "rawFile": "raw/deepseek-thinking.html",
+      "rawSha256": "0b9a4c86e50c04754dcc8552789d4ab6bed58aeefb75381f7fed30943b4ccb9b",
+      "bodySha256": "9dc640d888d5643699a7eeb05f4e4a7e94cc905dda9b785a9dc9055aae5d4875",
+      "sha256": "a9dc599f4ca391ba4176e2dd6d223a940089418fa63f56889bcf47a38c4f66ad",
+      "bodyChars": 9548,
+      "bytes": 11741,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 思考模式怎样配置并处理 reasoning_content？"
+      ]
+    },
+    {
+      "file": "deepseek-tool-calling.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/tool_calls/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/tool_calls/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "Tool Calls",
+      "rawFile": "raw/deepseek-tool-calling.html",
+      "rawSha256": "0d2084d0eade0f650e41fa57b4d339bbb706ffd3ce550fb4618d9809f921cb85",
+      "bodySha256": "fceb327dee440386ffaacfd534e68ad89279c9529f03590fb98de16d6178b1ab",
+      "sha256": "7c7c70bda5d68d248e4b180f46de8d6e093f54e0d67cb1557a4dc57d5b773859",
+      "bodyChars": 7033,
+      "bytes": 9141,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 工具调用如何定义函数、执行并返回结果？"
+      ]
+    },
+    {
+      "file": "deepseek-json-output.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/json_mode/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/json_mode/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "JSON Output",
+      "rawFile": "raw/deepseek-json-output.html",
+      "rawSha256": "bcae7d57f0da0bf7fafa224499c330f9b244790e446faad03e809d0166f8589b",
+      "bodySha256": "5a9a7209cdc95423a3b5e6788892d99f04fdcd10ece315c0341e193c87e38807",
+      "sha256": "36b4d4f8b456f138cf2f009f277f4a7180251d204ad463a4f50504e3d19b8aa8",
+      "bodyChars": 1382,
+      "bytes": 2204,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek JSON Output 如何设置 response_format 和提示词？"
+      ]
+    },
+    {
+      "file": "deepseek-multi-round.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/multi_round_chat/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/multi_round_chat/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "多轮对话",
+      "rawFile": "raw/deepseek-multi-round.html",
+      "rawSha256": "a9495992e857eac273b7ff6a75a6e08bdb3940b34aab1ee48e91282322c90d8a",
+      "bodySha256": "faf093cb9f5a15776a1ce15f010dcd7757478a8737a587850baf0f8a82d9e796",
+      "sha256": "fe8aeb875dced372c31e2ac4828131015c5f11d934d4a6ac0ade66c7154d45f3",
+      "bodyChars": 1283,
+      "bytes": 2028,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 多轮对话怎样发送历史消息？"
+      ]
+    },
+    {
+      "file": "deepseek-context-cache.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/kv_cache/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "上下文硬盘缓存",
+      "rawFile": "raw/deepseek-context-cache.html",
+      "rawSha256": "4c300649c617f75d8c4c2c23e88c9f0e310912c999da6671464622a609a328c0",
+      "bodySha256": "4882f5c3a7dd9e9e3d4fea3ec32ac476789bd15f73f457ab994eb1d820f20f08",
+      "sha256": "d6c7df486b10659b4fdbff00b4771254e9fcb92f29572edeb1321ac8273d0531",
+      "bodyChars": 2117,
+      "bytes": 4826,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 上下文缓存如何生效并查看命中 Token？"
+      ]
+    },
+    {
+      "file": "deepseek-vision.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/vision/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/vision/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "图像理解",
+      "rawFile": "raw/deepseek-vision.html",
+      "rawSha256": "e2893cc471715215872d02384a52e6ac10a0cebc7379f383ab834a6f3ac00f8b",
+      "bodySha256": "78855080341e1075504cd51c5bd2d2e25cafc3500bf53429f84c7637813468dd",
+      "sha256": "024e4fce70dd428ca349a1574683fe6f8188b00bd6028ba5ef6babba2f6ae61f",
+      "bodyChars": 6873,
+      "bytes": 9935,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek 视觉输入如何传递图片？"
+      ]
+    },
+    {
+      "file": "deepseek-files.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/files_api/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/files_api/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "Files API",
+      "rawFile": "raw/deepseek-files.html",
+      "rawSha256": "40804b1eb57d901d59e67c8f0cc29f86134992c3881f85fa1ac46a087e3d939d",
+      "bodySha256": "7e159f579daa6f4323130ff3e68d82ca8deaead83713ae12272703347a29392f",
+      "sha256": "da92fe206fc639d8e1ee1167692f75e79a476bb10f1883719356905f32ae0687",
+      "bodyChars": 5167,
+      "bytes": 7172,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek Files API 如何上传和引用文件？"
+      ]
+    },
+    {
+      "file": "deepseek-prefix-completion.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/chat_prefix_completion/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/chat_prefix_completion/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "对话前缀续写（Beta）",
+      "rawFile": "raw/deepseek-prefix-completion.html",
+      "rawSha256": "14218b7778fb8eb3d7a546853e9ba2ca90b762e736450238c90e9fbe7106aa2b",
+      "bodySha256": "4767f9de9e069d3911370363d4322aa9fad47b302c84b0f88be69fecf194609a",
+      "sha256": "e5f8cc141e59934d6f0b8ccba5635a22539dded19c09c31cf62592b1cddf5a5a",
+      "bodyChars": 876,
+      "bytes": 1645,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek Chat Prefix Completion 如何指定 assistant 前缀？"
+      ]
+    },
+    {
+      "file": "deepseek-fim-guide.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/fim_completion/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/fim_completion/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "FIM 补全（Beta）",
+      "rawFile": "raw/deepseek-fim-guide.html",
+      "rawSha256": "92b51c49980eb43c66d5b1658e1271c27a276e33a04e8ec9d93134a6d7c1020d",
+      "bodySha256": "69797ce45433852d63f118ee0b10472e631ebd9de627d5c2a3445a45b1248e50",
+      "sha256": "f00420180b7c94e2cb22cffa2c0015b3cd01e964bb390af1d7410b4f24c9eb5f",
+      "bodyChars": 849,
+      "bytes": 1644,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek FIM 如何根据前缀和后缀补全中间代码？"
+      ]
+    },
+    {
+      "file": "deepseek-anthropic-protocol.md",
+      "vendor": "DeepSeek",
+      "provider": "deepseek",
+      "sourceUrl": "https://api-docs.deepseek.com/zh-cn/guides/anthropic_api/",
+      "downloadUrl": "https://api-docs.deepseek.com/zh-cn/guides/anthropic_api/",
+      "checkedAt": "2026-10-19",
+      "contentType": "official_body_snapshot",
+      "extraction": "html_article_to_markdown",
+      "sourceTitle": "使用 Anthropic API",
+      "rawFile": "raw/deepseek-anthropic-protocol.html",
+      "rawSha256": "b5d8e603a05ad605024a77c86610d816c41bda412e5752f79e5f3e0229d9c14d",
+      "bodySha256": "a3a0c237fb3a2dab876295d59608f5a8ac76588ba98a7c36ffcb864b7319af5b",
+      "sha256": "51830f4933d2a3754a43404e7b9a87a7f5bc8647746d67c773e329d80eb28cd1",
+      "bodyChars": 3764,
+      "bytes": 5420,
+      "metadata": {
+        "product": "DeepSeek API",
+        "category": "api_usage",
+        "channel": "api",
+        "version": "snapshot-2026-10-19"
+      },
+      "sampleQuestions": [
+        "DeepSeek Anthropic 兼容入口与官方 Anthropic 接口有什么适用范围差别？"
+      ]
+    }
+  ]
+}

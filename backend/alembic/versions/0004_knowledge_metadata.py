@@ -35,10 +35,14 @@ def upgrade() -> None:
 
         Base.metadata.create_all(bind=bind)
         return
+    existing_columns = {column["name"] for column in inspector.get_columns("file_upload")}
+    existing_indexes = {index["name"] for index in inspector.get_indexes("file_upload")}
     with op.batch_alter_table("file_upload") as batch:
         for name, type_ in COLUMNS:
-            batch.add_column(sa.Column(name, type_, nullable=True))
-            batch.create_index(f"ix_file_upload_{name}", [name], unique=False)
+            if name not in existing_columns:
+                batch.add_column(sa.Column(name, type_, nullable=True))
+            if f"ix_file_upload_{name}" not in existing_indexes:
+                batch.create_index(f"ix_file_upload_{name}", [name], unique=False)
 
 
 def downgrade() -> None:

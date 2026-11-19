@@ -8,6 +8,7 @@ facts available to response composition or the later handoff node.
 """
 
 import json
+import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -17,6 +18,7 @@ from app.tools.base import ToolResult
 
 
 _TOOL_AGENT = {
+    "query_request_observation": "api_diagnostic",
     "query_call_log": "api_diagnostic",
     "query_api_key_status": "api_diagnostic",
     "query_recent_call_stats": "api_diagnostic",
@@ -30,11 +32,32 @@ _TOOL_AGENT = {
 }
 
 _KNOWLEDGE_EXCERPT_MAX_CHARS = 1600
-_KNOWLEDGE_EXCERPT_LIMIT = 3
+_KNOWLEDGE_EXCERPT_LIMIT = 12
 
 
 def _bounded_text(value: Any, limit: int = 500) -> str:
     return str(value or "").strip()[:limit]
+
+
+def render_document_excerpts(summary: dict[str, Any], references: list[dict[str, Any]], *, question: str = "") -> str:
+    """Publish bounded, attributed excerpts when synthesis is unavailable."""
+    from app.core.content_safety import detect_prompt_injection
+    from app.agent.question_scope import asks_about_personal_state
+
+    available = {ref.get("referenceNumber") for ref in references}
+    excerpts = []
+    for item in summary.get("knowledgeExcerpts") or ():
+        source = (item.get("source") or {}).get("referenceNumber")
+        text = redact_text(_bounded_text(item.get("text"), _KNOWLEDGE_EXCERPT_MAX_CHARS))
+        if source in available and text and not detect_prompt_injection(text):
+            # Repeat the source on each quoted prose clause. Preserve code
+            # blocks intact and never cite an adjoining generated statement.
+            clauses = [text] if "```" in text or "~~~" in text else re.split(r"(?<=[。！？；])\s*", text)
+            excerpts.extend(f"文档摘录（来源#{source}）：「{clause}」" for clause in clauses if clause)
+    answer = "\n\n".join(dict.fromkeys(excerpts))
+    if answer and asks_about_personal_state(question):
+        answer += "\n\n仅凭这些文档无法确认您的账户状态或本次请求的实际情况。"
+    return answer
 
 
 def _knowledge_excerpts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
@@ -66,7 +89,7 @@ def _knowledge_excerpts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
             {
                 "source": {
                     key: item.get(key)
-                    for key in ("referenceNumber", "fileMd5", "fileName", "pageNumber", "chunkId")
+                    for key in ("referenceNumber", "fileMd5", "fileName", "pageNumber", "chunkId", "indexVersion", "citationId", "sourceLocation")
                     if item.get(key) is not None
                 },
                 "text": redact_text(text),
@@ -78,16 +101,25 @@ def _knowledge_excerpts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
     return excerpts
 
 
-def _facts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
+def _raw_facts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
     """Translate a successful result into a deliberately narrow fact contract."""
     if not isinstance(data, dict):
         return []
-    billing_aliases = {
-        "mcp__billing__get_plan": "query_plan",
-        "mcp__billing__get_usage": "query_usage",
-        "mcp__billing__get_invoice": "query_bill",
-    }
-    tool_name = billing_aliases.get(tool_name, tool_name)
+    if tool_name == "list_documents":
+        documents = [
+            {"fileName": redact_text(_bounded_text(item.get("fileName"), 240))}
+            for item in (data.get("documents") or ())[:30]
+            if isinstance(item, dict) and item.get("fileName")
+        ]
+        return [{"tool": tool_name, "found": bool(documents), "documents": documents}]
+    if tool_name == "query_request_observation":
+        from app.diagnosis.rules import SAFE_OBSERVATIONS
+        return [{"tool": tool_name, "found": bool(data.get("found")),
+                 **{k: data[k] for k in ["requestId", "appId", "endpoint", "serviceId", "ruleVersion"] if k in data},
+                 "observations": {k: v for k, v in (data.get("observations") or {}).items() if k in SAFE_OBSERVATIONS}}]
+    from app.support.billing import BILLING_TOOL_ALIASES
+
+    tool_name = BILLING_TOOL_ALIASES.get(tool_name, tool_name)
     if tool_name == "query_call_log":
         return [{
             "tool": tool_name,
@@ -152,6 +184,36 @@ def _facts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
             ],
         }]
     return []
+
+
+def _facts_for(tool_name: str, data: Any) -> list[dict[str, Any]]:
+    facts = _raw_facts_for(tool_name, data)
+    if not isinstance(data, dict):
+        return facts
+    context = {key: data[key] for key in ["ownerUserId", "sourceSystem", "queriedAt", "calledAt",
+        "windowType", "windowStart", "windowEnd", "scope", "appId", "requestId"] if key in data}
+    context["sourceType"] = "DOCUMENT_RULE" if tool_name == "query_error_code" else "BUSINESS_QUERY"
+    context["supportsPersonalIncident"] = tool_name == "query_call_log" and bool(data.get("found"))
+    context["scope"] = ("general_rule" if tool_name == "query_error_code" else
+                        "historical_event" if tool_name in {"query_call_log", "query_request_observation"} else
+                        "historical_window" if data.get("windowType") in {"incident", "explicit"} else "current_snapshot")
+    # A slow turn may outlive a snapshot. Do not forward it as a current fact.
+    if context["scope"] == "current_snapshot" and data.get("queriedAt"):
+        from datetime import timedelta
+        from app.core.time import utcnow
+        from app.support.api_diagnostics import parse_time, timestamp
+
+        ttl = 30 if tool_name == "query_api_key_status" else 300 if tool_name in {"query_plan", "mcp__billing__get_plan"} else 60
+        try:
+            expires = parse_time(data["queriedAt"]) + timedelta(seconds=ttl)
+            if expires < utcnow():
+                return []
+            context["validUntil"] = timestamp(expires)
+        except (ValueError, TypeError, AttributeError):
+            return []
+    for fact in facts:
+        fact["evidenceContext"] = context
+    return facts
 
 
 class EvidenceJoiner:
@@ -219,15 +281,26 @@ class EvidenceJoiner:
             unresolved.extend(item.unresolved_items)
             for excerpt in item.knowledge_excerpts:
                 key = json.dumps(excerpt, ensure_ascii=False, sort_keys=True, default=str)
-                if key not in excerpt_keys and len(knowledge_excerpts) < _KNOWLEDGE_EXCERPT_LIMIT:
+                if key not in excerpt_keys:
                     excerpt_keys.add(key)
                     knowledge_excerpts.append(dict(excerpt))
+        # Round-robin documents so repeated chunks from one file cannot evict
+        # the second vendor from a comparison. Keep the existing bounded text
+        # size and cap the joined context at 12 excerpts (19,200 characters).
+        groups: dict[str, list] = {}
+        for excerpt in knowledge_excerpts:
+            groups.setdefault(str(excerpt.get('source',{}).get('fileMd5') or excerpt.get('source',{}).get('fileName')),[]).append(excerpt)
+        knowledge_excerpts=[]
+        while any(groups.values()) and len(knowledge_excerpts)<_KNOWLEDGE_EXCERPT_LIMIT:
+            for group in groups.values():
+                if group and len(knowledge_excerpts)<_KNOWLEDGE_EXCERPT_LIMIT:
+                    knowledge_excerpts.append(group.pop(0))
         unique_citations: list[dict[str, Any]] = []
         citation_keys: set[str] = set()
         for citation in citations:
             safe = {
                 key: citation.get(key)
-                for key in ("fileMd5", "fileName", "pageNumber", "chunkId", "referenceNumber")
+                for key in ("fileMd5", "fileName", "pageNumber", "chunkId", "referenceNumber", "indexVersion", "citationId", "sourceLocation")
                 if key in citation
             }
             key = json.dumps(safe, ensure_ascii=False, sort_keys=True, default=str)
@@ -268,13 +341,8 @@ class EvidenceComposer:
         reasons: list[str] = []
         if routing.requires_handoff_after_summary:
             reasons.append("routing_policy_requires_handoff_after_summary")
-        if any(item.recommended_handoff for item in records) and not summary.verified_facts:
-            reasons.append("specialist_recommends_handoff")
-        # Partial read failures are visible in the trace and answer boundary,
-        # but do not justify an automatic human ticket once verified evidence
-        # exists (for example, a confirmed 429 plus one malformed RAG query).
-        if summary.unresolved_items and not summary.verified_facts:
-            reasons.append("verified_evidence_incomplete")
+        # Read failures belong to the evidence summary. Durable writes require
+        # routing authorization or a separate persisted diagnosis decision.
         category = "BILLING" if "billing" in routing.selected_agents else "API" if "api_diagnostic" in routing.selected_agents else "GENERAL"
         priority = "HIGH" if routing.risk_level == "HIGH" else "NORMAL"
         ticket_summary = (

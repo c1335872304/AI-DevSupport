@@ -5,7 +5,6 @@ import sys
 def main():
     payload = json.load(sys.stdin)
     answer = str(payload.get("answer") or "")
-    tool_results = payload.get("toolResults") or []
     verified_facts = [item for item in (payload.get("verifiedFacts") or []) if isinstance(item, dict)]
     entities = payload.get("entities") or {}
     blocking_warnings = []
@@ -13,14 +12,14 @@ def main():
     lowered = answer.lower()
     if any(secret in lowered for secret in ("authorization: bearer", "完整 api key", "完整token")):
         blocking_warnings.append("answer_contains_credential")
-    if "已确认" in answer and not tool_results:
-        blocking_warnings.append("unverified_confirmation")
 
     # A code catalog explains a code; it never proves that this customer's
     # request returned that code.  Customer incident claims need a scoped log
     # record or a scoped aggregate observation.
+    request_id = str(entities.get("request_id") or "").strip()
     has_request_incident = any(
         item.get("tool") == "query_call_log" and item.get("found") and item.get("httpStatus") == 429
+        and (not request_id or item.get("requestId") == request_id)
         for item in verified_facts
     )
     has_recent_observation = any(
@@ -32,11 +31,19 @@ def main():
         for item in verified_facts
     )
     has_observed_rate_limit = has_request_incident or has_recent_observation
-    personal_claim_markers = (
-        "已核验", "已确认", "本次调用触发了限流", "本次或近期调用触发了限流",
-        "该请求触发了限流", "该请求返回 http 429", "该请求返回http 429",
+    compact = "".join(lowered.split())
+    observation_claim_markers = (
+        "已核验错误码为rate_limit_exceeded", "已确认错误码为rate_limit_exceeded",
+        "本次或近期调用触发了限流",
     )
-    if not has_observed_rate_limit and any(marker in lowered for marker in personal_claim_markers):
+    request_claim_markers = (
+        "本次调用触发了限流",
+        "该请求触发了限流", "该请求返回http429",
+    )
+    if (
+        not has_request_incident and any(marker in compact for marker in request_claim_markers)
+        or not has_observed_rate_limit and any(marker in compact for marker in observation_claim_markers)
+    ):
         blocking_warnings.append("unsupported_personal_rate_limit_claim")
     has_diagnostic_anchor = any(str(entities.get(key) or "").strip() for key in ("request_id", "error_code", "http_status", "endpoint"))
     unanchored_tool_claim_markers = (
@@ -70,7 +77,7 @@ def main():
         warnings.append("answer_omits_verified_rate_limit_facts")
         warnings.extend(rate_limit_coverage_warnings)
     warnings = [*blocking_warnings, *warnings]
-    print(json.dumps({"passed": not blocking_warnings, "warnings": warnings, "checks": {
+    print(json.dumps({"passed": not blocking_warnings, "blockingWarnings": blocking_warnings, "warnings": warnings, "checks": {
         "readOnly": True,
         "rateLimitEvidenceSufficient": has_observed_rate_limit,
         "rateLimitIncidentObserved": has_request_incident,

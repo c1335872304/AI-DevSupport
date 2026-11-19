@@ -58,6 +58,34 @@ def _fixture_for(case: dict[str, Any], call: AgentToolCall, call_index: int) -> 
         return dict(configured)
     if call.name == "search_knowledge":
         return {"status": "SUCCESS", "durationMs": 120, "data": {"results": [dict(item) for item in case.get("evidence") or []]}}
+    if case.get("strictToolFixtures") and call.name in {"list_documents", "get_document"}:
+        evidence = [item for item in case.get("evidence") or () if item.get("fileMd5")]
+        if call.name == "list_documents":
+            keyword = str(call.arguments.get("keyword") or "").strip().casefold()
+            documents = {item["fileMd5"]: {"fileMd5": item["fileMd5"], "fileName": item.get("fileName")}
+                         for item in evidence if keyword in str(item.get("fileName") or "").casefold()}
+            return {"status": "SUCCESS", "durationMs": 15,
+                    "data": {"count": len(documents), "documents": list(documents.values())}}
+        file_md5 = str(call.arguments.get("file_md5") or "").lower()
+        chunk_id = call.arguments.get("chunk_id")
+        matches = [item for item in evidence if item["fileMd5"].lower() == file_md5]
+        if not matches:
+            return {"status": "DENIED", "durationMs": 15, "error": "Document is outside frozen evidence"}
+        if chunk_id is not None:
+            matches = [item for item in matches if item.get("chunkId") == chunk_id]
+            if not matches:
+                return {"status": "INVALID_ARGUMENT", "durationMs": 15, "error": "Chunk is outside frozen evidence"}
+        max_chars = max(500, min(12000, int(call.arguments.get("max_chars") or 5000)))
+        text = "\n\n".join(str(item.get("textContent") or item.get("text") or "") for item in matches)
+        first = matches[0]
+        return {"status": "SUCCESS", "durationMs": 15, "data": {
+            "fileMd5": file_md5, "fileName": first.get("fileName"),
+            "chunkId": chunk_id if chunk_id is not None else 0,
+            "pageNumber": first.get("pageNumber") if chunk_id is not None else None,
+            "text": text[:max_chars],
+        }}
+    if case.get("strictToolFixtures") and call.name not in {"activate_skill", "read_skill_reference", "run_skill_script"}:
+        return {"status": "ERROR", "durationMs": 15, "error": "No evidence fixture for this tool"}
     if call.name == "create_support_handoff":
         return {"status": "SUCCESS", "durationMs": 180, "data": {"handoffId": "CS_EVAL_001", "status": "OPEN", "priority": call.arguments.get("priority", "NORMAL")}}
     if call.name == "get_support_handoff":
@@ -123,7 +151,7 @@ async def run_live_customer_service_case(case: dict[str, Any], *, llm_service: A
         active_skills = []
     messages = llm_service.build_agent_messages(
         question,
-        [],
+        list(case.get("history") or []),
         skill_catalog=skill_registry.catalog_prompt() if with_skill else "",
         skill_context=skill_registry.build_prompt(active_skills) if active_skills else "",
     )

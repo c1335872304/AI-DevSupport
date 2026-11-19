@@ -424,7 +424,6 @@ declare namespace App {
             codePlaceholder: string;
             passwordPlaceholder: string;
             confirmPasswordPlaceholder: string;
-            inviteCodePlaceholder: string;
             codeLogin: string;
             confirm: string;
             back: string;
@@ -452,11 +451,11 @@ declare namespace App {
           };
           register: {
             title: string;
+            success: string;
             agreement: string;
             protocol: string;
             and: string;
             policy: string;
-            inviteCodeTip: string;
           };
           resetPwd: {
             title: string;

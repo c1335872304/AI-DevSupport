@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "frozenBeforeRun": true,
+  "cases": [
+    {
+      "id": "N01",
+      "vendor": "deepseek",
+      "kind": "fact",
+      "question": "DeepSeek的FIM补全允许提供前缀和后缀吗？用途是什么，最大补全长度是多少？",
+      "sources": [
+        {
+          "file": "deepseek-fim-guide.md",
+          "sha256": "f00420180b7c94e2cb22cffa2c0015b3cd01e964bb390af1d7410b4f24c9eb5f"
+        }
+      ],
+      "requiredClaims": [
+        "可以给前缀及可选后缀补中间内容",
+        "适合代码补全；最大补全长度4K（以快照原文为准）"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N02",
+      "vendor": "deepseek",
+      "kind": "fact",
+      "question": "DeepSeek上下文硬盘缓存需要我手动开启吗？只是部分相似的前缀就必然命中吗？",
+      "sources": [
+        {
+          "file": "deepseek-context-cache.md",
+          "sha256": "d6c7df486b10659b4fdbff00b4771254e9fcb92f29572edeb1321ac8273d0531"
+        }
+      ],
+      "requiredClaims": [
+        "默认开启无需改代码",
+        "匹配已落盘完整前缀单元；相似不保证命中"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N03",
+      "vendor": "deepseek",
+      "kind": "insufficient",
+      "question": "DeepSeek余额查询接口的说明，能证明我现在余额足够支付下个月所有调用吗？",
+      "sources": [
+        {
+          "file": "deepseek-balance.md",
+          "sha256": "3beae9668ff8d91363064b8d77bc670aac9db4a05d58354bec377d9890239dd4"
+        }
+      ],
+      "requiredClaims": [
+        "文档不能代替真实余额和未来用量核查",
+        "不得以本项目Demo账单冒充DeepSeek账户"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N04",
+      "vendor": "qwen",
+      "kind": "fact",
+      "question": "Qwen的OpenAI兼容流式聊天，想收到Token用量，应把include_usage放在哪里？请写参数结构。",
+      "sources": [
+        {
+          "file": "qwen-chat-completions.md",
+          "sha256": "8fd2152c9aec27dc7592aa11fe4ef6b75feaf4442a203e15d6a30854a88412fe"
+        }
+      ],
+      "requiredClaims": [
+        "启用stream=true",
+        "stream_options={include_usage:true}，不是顶层include_usage"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N05",
+      "vendor": "qwen",
+      "kind": "fact",
+      "question": "Qwen文本向量检索中，text_type的query与document各用于哪一侧？不传时是什么？",
+      "sources": [
+        {
+          "file": "qwen-embedding-api.md",
+          "sha256": "afd54dab732015408fbe9e318d3fbcc2df47e16dc19a4446f962bfb4d3c7e957"
+        }
+      ],
+      "requiredClaims": [
+        "检索查询query，底库document",
+        "默认document；对称任务可用默认"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N06",
+      "vendor": "qwen",
+      "kind": "insufficient",
+      "question": "Qwen官方说明能否直接确认我的账号已经买了跨地域通用Key服务？",
+      "sources": [
+        {
+          "file": "qwen-base-url.md",
+          "sha256": "c6ac486615a1c97edcb62f13400dcd1de2f88737bc48cf9b955bd5d5af599e36"
+        }
+      ],
+      "requiredClaims": [
+        "通用文档不能确认个人购买状态",
+        "不能把地域独立Key说成已购买的跨地域通用Key"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N07",
+      "vendor": "gpt",
+      "kind": "fact",
+      "question": "OpenAI后台响应在ZDR项目中的存储规则是什么？能否仅因ZDR就保证后台请求完全不写磁盘？",
+      "sources": [
+        {
+          "file": "gpt-background.md",
+          "sha256": "eebbc1f4075f0f9542387313059e86315a6fcb00b628eb8b45a226320cde6282"
+        }
+      ],
+      "requiredClaims": [
+        "当前快照ZDR后台请求store=false",
+        "后台执行仍需临时磁盘缓存，不能宣称零写盘"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N08",
+      "vendor": "gpt",
+      "kind": "fact",
+      "question": "OpenAI Responses的previous_response_id有什么作用？它与每次手工重传完整历史有什么区别？",
+      "sources": [
+        {
+          "file": "gpt-conversation-state.md",
+          "sha256": "3efb82b9fd00a9c7cc321e2cf2cb4df631cd7c70108fd60d0508fc33e609b697"
+        }
+      ],
+      "requiredClaims": [
+        "用previous_response_id串联前次响应上下文",
+        "可避免客户端每次手工传完整历史；不能说因此历史token不计费"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N09",
+      "vendor": "gpt",
+      "kind": "insufficient",
+      "question": "请确认GPT gpt-demo-private-2099模型在我的组织里已经开放，并给出它的准确上下文长度。",
+      "sources": [],
+      "requiredClaims": [
+        "未知型号和组织权限没有可核验证据",
+        "不猜上下文长度或宣称已开通"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N10",
+      "vendor": "ambiguous",
+      "kind": "clarification",
+      "question": "启用strict后枚举字段就一定正确吗？请给我的API配置参数。",
+      "sources": [],
+      "requiredClaims": [
+        "需确认厂商模型接口或逐家区分适用范围",
+        "不能保证所有API通用strict参数"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N11",
+      "vendor": "comparison",
+      "kind": "comparison",
+      "question": "DeepSeek JSON Output与Qwen的JSON Object模式，哪一种能自动确保符合指定JSON Schema？请区分合法JSON与Schema约束。",
+      "sources": [
+        {
+          "file": "deepseek-json-output.md",
+          "sha256": "36b4d4f8b456f138cf2f009f277f4a7180251d204ad463a4f50504e3d19b8aa8"
+        },
+        {
+          "file": "qwen-structured-outputs.md",
+          "sha256": "65ca42e73913cd98b6371c42c0231814994608643ab3cdb38a66d336e91b85ae"
+        }
+      ],
+      "requiredClaims": [
+        "两种JSON Object/JSON Output仅合法JSON不自动Schema保证",
+        "Qwen JSON Schema模式另有Schema约束，明确与JSON Object区分",
+        "分别引用两家依据"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    },
+    {
+      "id": "N12",
+      "vendor": "qwen",
+      "kind": "insufficient",
+      "question": "现有Qwen文档能否保证text-embedding-v4在2099年仍然免费、批量上限不变？",
+      "sources": [
+        {
+          "file": "qwen-embedding-api.md",
+          "sha256": "afd54dab732015408fbe9e318d3fbcc2df47e16dc19a4446f962bfb4d3c7e957"
+        }
+      ],
+      "requiredClaims": [
+        "当前资料不足以保证未来费用与限制",
+        "当前快照价格和限制不得当成未来承诺"
+      ],
+      "scoring": "沿用原12题：事实完整、厂商一致、实际引用支撑；证据不足须明确边界。"
+    }
+  ]
+}

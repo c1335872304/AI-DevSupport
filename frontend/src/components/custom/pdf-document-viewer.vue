@@ -1,127 +1,18 @@
-<template>
-  <div class="pdf-viewer-shell">
-    <div v-if="!embeddedHeader" class="pdf-viewer-toolbar">
-      <div class="toolbar-copy">
-        <span class="viewer-badge">{{ singlePagePreviewActive ? '单页定位' : 'PDF 预览' }}</span>
-        <span class="viewer-kicker">{{ viewerKicker }}</span>
-      </div>
-      <div class="toolbar-actions">
-        <span class="toolbar-chip">
-          <template v-if="singlePagePreviewActive">第 {{ displayCurrentPage }} 页</template>
-          <template v-else>第 {{ displayCurrentPage }} / {{ totalPages || 1 }} 页</template>
-        </span>
-        <span class="toolbar-chip">{{ Math.round(zoom * 100) }}%</span>
-        <template v-if="!singlePagePreviewActive">
-          <NButton size="tiny" quaternary :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
-            <template #icon>
-              <icon-mdi-chevron-left />
-            </template>
-          </NButton>
-          <NButton size="tiny" quaternary :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">
-            <template #icon>
-              <icon-mdi-chevron-right />
-            </template>
-          </NButton>
-        </template>
-        <NButton size="tiny" quaternary :disabled="zoom <= minZoom" @click="zoomOut">
-          <template #icon>
-            <icon-mdi-magnify-minus-outline />
-          </template>
-        </NButton>
-        <NButton size="tiny" quaternary :disabled="zoom >= maxZoom" @click="zoomIn">
-          <template #icon>
-            <icon-mdi-magnify-plus-outline />
-          </template>
-        </NButton>
-        <NButton size="tiny" secondary @click="resetZoom">适应宽度</NButton>
-        <NButton size="tiny" secondary @click="openInNewTab">
-          <template #icon>
-            <icon-mdi-open-in-new />
-          </template>
-          新窗口
-        </NButton>
-      </div>
-    </div>
-
-    <div class="pdf-viewer-body" :class="{ 'is-single-page': singlePagePreviewActive }">
-      <aside v-if="!singlePagePreviewActive" class="page-sidebar">
-        <button
-          v-for="page in pageSummaries"
-          :key="page.pageNumber"
-          type="button"
-          class="page-nav-item"
-          :class="{
-            'is-active': page.pageNumber === currentPage,
-            'is-target': page.pageNumber === targetPageNumber
-          }"
-          @click="goToPage(page.pageNumber)"
-        >
-          <span class="page-nav-number">P{{ displayPageNumber(page.pageNumber) }}</span>
-          <span class="page-nav-summary">{{ page.summary || `第 ${page.pageNumber} 页` }}</span>
-        </button>
-      </aside>
-
-      <div ref="stageRef" class="page-stage">
-        <div v-if="documentLoading" class="stage-feedback">
-          <NSpin size="large" />
-          <span>正在加载 PDF 文档</span>
-        </div>
-        <div v-else-if="renderError" class="stage-feedback is-error">
-          <icon-mdi-alert-circle class="text-24" />
-          <span>{{ renderError }}</span>
-        </div>
-        <div v-else class="page-scroll-shell">
-          <div v-if="!embeddedHeader" class="page-meta-row">
-            <span>第 {{ displayCurrentPage }} 页</span>
-            <span v-if="highlightCount > 0">已匹配到相关文本</span>
-            <span v-else-if="highlightStatus === 'page-only'">已定位到引用页，未框选图片内文字</span>
-            <span v-else-if="currentPage === targetPageNumber">引用定位页</span>
-            <span v-else>浏览当前页</span>
-          </div>
-
-          <div ref="pageShellRef" class="pdf-page-shell">
-            <canvas ref="canvasRef" class="pdf-canvas" />
-            <div v-if="highlightRects.length" class="pdf-highlight-overlay">
-              <div
-                v-for="(rect, index) in highlightRects"
-                :key="`${index}-${rect.left}-${rect.top}`"
-                class="pdf-highlight-rect"
-                :style="{
-                  left: `${rect.left}px`,
-                  top: `${rect.top}px`,
-                  width: `${rect.width}px`,
-                  height: `${rect.height}px`
-                }"
-              />
-            </div>
-            <div ref="textLayerRef" class="pdf-text-layer textLayer" />
-            <div v-if="pageRendering" class="page-loading-mask">
-              <NSpin size="small" />
-              <span>正在渲染页面</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch, watchEffect } from 'vue';
 import { useResizeObserver } from '@vueuse/core';
+import { NButton, NSpin } from 'naive-ui';
 import { GlobalWorkerOptions, TextLayer, getDocument } from 'pdfjs-dist';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import { NButton, NSpin } from 'naive-ui';
-import { getAuthorization } from '@/service/request/shared';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { getAuthorization } from '@/service/request/shared';
 
 GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface Props {
   url: string;
   sourceUrl?: string;
-  fileName?: string;
   pageNumber?: number;
   singlePageMode?: boolean;
   sourcePageNumber?: number;
@@ -132,15 +23,18 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'toolbar-change', payload: {
-    modeLabel: string;
-    helperText: string;
-    pageLabel: string;
-    zoomLabel: string;
-    singlePage: boolean;
-    canPrev: boolean;
-    canNext: boolean;
-  }): void;
+  (
+    e: 'toolbarChange',
+    payload: {
+      modeLabel: string;
+      helperText: string;
+      pageLabel: string;
+      zoomLabel: string;
+      singlePage: boolean;
+      canPrev: boolean;
+      canNext: boolean;
+    }
+  ): void;
 }
 
 interface PageSummary {
@@ -277,23 +171,23 @@ watch(
   async visible => {
     if (!visible || !pdfDocument.value) return;
     await nextTick();
-    void scheduleRender({ immediate: true });
+    scheduleRender({ immediate: true }).catch(console.error);
   }
 );
 
 watch(currentPage, () => {
   if (!pdfDocument.value) return;
-  void scheduleRender({ immediate: true });
+  scheduleRender({ immediate: true }).catch(console.error);
   scheduleSummaryLoading(getPrioritySummaryPages(currentPage.value), { prioritize: true });
 });
 
 watch(zoom, () => {
   if (!pdfDocument.value) return;
-  void scheduleRender({ immediate: true });
+  scheduleRender({ immediate: true }).catch(console.error);
 });
 
 watchEffect(() => {
-  emit('toolbar-change', toolbarState.value);
+  emit('toolbarChange', toolbarState.value);
 });
 
 useResizeObserver(stageRef, entries => {
@@ -304,12 +198,12 @@ useResizeObserver(stageRef, entries => {
   if (Math.abs(observedWidth - lastObservedStageWidth) < 2) return;
 
   lastObservedStageWidth = observedWidth;
-  void scheduleRender({ delay: 120 });
+  scheduleRender({ delay: 120 }).catch(console.error);
 });
 
 onBeforeUnmount(() => {
-  lifecycleToken++;
-  void cleanupPdfState();
+  lifecycleToken += 1;
+  cleanupPdfState().catch(console.error);
 });
 
 function clampPage(page: number, maxPage: number) {
@@ -369,9 +263,7 @@ function buildMatchCandidates(value: string | string[]) {
       .map(segment => normalizeForMatch(segment))
       .filter(segment => segment.length >= 6);
 
-    segments
-      .sort((left, right) => right.length - left.length)
-      .forEach(segment => candidates.add(segment));
+    segments.sort((left, right) => right.length - left.length).forEach(segment => candidates.add(segment));
 
     // 添加冒号分割的前后部分作为额外候选
     const colonSegments = item.split(/[：:]/);
@@ -457,7 +349,7 @@ function scheduleSummaryLoading(pageNumbers: number[], options?: { delay?: numbe
 
   summaryLoadTimer = window.setTimeout(() => {
     summaryLoadTimer = null;
-    void flushSummaryQueue();
+    flushSummaryQueue().catch(console.error);
   }, options?.delay ?? 0);
 }
 
@@ -486,19 +378,22 @@ async function loadQueuedSummaries() {
 
   while (summaryQueue.length && pdfDocument.value === documentProxy && props.visible !== false) {
     const pageNumber = summaryQueue.shift();
+    // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
     if (!pageNumber || summaryLoadedPages.has(pageNumber) || summaryLoadingPages.has(pageNumber)) continue;
 
     summaryLoadingPages.add(pageNumber);
 
     try {
+      // eslint-disable-next-line no-await-in-loop -- Sequential PDF work bounds memory and preserves document lifecycle checks.
       const page = await documentProxy.getPage(pageNumber);
       if (pdfDocument.value !== documentProxy) return;
 
+      // eslint-disable-next-line no-await-in-loop -- Sequential PDF work bounds memory and preserves document lifecycle checks.
       const textContent = await page.getTextContent();
       if (pdfDocument.value !== documentProxy) return;
 
       updatePageSummary(pageNumber, textContent.items);
-    } catch (error) {
+    } catch {
       pageSummaries.value[pageNumber - 1] = {
         pageNumber,
         summary: buildFallbackSummary(pageNumber)
@@ -537,7 +432,7 @@ function openInNewTab() {
   const targetUrl = props.sourceUrl || props.url;
   if (!targetUrl) return;
 
-  const page = singlePagePreviewActive.value ? (props.sourcePageNumber || props.pageNumber || 1) : currentPage.value;
+  const page = singlePagePreviewActive.value ? props.sourcePageNumber || props.pageNumber || 1 : currentPage.value;
   window.open(`${targetUrl}#page=${page}`, '_blank', 'noopener,noreferrer');
 }
 
@@ -630,7 +525,7 @@ async function scheduleRender(options?: { immediate?: boolean; delay?: number })
 
   queuedRenderVersion += 1;
   const renderVersion = queuedRenderVersion;
-  const delay = options?.immediate ? 0 : options?.delay ?? 0;
+  const delay = options?.immediate ? 0 : (options?.delay ?? 0);
 
   if (renderTimer) {
     window.clearTimeout(renderTimer);
@@ -638,7 +533,7 @@ async function scheduleRender(options?: { immediate?: boolean; delay?: number })
 
   renderTimer = window.setTimeout(() => {
     renderTimer = null;
-    void flushRenderQueue(renderVersion);
+    flushRenderQueue(renderVersion).catch(console.error);
   }, delay);
 }
 
@@ -680,13 +575,29 @@ async function flushRenderQueue(renderVersion: number, expectedToken = lifecycle
     if (shouldRenderAgain && pdfDocument.value && !documentLoading.value) {
       await waitForAnimationFrame();
       await flushRenderQueue(queuedRenderVersion, lifecycleToken);
-      return;
     }
 
-    if (expectedToken === lifecycleToken) {
+    if (!shouldRenderAgain && expectedToken === lifecycleToken) {
       pageRendering.value = false;
     }
   }
+}
+
+function getDevicePixelRatio() {
+  return window.devicePixelRatio || 1;
+}
+function isBetterMatch(current: { score: number } | null, score: number, minimum: number) {
+  return score >= minimum && (!current || score > current.score);
+}
+
+function cancelCurrentRenderTasks() {
+  renderTask?.cancel();
+  renderTask = null;
+  textLayerTask?.cancel();
+  textLayerTask = null;
+}
+function isCurrentRender(token: number, version: number) {
+  return token === lifecycleToken && version === activeRenderVersion;
 }
 
 async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion = queuedRenderVersion) {
@@ -701,10 +612,7 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
   highlightRects.value = [];
 
   try {
-    renderTask?.cancel();
-    renderTask = null;
-    textLayerTask?.cancel();
-    textLayerTask = null;
+    cancelCurrentRenderTasks();
 
     const page = await documentProxy.getPage(currentPage.value);
     if (expectedToken !== lifecycleToken) return;
@@ -732,7 +640,7 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
       return;
     }
 
-    const devicePixelRatio = window.devicePixelRatio || 1;
+    const devicePixelRatio = getDevicePixelRatio();
     canvas.width = Math.floor(viewport.width * devicePixelRatio);
     canvas.height = Math.floor(viewport.height * devicePixelRatio);
     canvas.style.width = `${viewport.width}px`;
@@ -753,7 +661,7 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
     });
 
     await renderTask.promise;
-    if (expectedToken !== lifecycleToken || renderVersion !== activeRenderVersion) return;
+    if (!isCurrentRender(expectedToken, renderVersion)) return;
 
     const textContent = await page.getTextContent({
       includeMarkedContent: true
@@ -768,11 +676,11 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
 
     await textLayerTask.render();
     await nextTick();
-    if (expectedToken !== lifecycleToken || renderVersion !== activeRenderVersion) return;
+    if (!isCurrentRender(expectedToken, renderVersion)) return;
     lastSuccessfulRenderSignature = renderSignature;
     highlightCount.value = applyHighlight();
   } catch (error: any) {
-    if (isBenignRenderError(error) || expectedToken !== lifecycleToken || renderVersion !== activeRenderVersion) {
+    if (isBenignRenderError(error) || !isCurrentRender(expectedToken, renderVersion)) {
       return;
     }
     console.error('[PDF 预览] 页面渲染失败:', error);
@@ -795,12 +703,10 @@ function applyHighlight() {
   }
 
   const directSource = props.anchorText || props.searchText || '';
-  const directMatch = resolveDirectClueHighlight(
-    textLayer,
-    textLayerTask.textDivs,
-    textLayerTask.textContentItemsStr,
-    directSource
-  );
+  const directMatch = resolveDirectClueHighlight(textLayer, textLayerTask.textDivs, {
+    textItems: textLayerTask.textContentItemsStr,
+    clueText: directSource
+  });
   if (directMatch) {
     highlightRects.value = [directMatch.rect];
     highlightStatus.value = 'matched';
@@ -811,7 +717,10 @@ function applyHighlight() {
     return 1;
   }
 
-  const paragraphMatch = resolveParagraphHighlight(textLayer, textLayerTask.textDivs, textLayerTask.textContentItemsStr, candidates);
+  const paragraphMatch = resolveParagraphHighlight(textLayer, textLayerTask.textDivs, {
+    textItems: textLayerTask.textContentItemsStr,
+    anchors: candidates
+  });
   if (paragraphMatch) {
     highlightRects.value = [paragraphMatch.rect];
     highlightStatus.value = 'matched';
@@ -887,9 +796,9 @@ function getPageOnlyStatus(): 'idle' | 'page-only' {
 function resolveDirectClueHighlight(
   container: HTMLElement,
   textDivs: HTMLElement[],
-  textItems: string[],
-  clueText: string
+  context: { textItems: string[]; clueText: string }
 ) {
+  const { textItems, clueText } = context;
   const compactClue = compactForMatch(clueText);
   if (compactClue.length < 8) return null;
 
@@ -957,6 +866,7 @@ function resolveMatchRange(target: string, anchors: string[]): [number, number] 
   if (!target || !anchors.length) return null;
 
   for (const anchor of anchors) {
+    // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
     if (!anchor) continue;
 
     const exactMatchIndex = target.indexOf(anchor);
@@ -965,6 +875,7 @@ function resolveMatchRange(target: string, anchors: string[]): [number, number] 
     }
 
     const partialAnchor = anchor.slice(0, Math.min(anchor.length, 48)).trim();
+    // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
     if (partialAnchor.length < 8) continue;
 
     const partialMatchIndex = target.indexOf(partialAnchor);
@@ -976,12 +887,19 @@ function resolveMatchRange(target: string, anchors: string[]): [number, number] 
   return null;
 }
 
+function breaksParagraphContinuity(line: TextLine, previous: TextLine | null) {
+  if (!previous) return false;
+  const gap = line.rect.top - (previous.rect.top + previous.rect.height);
+  const tolerance = Math.max(10, Math.min(previous.rect.height, line.rect.height) * 1.2);
+  return gap > tolerance || (isLikelyListStart(line.rawText) && /[。！？!?]$/.test(previous.rawText.trim()));
+}
+
 function resolveParagraphHighlight(
   container: HTMLElement,
   textDivs: HTMLElement[],
-  textItems: string[],
-  anchors: string[]
+  context: { textItems: string[]; anchors: string[] }
 ) {
+  const { textItems, anchors } = context;
   const lines = buildTextLines(container, textDivs, textItems);
   if (!lines.length) return null;
 
@@ -1013,18 +931,7 @@ function resolveParagraphHighlight(
     for (let end = start; end < Math.min(lines.length, start + maxWindowSize); end += 1) {
       const line = lines[end];
       const previousLine = end > start ? lines[end - 1] : null;
-      if (previousLine) {
-        const previousBottom = previousLine.rect.top + previousLine.rect.height;
-        const verticalGap = line.rect.top - previousBottom;
-        const continuityTolerance = Math.max(10, Math.min(previousLine.rect.height, line.rect.height) * 1.2);
-        if (verticalGap > continuityTolerance) {
-          break;
-        }
-      }
-
-      if (previousLine && isLikelyListStart(line.rawText) && /[。！？!?]$/.test(previousLine.rawText.trim())) {
-        break;
-      }
+      if (breaksParagraphContinuity(line, previousLine)) break;
 
       if (mergedText) {
         mergedText += ' ';
@@ -1038,6 +945,7 @@ function resolveParagraphHighlight(
       bottom = Math.max(bottom, line.rect.top + line.rect.height);
       firstElement ??= line.elements[0];
 
+      // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
       if (mergedCompactText.length < 6) continue;
 
       const primaryScore = scoreAgainstAnchor(mergedText, mergedCompactText, primaryAnchor);
@@ -1045,6 +953,7 @@ function resolveParagraphHighlight(
         ? scoreParagraphMatch(mergedText, mergedCompactText, secondaryAnchors)
         : 0;
       const score = Math.max(primaryScore * 1.12, secondaryScore);
+      // eslint-disable-next-line no-continue -- Skip unmatched text candidates while retaining explicit loop guard clauses.
       if (score <= 0) continue;
 
       const paddedRect = clampRectToContainer(
@@ -1060,14 +969,14 @@ function resolveParagraphHighlight(
 
       const primaryMinimum = getPrimaryMatchMinimum(primaryAnchor.compact.length);
       if (primaryScore >= primaryMinimum) {
-        if (!bestPrimaryMatch || score > bestPrimaryMatch.score) {
+        if (isBetterMatch(bestPrimaryMatch, score, 0)) {
           bestPrimaryMatch = {
             rect: paddedRect,
             firstElement,
             score
           };
         }
-      } else if (secondaryScore >= 0.62 && (!bestFallbackMatch || secondaryScore > bestFallbackMatch.score)) {
+      } else if (isBetterMatch(bestFallbackMatch, secondaryScore, 0.62)) {
         bestFallbackMatch = {
           rect: paddedRect,
           firstElement,
@@ -1144,14 +1053,12 @@ function buildTextLines(container: HTMLElement, textDivs: HTMLElement[], textIte
 
     targetLine.rect.left = Math.min(targetLine.rect.left, relativeRect.left);
     targetLine.rect.top = Math.min(targetLine.rect.top, relativeRect.top);
-    targetLine.rect.width = Math.max(
-      targetLine.rect.left + targetLine.rect.width,
-      relativeRect.left + relativeRect.width
-    ) - targetLine.rect.left;
-    targetLine.rect.height = Math.max(
-      targetLine.rect.top + targetLine.rect.height,
-      relativeRect.top + relativeRect.height
-    ) - targetLine.rect.top;
+    targetLine.rect.width =
+      Math.max(targetLine.rect.left + targetLine.rect.width, relativeRect.left + relativeRect.width) -
+      targetLine.rect.left;
+    targetLine.rect.height =
+      Math.max(targetLine.rect.top + targetLine.rect.height, relativeRect.top + relativeRect.height) -
+      targetLine.rect.top;
     targetLine.centerY = (targetLine.centerY * targetLine.elements.length + centerY) / (targetLine.elements.length + 1);
     targetLine.rawText = `${targetLine.rawText} ${rawText}`;
     targetLine.text = `${targetLine.text} ${text}`;
@@ -1170,10 +1077,14 @@ function buildTextLines(container: HTMLElement, textDivs: HTMLElement[], textIte
 function isLikelyListStart(text: string) {
   const value = text.trim();
   if (!value) return false;
-  return /^[•·●○▪▸\-–—\d]+[\.\)、\s]?/.test(value);
+  return /^[•·●○▪▸\-–—\d]+[.)、\s]?/.test(value);
 }
 
-function scoreParagraphMatch(text: string, compactText: string, anchors: Array<{ normalized: string; compact: string }>) {
+function scoreParagraphMatch(
+  text: string,
+  compactText: string,
+  anchors: Array<{ normalized: string; compact: string }>
+) {
   let bestScore = 0;
   for (const anchor of anchors) {
     bestScore = Math.max(bestScore, scoreAgainstAnchor(text, compactText, anchor));
@@ -1280,6 +1191,7 @@ async function waitForStageReady(expectedToken = lifecycleToken) {
       return;
     }
 
+    // eslint-disable-next-line no-await-in-loop -- Sequential PDF work bounds memory and preserves document lifecycle checks.
     await waitForAnimationFrame();
   }
 }
@@ -1396,6 +1308,114 @@ async function cleanupPdfState() {
   highlightStatus.value = 'idle';
 }
 </script>
+
+<template>
+  <div class="pdf-viewer-shell">
+    <div v-if="!embeddedHeader" class="pdf-viewer-toolbar">
+      <div class="toolbar-copy">
+        <span class="viewer-badge">{{ singlePagePreviewActive ? '单页定位' : 'PDF 预览' }}</span>
+        <span class="viewer-kicker">{{ viewerKicker }}</span>
+      </div>
+      <div class="toolbar-actions">
+        <span class="toolbar-chip">
+          <template v-if="singlePagePreviewActive">第 {{ displayCurrentPage }} 页</template>
+          <template v-else>第 {{ displayCurrentPage }} / {{ totalPages || 1 }} 页</template>
+        </span>
+        <span class="toolbar-chip">{{ Math.round(zoom * 100) }}%</span>
+        <template v-if="!singlePagePreviewActive">
+          <NButton size="tiny" quaternary :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">
+            <template #icon>
+              <icon-mdi-chevron-left />
+            </template>
+          </NButton>
+          <NButton size="tiny" quaternary :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">
+            <template #icon>
+              <icon-mdi-chevron-right />
+            </template>
+          </NButton>
+        </template>
+        <NButton size="tiny" quaternary :disabled="zoom <= minZoom" @click="zoomOut">
+          <template #icon>
+            <icon-mdi-magnify-minus-outline />
+          </template>
+        </NButton>
+        <NButton size="tiny" quaternary :disabled="zoom >= maxZoom" @click="zoomIn">
+          <template #icon>
+            <icon-mdi-magnify-plus-outline />
+          </template>
+        </NButton>
+        <NButton size="tiny" secondary @click="resetZoom">适应宽度</NButton>
+        <NButton size="tiny" secondary @click="openInNewTab">
+          <template #icon>
+            <icon-mdi-open-in-new />
+          </template>
+          新窗口
+        </NButton>
+      </div>
+    </div>
+
+    <div class="pdf-viewer-body" :class="{ 'is-single-page': singlePagePreviewActive }">
+      <aside v-if="!singlePagePreviewActive" class="page-sidebar">
+        <button
+          v-for="page in pageSummaries"
+          :key="page.pageNumber"
+          type="button"
+          class="page-nav-item"
+          :class="{
+            'is-active': page.pageNumber === currentPage,
+            'is-target': page.pageNumber === targetPageNumber
+          }"
+          @click="goToPage(page.pageNumber)"
+        >
+          <span class="page-nav-number">P{{ displayPageNumber(page.pageNumber) }}</span>
+          <span class="page-nav-summary">{{ page.summary || `第 ${page.pageNumber} 页` }}</span>
+        </button>
+      </aside>
+
+      <div ref="stageRef" class="page-stage">
+        <div v-if="documentLoading" class="stage-feedback">
+          <NSpin size="large" />
+          <span>正在加载 PDF 文档</span>
+        </div>
+        <div v-else-if="renderError" class="stage-feedback is-error">
+          <icon-mdi-alert-circle class="text-24" />
+          <span>{{ renderError }}</span>
+        </div>
+        <div v-else class="page-scroll-shell">
+          <div v-if="!embeddedHeader" class="page-meta-row">
+            <span>第 {{ displayCurrentPage }} 页</span>
+            <span v-if="highlightCount > 0">已匹配到相关文本</span>
+            <span v-else-if="highlightStatus === 'page-only'">已定位到引用页，未框选图片内文字</span>
+            <span v-else-if="currentPage === targetPageNumber">引用定位页</span>
+            <span v-else>浏览当前页</span>
+          </div>
+
+          <div ref="pageShellRef" class="pdf-page-shell">
+            <canvas ref="canvasRef" class="pdf-canvas" />
+            <div v-if="highlightRects.length" class="pdf-highlight-overlay">
+              <div
+                v-for="(rect, index) in highlightRects"
+                :key="`${index}-${rect.left}-${rect.top}`"
+                class="pdf-highlight-rect"
+                :style="{
+                  left: `${rect.left}px`,
+                  top: `${rect.top}px`,
+                  width: `${rect.width}px`,
+                  height: `${rect.height}px`
+                }"
+              />
+            </div>
+            <div ref="textLayerRef" class="textLayer pdf-text-layer" />
+            <div v-if="pageRendering" class="page-loading-mask">
+              <NSpin size="small" />
+              <span>正在渲染页面</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped lang="scss">
 .pdf-viewer-shell {
@@ -1515,11 +1535,7 @@ async function cleanupPdfState() {
 .pdf-highlight-rect {
   @apply absolute;
   border-radius: 6px;
-  background: linear-gradient(
-    180deg,
-    rgba(64, 169, 255, 0.12) 0%,
-    rgba(24, 144, 255, 0.28) 100%
-  );
+  background: linear-gradient(180deg, rgba(64, 169, 255, 0.12) 0%, rgba(24, 144, 255, 0.28) 100%);
   box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.12);
   opacity: 0.92;
 }

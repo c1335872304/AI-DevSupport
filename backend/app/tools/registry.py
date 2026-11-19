@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from typing import Iterable
+from collections.abc import Awaitable, Callable, Iterable
 
 from app.core.config import get_settings
 from app.core.content_safety import sanitize_untrusted_data
@@ -11,15 +11,20 @@ from app.tools.base import BaseTool, ToolExecutionContext, ToolResult
 from app.tools.local.knowledge import GetDocumentTool, ListDocumentsTool, SearchKnowledgeTool
 from app.tools.local.skill import ActivateSkillTool, ReadSkillReferenceTool, RunSkillScriptTool
 from app.tools.local.support import CreateSupportHandoffTool, GetSupportHandoffTool
-from app.tools.local.api_support import QueryApiKeyStatusTool, QueryCallLogTool, QueryErrorCodeTool, QueryRecentCallStatsTool
+from app.tools.local.api_support import QueryApiKeyStatusTool, QueryCallLogTool, QueryErrorCodeTool, QueryRecentCallStatsTool, QueryRequestObservationTool
 from app.tools.local.billing import QueryBillTool, QueryPlanTool, QueryUsageTool
 from app.tools.validation import ToolValidationError, validate_json_schema
-from app.core.observability import observe_tool, trace_span
 
 
 class ToolRegistry:
-    def __init__(self, tools: Iterable[BaseTool] | None = None) -> None:
+    def __init__(
+        self,
+        tools: Iterable[BaseTool] | None = None,
+        *,
+        transport: Callable[[BaseTool, ToolExecutionContext, dict], Awaitable[ToolResult]] | None = None,
+    ) -> None:
         self.settings = get_settings()
+        self._transport = transport
         self._tools: dict[str, BaseTool] = {}
         for tool in tools or []:
             self.register(tool)
@@ -59,7 +64,6 @@ class ToolRegistry:
         tool = self.get(name)
         if not tool:
             result = ToolResult(status="ERROR", error=f"Unknown tool: {name}")
-            observe_tool(name, result.status, result.duration_ms)
             return result
         started = time.monotonic()
         # Honor an explicit per-tool timeout.  The previous implementation
@@ -78,19 +82,21 @@ class ToolRegistry:
             if tool.required_scopes and "*" not in context.scopes and not tool.required_scopes.issubset(context.scopes):
                 missing = sorted(tool.required_scopes - context.scopes)
                 raise PermissionError(f"Tool {name} requires scopes: {', '.join(missing)}")
-            with trace_span("tool.execute", {"tool.name": name, "tool.source": context.source, "tool.risk": tool.risk_level}):
-                async with asyncio.timeout(timeout):
-                    data = await tool.execute(context, arguments)
+            async with asyncio.timeout(timeout):
+                if self._transport is not None:
+                    return await self._transport(tool, context, arguments)
+                data = await tool.execute(context, arguments)
             result = ToolResult(status="SUCCESS", data=data, duration_ms=int((time.monotonic() - started) * 1000))
         except asyncio.TimeoutError:
             result = ToolResult(status="TIMEOUT", error=f"Tool timed out after {timeout:g}s", duration_ms=int((time.monotonic() - started) * 1000))
         except ToolValidationError as exc:
             result = ToolResult(status="INVALID_ARGUMENT", error=str(exc), duration_ms=int((time.monotonic() - started) * 1000))
+        except ValueError as exc:
+            result = ToolResult(status="INVALID_ARGUMENT", error=str(exc), duration_ms=int((time.monotonic() - started) * 1000))
         except PermissionError as exc:
             result = ToolResult(status="DENIED", error=str(exc), duration_ms=int((time.monotonic() - started) * 1000))
         except Exception as exc:
             result = ToolResult(status="ERROR", error=str(exc), duration_ms=int((time.monotonic() - started) * 1000))
-        observe_tool(name, result.status, result.duration_ms)
         return result
 
     def serialize_result_for_model(self, result: ToolResult) -> str:
@@ -113,4 +119,4 @@ class ToolRegistry:
         return raw[:limit] + '\n...<tool result truncated by Agent Runtime>'
 
 
-tool_registry = ToolRegistry([SearchKnowledgeTool(), ListDocumentsTool(), GetDocumentTool(), QueryCallLogTool(), QueryApiKeyStatusTool(), QueryRecentCallStatsTool(), QueryErrorCodeTool(), QueryPlanTool(), QueryUsageTool(), QueryBillTool(), CreateSupportHandoffTool(), GetSupportHandoffTool(), ActivateSkillTool(), ReadSkillReferenceTool(), RunSkillScriptTool()])
+tool_registry = ToolRegistry([SearchKnowledgeTool(), ListDocumentsTool(), GetDocumentTool(), QueryRequestObservationTool(), QueryCallLogTool(), QueryApiKeyStatusTool(), QueryRecentCallStatsTool(), QueryErrorCodeTool(), QueryPlanTool(), QueryUsageTool(), QueryBillTool(), CreateSupportHandoffTool(), GetSupportHandoffTool(), ActivateSkillTool(), ReadSkillReferenceTool(), RunSkillScriptTool()])

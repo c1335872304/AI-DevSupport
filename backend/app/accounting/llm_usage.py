@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class LLMUsageMeter:
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    finish_reasons: list[dict[str, str]] = field(default_factory=list)
+    provider_errors: list[str] = field(default_factory=list)
 
     @property
     def total_tokens(self) -> int:
@@ -33,9 +35,23 @@ def capture_llm_usage():
 
 
 def record_provider_usage(usage: dict | None) -> None:
+    from app.accounting.provider_ledger import observe_usage
+    observe_usage(usage)
     meter = _current_meter.get()
     if meter is None or not isinstance(usage, dict):
         return
     prompt = usage.get("prompt_tokens", usage.get("input_tokens", 0))
     completion = usage.get("completion_tokens", usage.get("output_tokens", 0))
     meter.add(int(prompt or 0), int(completion or 0))
+
+
+def record_provider_finish(stage: str, reason: str) -> None:
+    meter = _current_meter.get()
+    if meter is not None and reason:
+        meter.finish_reasons.append({"stage": stage, "reason": reason})
+
+
+def record_provider_error(reason: str) -> None:
+    meter = _current_meter.get()
+    if meter is not None:
+        meter.provider_errors.append(reason)

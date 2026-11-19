@@ -54,12 +54,17 @@ const params = computed(() => {
 
 let latestRequest = 0;
 
-watch([userId, range], () => {
-  void getList();
-}, { immediate: true, deep: true });
+watch(
+  [userId, range],
+  () => {
+    getList().catch(console.error);
+  },
+  { immediate: true, deep: true }
+);
 
 async function getList() {
-  const requestId = ++latestRequest;
+  latestRequest += 1;
+  const requestId = latestRequest;
   loading.value = true;
   const { error, data } = await request<Api.Chat.Message[]>({
     url: 'admin/conversation',

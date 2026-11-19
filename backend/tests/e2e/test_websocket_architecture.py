@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+import threading
+from typing import Any, ClassVar
 from uuid import uuid4
 
 import pytest
@@ -24,7 +25,7 @@ from app.tools.registry import ToolRegistry
 class _WebSocketKnowledgeTool(BaseTool):
     name = "search_knowledge"
     description = "fixed knowledge result for WebSocket architecture E2E"
-    input_schema = {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
+    input_schema: ClassVar[dict] = {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}
     read_only = True
     parallel_safe = True
 
@@ -49,7 +50,7 @@ class _WebSocketKnowledgeTool(BaseTool):
 class _WebSocketDocumentTool(BaseTool):
     name = "get_document"
     description = "fixed parent-context result for WebSocket architecture E2E"
-    input_schema = {
+    input_schema: ClassVar[dict] = {
         "type": "object",
         "properties": {
             "file_md5": {"type": "string"},
@@ -104,7 +105,7 @@ async def _delete_user(username: str) -> None:
     await engine.dispose()
 
 
-def test_websocket_to_agent_final_answer_e2e_without_llm_api_key(monkeypatch: pytest.MonkeyPatch):
+def test_websocket_to_agent_final_answer_with_mocked_model(monkeypatch: pytest.MonkeyPatch):
     """Exercise the browser transport through the target workflow with fixed model output."""
     username = f"ws-architecture-{uuid4().hex}"
     asyncio.run(engine.dispose())
@@ -121,6 +122,8 @@ def test_websocket_to_agent_final_answer_e2e_without_llm_api_key(monkeypatch: py
     document = _WebSocketDocumentTool()
     previous_redis = bool(agent_runtime.settings.redis_enabled)
     planner_turn = 0
+    release_tail = threading.Event()
+    provider_finished = threading.Event()
 
     async def no_semantic_route(*_args, **_kwargs):
         return {}
@@ -159,26 +162,40 @@ def test_websocket_to_agent_final_answer_e2e_without_llm_api_key(monkeypatch: py
         assert any(item["source"].get("referenceNumber") == 1 for item in excerpts)
         assert payload["handoffResult"]["attempted"] is False
         yield "符合条件的购买可在支付后 7 天内提交退款申请；是否批准仍需按订单和账单核验（来源#1）。"
+        # The browser transport must deliver this sentence before the model can
+        # finish. A whole-answer buffer makes this handshake fail deterministically.
+        async with asyncio.timeout(8):
+            while not release_tail.is_set():
+                await asyncio.sleep(0.01)
+        yield "\n请按适用条件进一步核对。"
+        yield "\n\n```python\nimport os\ntoken = os.getenv('PAISMART_TOKEN')\npri"
+        yield "nt(token)\n```\n"
+        provider_finished.set()
 
     monkeypatch.setattr(llm_service, "classify_intent", no_semantic_route)
     monkeypatch.setattr(llm_service, "stream_agent_turn", specialist_plan)
     monkeypatch.setattr(llm_service, "stream_messages", final_response)
+    monkeypatch.setattr(llm_service.settings, "llm_api_key", "test-only")
     monkeypatch.setattr(agent_runtime, "registry", ToolRegistry([knowledge, document]))
     monkeypatch.setattr(agent_runtime.settings, "redis_enabled", False)
 
     try:
-        with TestClient(app) as client:
-            with client.websocket_connect("/chat") as websocket:
-                websocket.send_json({"type": "auth", "token": token})
-                assert websocket.receive_json()["type"] == "connection"
-                websocket.send_text("退款政策是什么？")
+        with TestClient(app) as client, client.websocket_connect("/chat") as websocket:
+            websocket.send_json({"type": "auth", "token": token})
+            assert websocket.receive_json()["type"] == "connection"
+            websocket.send_text("退款政策是什么？")
 
-                events: list[dict[str, Any]] = []
-                while True:
-                    event = websocket.receive_json()
-                    events.append(event)
-                    if event.get("type") == "completion":
-                        break
+            events: list[dict[str, Any]] = []
+            while True:
+                event = websocket.receive_json()
+                events.append(event)
+                if event.get("type") == "chunk" and "7 天内提交退款申请" in str(event.get("chunk") or ""):
+                    assert not provider_finished.is_set()
+                    release_tail.set()
+                if event.get("code", 0) >= 400:
+                    raise AssertionError("WebSocket generation failed: " + str(event))
+                if event.get("type") == "completion":
+                    break
 
         event_types = {str(event.get("type")) for event in events}
         assert {"start", "routing_decision", "target_specialists_dispatched", "tool_call", "evidence_summary", "handoff_decision", "chunk", "completion"} <= event_types
@@ -187,10 +204,20 @@ def test_websocket_to_agent_final_answer_e2e_without_llm_api_key(monkeypatch: py
         assert nodes.index("target_handoff_decision") < nodes.index("target_generate_response") < nodes.index("safety")
         assert "target_create_handoff" not in nodes
         assert knowledge.calls == [{"query": "退款政策是什么？"}]
-        assert document.calls == [{"file_md5": "b" * 32, "chunk_id": 1, "max_chars": 5000}]
+        # The verified search excerpt already answers this question.
+        assert document.calls == []
         assert any("7 天内提交退款申请" in str(event.get("chunk") or "") for event in events)
         assert events[-1]["type"] == "completion"
+        assert release_tail.is_set() and provider_finished.is_set()
+        assert "请按适用条件" in events[-1]["content"]
+        visible = "".join(
+            str(event.get("chunk") or event.get("content") or "")
+            for event in events if event.get("type") in {"chunk", "answer_replace", "completion"}
+        )
+        assert "print(token)" not in visible
+        assert "os.getenv('PAISMART_TOKEN')" in visible
     finally:
+        release_tail.set()
         monkeypatch.setattr(agent_runtime.settings, "redis_enabled", previous_redis)
         asyncio.run(engine.dispose())
         asyncio.run(_delete_user(username))

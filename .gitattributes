@@ -1,0 +1,10 @@
+# Evaluation manifests hash these files byte-for-byte.
+/backend/eval/phase4/diagnosis.jsonl -text
+/backend/eval/vendor_full_rag.jsonl -text
+/backend/eval/customer_service/benchmark.jsonl -text
+/backend/eval/customer_service/benchmark_extended.jsonl -text
+/backend/eval/customer_service/phase_a_regression.jsonl -text
+/backend/eval/customer_service/phase_a_release.jsonl -text
+/backend/vendor_knowledge/*.md -text
+/backend/demo_knowledge/vendor-*.md -text
+/backend/vendor_knowledge/raw/** -text

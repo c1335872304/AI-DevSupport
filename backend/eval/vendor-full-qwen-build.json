@@ -1,0 +1,67 @@
+{
+  "startedAt": "2026-10-19T13:01:13.580932+00:00",
+  "status": "COMPLETED",
+  "model": "text-embedding-v4",
+  "dimension": 256,
+  "manifest": "C:\\codes\\AI_DevSupport\\backend\\vendor_knowledge\\manifest.json",
+  "selectedDocuments": 60,
+  "tokenUpperBoundLimit": 4000000,
+  "tokenUpperBoundSubmitted": 3350143,
+  "providerReportedTokens": 849838,
+  "oldDocumentsRebuilt": [
+    "api-getting-started.md",
+    "authentication.md",
+    "rate-limit.md",
+    "billing-policy.md",
+    "refund-policy.md",
+    "error-codes.md",
+    "troubleshooting-faq.md",
+    "security-and-data-handling.md",
+    "release-notes.md"
+  ],
+  "backup": "data\\backups\\before-qwen-d95fe8fb797f4607a5659f75d28eba94.sqlite",
+  "probeDimension": 256,
+  "retrieval": {
+    "caseCount": 120,
+    "summary": {
+      "queries": 120,
+      "hitRate": 0.9416666666666667,
+      "recall": 0.9416666666666667,
+      "mrr": 0.7719444444444445,
+      "ndcg": 0.8135621364055675
+    },
+    "byCaseType": {
+      "filtered_smoke": {
+        "caseCount": 60,
+        "metrics": {
+          "queries": 60,
+          "hitRate": 0.9833333333333333,
+          "recall": 0.9833333333333333,
+          "mrr": 0.8450000000000001,
+          "ndcg": 0.8791033136504354
+        }
+      },
+      "unfiltered_query": {
+        "caseCount": 60,
+        "metrics": {
+          "queries": 60,
+          "hitRate": 0.9,
+          "recall": 0.9,
+          "mrr": 0.6988888888888888,
+          "ndcg": 0.7480209591606998
+        }
+      }
+    }
+  },
+  "ownerVectorsByModel": {
+    "text-embedding-v4": 5917
+  },
+  "ownerDocuments": 69,
+  "finishedAt": "2026-10-19T13:08:54.253160+00:00",
+  "probeAndQueryProviderTokens": 1878,
+  "documentProviderTokens": 847960,
+  "usageAccounting": "Reconciled per-document Provider-reported usage with the outer probe/query meter; nested capture propagation is now fixed for subsequent runs.",
+  "estimatedInputCostCnyAtListPrice": 0.424919,
+  "priceSource": "https://help.aliyun.com/zh/model-studio/text-embedding-v4",
+  "priorStandaloneConnectivityProbeTokens": 7
+}

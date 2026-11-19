@@ -5,6 +5,7 @@ import ChatList from './modules/chat-list.vue';
 import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
 import ReferencePreviewPage from './modules/reference-preview-page.vue';
+import ApprovalPanel from './modules/approval-panel.vue';
 
 const route = useRoute();
 const showReferencePreview = computed(() => route.query.preview === 'reference');
@@ -30,6 +31,7 @@ const sidebarCollapsed = ref(false);
           <icon-material-symbols:left-panel-open-outline-rounded class="text-18px" />
         </button>
         <ChatList />
+        <ApprovalPanel />
         <InputBox />
       </div>
     </div>

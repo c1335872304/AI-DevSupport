@@ -1,6 +1,6 @@
 # 套餐、用量、发票与费用争议手册
 
-本文档解释 PaiSmart Demo 的计费规则和客服边界。它可以回答“费用怎么算”，不能证明“某个客户本月实际产生了多少费用”。个人真实账单必须通过 `query_plan`、`query_usage`、`query_bill` 或本地 Billing MCP 查询。
+本文档解释 API Assistant Demo 的计费规则和客服边界。它可以回答“费用怎么算”，不能证明“某个客户本月实际产生了多少费用”。个人真实账单必须通过 `query_plan`、`query_usage`、`query_bill` 或本地 Billing MCP 查询。
 
 ## 1. Professional Demo 套餐
 

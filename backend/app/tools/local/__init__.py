@@ -1,1 +1,1 @@
-"""Local tools backed by PaiSmart domain services."""
+"""Local tools backed by API Assistant domain services."""

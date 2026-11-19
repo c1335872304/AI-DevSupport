@@ -18,7 +18,7 @@ class _CompiledCompatGraph:
     """Tiny development/test fallback for environments without the langgraph package.
 
     Production installs the real ``langgraph`` dependency. This fallback only implements
-    the subset PaiSmart uses so isolated unit tests can still exercise the exact workflow
+    the subset API Assistant uses so isolated unit tests can still exercise the exact workflow
     nodes and routes when third-party packages are unavailable in the execution sandbox.
     """
 

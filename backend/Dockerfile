@@ -1,4 +1,16 @@
-FROM python:3.12-slim AS base
+FROM python:3.12-slim AS os-base
+
+RUN apt-get -o Acquire::Retries=3 update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends libglib2.0-0 libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM os-base AS parser
+COPY requirements-docling.txt /tmp/requirements-docling.txt
+RUN python -m venv /opt/docling \
+    && /opt/docling/bin/pip install --index-url https://download.pytorch.org/whl/cpu torch==2.14.1 torchvision==0.29.1 \
+    && /opt/docling/bin/pip install -r /tmp/requirements-docling.txt transformers==4.57.6
+
+FROM os-base AS base
 
 WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,18 +22,24 @@ RUN pip install -r requirements.txt
 
 FROM base AS runtime
 
+COPY --from=parser /opt/docling /opt/docling
+ENV DOCLING_PYTHON=/opt/docling/bin/python \
+    DOCLING_ARTIFACTS_PATH=/app/data/models/docling \
+    HF_HOME=/tmp/huggingface
+
 # Runtime code and runtime Skill assets are both required.
 COPY app ./app
 COPY skills ./skills
 COPY scripts ./scripts
 COPY demo_knowledge ./demo_knowledge
+COPY vendor_knowledge ./vendor_knowledge
 COPY eval ./eval
 
 # Keep migrations in the image so deployment jobs can run `alembic upgrade head`.
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 
-COPY run.py mcp_server.py billing_mcp_server.py ./
+COPY run.py mcp_server.py billing_mcp_server.py pyproject.toml ./
 
 RUN groupadd --system paismart \
     && useradd --system --gid paismart --home-dir /app --no-create-home paismart \

@@ -108,9 +108,9 @@ async def main_async(args) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate PaiSmart RAG retrieval from a JSONL dataset")
+    parser = argparse.ArgumentParser(description="Evaluate API Assistant RAG retrieval from a JSONL dataset")
     parser.add_argument("dataset", help="JSONL dataset path")
-    parser.add_argument("--username", default="admin", help="Existing PaiSmart username used for permission-aware retrieval")
+    parser.add_argument("--username", default="admin", help="Existing API Assistant username used for permission-aware retrieval")
     parser.add_argument("-k", type=int, default=6, help="Evaluation cutoff")
     parser.add_argument("--output", help="Optional JSON report path")
     return parser.parse_args()

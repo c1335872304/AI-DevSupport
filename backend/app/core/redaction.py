@@ -3,24 +3,35 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 _REDACTED = "[REDACTED]"
 _SENSITIVE_FIELD = re.compile(
     r"(?:password|passwd|secret|token|api[_ -]?key|authorization|bearer|credential|"
     r"private[_ -]?key|access[_ -]?token|refresh[_ -]?token)",
     re.IGNORECASE,
 )
+_ENV_EXPRESSION = (
+    r"(?:os\.environ\[(?:\"[A-Z_][A-Z0-9_]*\"|'[A-Z_][A-Z0-9_]*')\]|"
+    r"os\.getenv\((?:\"[A-Z_][A-Z0-9_]*\"|'[A-Z_][A-Z0-9_]*')\)|"
+    r"process\.env\.[A-Z_][A-Z0-9_]*)"
+)
 _KEY_VALUE = re.compile(
     r"((?:api[_ -]?key|access[_ -]?token|refresh[_ -]?token|password|passwd|secret|"
-    r"authorization|bearer)\s*[:=]\s*[\"']?)([^\s,;\"']+)",
+    r"authorization|bearer)\s*[:=]\s*[\"']?)(" + _ENV_EXPRESSION + r"|[^\s,;\"']+)",
     re.IGNORECASE,
 )
-_BEARER = re.compile(r"(\bBearer\s+)[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
+_BEARER = re.compile(r"(\bBearer\s+[\x22']?)[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
 _OPENAI_STYLE_KEY = re.compile(r"\b(?:sk|ak|rk)-[A-Za-z0-9][A-Za-z0-9_-]{7,}\b", re.IGNORECASE)
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
 
 
 def _replace_value(match: re.Match[str]) -> str:
+    if match.group(1).lstrip().lower().startswith("authorization") and match.group(2).lower() == "bearer":
+        # The scheme is public syntax. The credential after it is masked separately.
+        return match.group(0)
+    # An environment lookup in a documentation example is code, not the value
+    # of that variable. Never evaluate it; literal credentials still get masked.
+    if not match.group(1).endswith(("'", '"')) and re.fullmatch(_ENV_EXPRESSION, match.group(2)):
+        return match.group(0)
     return f"{match.group(1)}{_REDACTED}"
 
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
+from app.agent.diagnostic_window import DiagnosticWindow
 from app.agent.types import AgentToolCall
 from app.skill_runtime.trace import SkillTrace
 
@@ -14,11 +15,24 @@ class CustomerServiceState(TypedDict, total=False):
     history: list[dict]
     conversation_id: str
     generation_id: str
+    turn_context: Any
+    shadow_context: Any
+    context_shadow_metrics: dict[str, Any]
+    diagnosis_id: str | None
+    diagnosis_lease: Any
+    diagnosis_decision: dict[str, Any]
 
     # Prompt / skills
+    planning_skill_context: dict[str, Any]
+    evidence_followup_count: int
+    evidence_followup_running: bool
     active_skills: list[str]
     skill_trace: SkillTrace
     intent_classification: dict[str, Any]
+    clarification_question: str
+    diagnostic_window: DiagnosticWindow
+    simple_document_candidate: bool
+    simple_document_complete: bool
     entity_memory: dict[str, str]
     entities: dict[str, str]
     entity_sources: dict[str, str]

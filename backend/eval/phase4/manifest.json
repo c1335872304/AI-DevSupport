@@ -1,0 +1,68 @@
+{
+  "version": "2026-10-20-v1.1",
+  "diagnosisSplits": {
+    "development": 8,
+    "holdout": 16
+  },
+  "labelCorrections": [
+    "Initial oracle corrected: user report waits for recheck; rejected rechecks retain historical candidates, while current decision has no supported new cause. Original failing artifacts retained."
+  ],
+  "inputs": [
+    {
+      "path": "eval/phase4/diagnosis.jsonl",
+      "sha256": "badab021b928482c86da44001335203d8ad3a467a9f8f9becc0559fcd2a86176"
+    },
+    {
+      "path": "eval/vendor_full_rag.jsonl",
+      "sha256": "6ab30999f3e3bf717ae1e060df0c862ea5d2ff2939477f152449c48facb26d87"
+    },
+    {
+      "path": "eval/customer_service/benchmark.jsonl",
+      "sha256": "dc07fce7157471ff02c4c7e7e3ee52892537001df6cc94e678ea5bcef997ca4b"
+    },
+    {
+      "path": "eval/customer_service/benchmark_extended.jsonl",
+      "sha256": "e6273c2317ef90b487d7b2a1c7a89b102df71c3a22f36bba068fae5089ff1778"
+    }
+  ],
+  "externalReplayInputs": [
+    {
+      "path": "data/checkpoints/phase1-start/source.zip",
+      "sha256": "155e8cd3a64dd846b5e2e6f4f0dfb51b92acf31958173f4070aaa34ee727e0b7"
+    },
+    {
+      "path": "data/checkpoints/phase1-start/query-vectors.json",
+      "sha256": "b0cf1210fe4e902192791e6ac23e17f679d9f97b0ff8e128887d92c269a588bd"
+    },
+    {
+      "path": "data/checkpoints/phase4-start/source.zip",
+      "sha256": "5bf067a71c2d37096e0a9f16a53feae628ced4f950eb1ba875a44a40ac68827e"
+    }
+  ],
+  "regressionGroups": {
+    "index_concurrency_gc_revisions_accounting_acl": [
+      "tests/knowledge/test_build_coordination.py",
+      "tests/knowledge/test_multi_process_claim.py"
+    ],
+    "diagnosis_recheck_permission_restart_idempotency": [
+      "tests/agent/test_diagnosis_loop.py"
+    ],
+    "security": [
+      "tests/security"
+    ],
+    "ranking": [
+      "tests/knowledge/test_rag_quality.py"
+    ]
+  },
+  "gates": {
+    "criticalFailures": 0,
+    "criticalSkipped": 0,
+    "retrievalQualityDrop": 0,
+    "diagnosisEpisodeFailures": 0,
+    "optimization": "strictly fewer planner invocations with same outcomes and business tool count"
+  },
+  "limitations": [
+    "Existing retrieval set is regression, not blind",
+    "Retained episode labels are locally authored, not independently blinded"
+  ]
+}

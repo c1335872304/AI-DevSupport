@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import current_user
 from app.core.response import ok
-from app.db.models import ChatFeedback, GenerationState, User
+from app.db.models import ChatFeedback, DiagnosisSession, DiagnosisTurn, GenerationState, User
 from app.db.session import get_db
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -36,6 +36,16 @@ def serialize_generation(row: GenerationState) -> dict:
     }
 
 
+async def generation_payload(db, row):
+    if not row:
+        return None
+    payload = serialize_generation(row)
+    payload["diagnosisId"] = await db.scalar(select(DiagnosisTurn.diagnosis_id)
+        .join(DiagnosisSession, DiagnosisSession.diagnosis_id == DiagnosisTurn.diagnosis_id)
+        .where(DiagnosisTurn.generation_id == row.generation_id, DiagnosisSession.user_id == row.user_id))
+    return payload
+
+
 @router.get("/websocket-token")
 async def websocket_token(user: User = Depends(current_user)):
     # Kept for frontend stop-command compatibility. Current Python server binds stop to the authenticated socket.
@@ -47,7 +57,7 @@ async def generation(generation_id: str, user: User = Depends(current_user), db:
     row = await db.get(GenerationState, generation_id)
     if not row or row.user_id != str(user.id):
         return ok(None)
-    return ok(serialize_generation(row))
+    return ok(await generation_payload(db, row))
 
 
 @router.get("/active-generation")
@@ -57,7 +67,7 @@ async def active_generation(user: User = Depends(current_user), db: AsyncSession
         .where(GenerationState.user_id == str(user.id), GenerationState.status.in_(["PENDING", "STREAMING"]))
         .order_by(GenerationState.updated_at.desc())
     )
-    return ok(serialize_generation(row) if row else None)
+    return ok(await generation_payload(db, row))
 
 
 @router.post("/feedback")

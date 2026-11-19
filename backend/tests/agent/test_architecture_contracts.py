@@ -41,7 +41,7 @@ def test_target_graph_exposes_each_architecture_node_explicitly():
     source = (Path(__file__).resolve().parents[2] / "app/agent/graph/workflow.py").read_text(encoding="utf-8")
     nodes = set(re.findall(r'graph\.add_node\("([^"]+)"', source))
     assert nodes == {
-        "load_context", "extract_entities", "routing_policy", "clarify",
+        "load_context", "extract_entities", "routing_policy", "clarify", "historical_diagnosis",
         "target_specialist_dispatch", "target_execute_tools", "target_evidence_join",
         "target_handoff_decision", "target_create_handoff", "target_generate_response",
         "safety", "emit_final", "persist_trace",

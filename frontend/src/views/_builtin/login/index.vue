@@ -36,7 +36,6 @@ const moduleMap: Record<UnionKey.LoginModule, LoginModule> = {
 };
 
 const activeModule = computed(() => moduleMap[props.module || 'pwd-login']);
-const isRegisterModule = computed(() => (props.module || 'pwd-login') === 'register');
 
 const bgColor = computed(() => {
   const ratio = themeStore.darkMode ? 0.9 : 0;
@@ -48,7 +47,7 @@ const bgColor = computed(() => {
 <template>
   <div class="relative size-full flex-center" :style="{ backgroundColor: bgColor }">
     <NCard :bordered="false" class="relative z-4 w-auto card-wrapper">
-      <div :class="isRegisterModule ? 'login-panel login-panel--register' : 'login-panel'">
+      <div class="login-panel">
         <header class="flex-y-center justify-between">
           <span
             class="size-64px flex-center rounded-16px bg-primary text-18px text-white font-bold lt-sm:size-48px lt-sm:rounded-12px"
@@ -57,9 +56,6 @@ const bgColor = computed(() => {
           </span>
           <h3 class="flex-y-center gap-2 text-28px text-primary font-500 lt-sm:text-22px">
             <span>{{ $t('system.title') }}</span>
-            <span v-if="isRegisterModule" class="text-18px font-medium opacity-80 lt-sm:text-16px">
-              {{ $t(activeModule.label) }}
-            </span>
           </h3>
           <div class="i-flex-col">
             <ThemeSchemaSwitch
@@ -78,7 +74,7 @@ const bgColor = computed(() => {
           </div>
         </header>
         <main class="pt-24px">
-          <h3 v-if="!isRegisterModule" class="text-18px text-primary font-medium">{{ $t(activeModule.label) }}</h3>
+          <h3 class="text-18px text-primary font-medium">{{ $t(activeModule.label) }}</h3>
           <div class="pt-24px">
             <Transition :name="themeStore.page.animateMode" mode="out-in" appear>
               <component :is="activeModule.component" />
@@ -95,13 +91,8 @@ const bgColor = computed(() => {
   width: 400px;
 }
 
-.login-panel--register {
-  width: min(860px, calc(100vw - 72px));
-}
-
 @media (max-width: 640px) {
-  .login-panel,
-  .login-panel--register {
+  .login-panel {
     width: 300px;
   }
 }

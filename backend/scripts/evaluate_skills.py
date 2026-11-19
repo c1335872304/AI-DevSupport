@@ -172,7 +172,7 @@ async def main_async(args) -> None:
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Evaluate PaiSmart Skills: contract, routing, runtime traces, and optional live LLM planning")
+    parser = argparse.ArgumentParser(description="Evaluate API Assistant Skills: contract, routing, runtime traces, and optional live LLM planning")
     parser.add_argument("--skill", action="append", help="Skill name to evaluate; repeat to select multiple. Default: all skills.")
     parser.add_argument("--trace-jsonl", help="Optional JSONL exported from skill_trace events. Match by caseId/id or exact question.")
     parser.add_argument("--live", action="store_true", help="Run real LLM orchestration against deterministic fake tool results; requires LLM_API_KEY.")

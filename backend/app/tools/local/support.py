@@ -1,26 +1,17 @@
 from __future__ import annotations
 
 from app.support.handoff import create_handoff, get_user_handoff, serialize_handoff
+from app.support.handoff_contract import HANDOFF_CREATE, HANDOFF_INPUT_SCHEMA
 from app.tools.base import BaseTool, ToolExecutionContext
 
 
 class CreateSupportHandoffTool(BaseTool):
-    name = "create_support_handoff"
+    name = HANDOFF_CREATE
     description = (
         "Create a real human-support handoff ticket for the current authenticated customer. "
         "Use only when the customer requests human support or the AI cannot safely continue."
     )
-    input_schema = {
-        "type": "object",
-        "properties": {
-            "reason": {"type": "string", "minLength": 3, "maxLength": 2000},
-            "summary": {"type": "string", "minLength": 10, "maxLength": 6000},
-            "category": {"type": "string", "maxLength": 64, "default": "GENERAL"},
-            "priority": {"type": "string", "enum": ["LOW", "NORMAL", "HIGH", "URGENT"], "default": "NORMAL"},
-        },
-        "required": ["reason", "summary"],
-        "additionalProperties": False,
-    }
+    input_schema = HANDOFF_INPUT_SCHEMA
     parallel_safe = False
     read_only = False
     idempotent = False
@@ -34,6 +25,8 @@ class CreateSupportHandoffTool(BaseTool):
                 db,
                 context.user,
                 generation_id=context.generation_id,
+                diagnosis_lease=context.diagnosis_lease,
+                authorization=context.handoff_authorization,
                 reason=str(arguments.get("reason") or ""),
                 summary=str(arguments.get("summary") or ""),
                 category=str(arguments.get("category") or "GENERAL"),

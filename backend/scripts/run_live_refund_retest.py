@@ -54,6 +54,9 @@ async def main(args: argparse.Namespace) -> None:
         if not access_token:
             raise RuntimeError("Login succeeded without an access token")
         headers = {"Authorization": f"Bearer {access_token}"}
+        if args.new_conversation:
+            created = await client.post("/api/v1/users/conversations", headers=headers)
+            created.raise_for_status()
         usage_before = _data((await client.get("/api/v1/users/usage", headers=headers)).json())
 
         event_counts: Counter[str] = Counter()
@@ -120,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--api-url", default="http://127.0.0.1:8000")
     parser.add_argument("--question", default="退款政策是什么？")
     parser.add_argument("--timeout", type=float, default=180.0)
+    parser.add_argument("--new-conversation", action="store_true", help="create a fresh active conversation before sending the test question")
     parsed = parser.parse_args()
     if parsed.direct_user_id is None and not parsed.password:
         parser.error("--password is required unless --direct-user-id is supplied")
