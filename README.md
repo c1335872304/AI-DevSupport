@@ -1,51 +1,81 @@
 # API 助手
 
-面向 API 开发者的 AI 客服系统，把文档问答、调用故障诊断、账单核实与人工处理放在同一条会话中。用户可以询问接口接入和计费规则，也可以围绕一次失败请求继续补充信息；系统检索文档、调用获授权的业务工具，并用可追溯的证据回答，必要时创建工单交由客服或管理员处理。
+API 助手是面向 API 开发者的 AI 客服系统，用于回答接口接入问题、排查调用故障、查询账单，并将需要人工处理的问题转成工单。
 
-项目包含 Vue 客户端与管理台、FastAPI / WebSocket 服务，以及基于 LangGraph 的多 Agent 运行时。可用于本地演示、开发和进一步接入真实业务系统。
+例如，开发者可以询问“这个接口在不同地域如何计费”，也可以描述“一次请求返回了 429”，随后补充请求号、时间和错误信息。系统结合知识库与业务查询结果回答，用户可以打开引用查看原文，也可以在同一会话中继续排查。
 
-## 核心能力
+项目提供聊天界面、客服工作台和管理员后台，可用于搭建 API 产品的客服演示，或作为接入自有文档和业务系统的基础。
 
-| 能力 | 当前实现 |
+## 主要功能
+
+| 功能 | 使用方式 |
 | --- | --- |
-| 文档问答 | 上传与维护知识文档，检索片段并展示引用；保留产品、地域、时间与表格单位等适用条件，支持跨地域对比 |
-| API 故障诊断 | 围绕鉴权、限流等问题收集请求范围和工具证据，持久保存诊断进度，用户补充信息后继续核查 |
-| 账单核实 | 通过只读 Billing MCP 查询当前账号的套餐、用量和账单，区分文档规则与实际业务记录 |
-| 人工交接与审批 | 创建可追溯工单；客服处理状态与结论，管理员审批合成退款或关闭原工单，中断后按原决定恢复 |
-| 会话与流式交互 | 多会话历史、流式回答、停止与重连；显式绑定会话，按生成任务隔离事件，支持跨副本续流和取消 |
-| 管理与审计 | 用户与角色管理、知识构建状态、用量记录、工单变更与审批审计；供应商未知消耗支持凭收据逐笔对账 |
+| 知识库问答 | 导入产品文档，询问接入方法、接口限制和计费规则；回答附带引用，支持查看原文及比较不同地域的规则 |
+| 调用故障诊断 | 提供报错和请求信息，排查鉴权、限流等问题；补充信息后可继续原有诊断 |
+| 套餐与账单查询 | 查询当前账号的套餐、用量和账单，将文档中的计费规则与账号实际记录结合说明 |
+| 工单与人工处理 | 将问题转为工单，由客服记录处理进度和结论；管理员可审批演示退款或关闭工单 |
+| 会话管理 | 创建和切换会话、查看历史记录、接收流式回答、停止生成，以及断线后重连 |
+| 管理后台 | 管理用户权限和知识文档，查看文档处理状态、调用用量、工单和审批记录 |
 
-典型流程是：**用户提问 → 确定业务范围 → 查询文档或业务工具 → 汇总证据并答复 → 继续诊断或转入工单与审批**。只有持久化的业务回执才能支持“已建单”“已完成”等结果说明。
+系统提供三类角色：普通用户使用聊天与知识库功能，客服处理工单，管理员负责用户管理、审批和用量对账。
+
+## 使用范围
+
+项目自带演示业务数据和合成支付沙箱，便于体验诊断、账单查询及退款审批流程。演示退款不会产生真实资金交易；面向实际客户使用时，需要接入对应的业务数据与支付渠道。
+
+知识库支持文本以及文字 PDF / DOCX 的解析，后两种格式需要配置 Docling 解析环境。扫描 OCR 和截图理解尚未提供。
 
 ## 系统架构
 
 ```mermaid
 flowchart LR
     UI[Vue 聊天与管理台] <--> API[FastAPI REST / WebSocket]
-    API --> Runtime[上下文与路由 / LangGraph]
-    Runtime --> Agents[API 诊断 / Knowledge / Billing]
+    API --> Runtime[会话上下文与任务编排]
+    Runtime --> Agents[诊断 / 知识问答 / 账单 Agent]
     Agents --> Knowledge[知识检索与引用]
-    Agents --> Tools[业务工具 / 只读 MCP]
+    Agents --> Tools[业务查询工具]
     Runtime --> Support[工单 / 人工审批]
-    API --> SQL[(SQL 持久状态与账本)]
+    API --> SQL[(数据库)]
     Runtime --> SQL
     Support --> SQL
-    Runtime <--> Redis[(Redis 事件与取消)]
+    Runtime <--> Redis[(Redis)]
     Upload[文档修订] --> Worker[任务与构建 Worker]
     Worker --> Knowledge
 ```
 
-- **前端**：Vue 3、TypeScript、Naive UI，提供聊天、引用预览、知识库和管理页面。
-- **后端**：Python、FastAPI、SQLAlchemy、Alembic、LangGraph，承载认证、业务流程、任务恢复和审计。
-- **知识链路**：解析、切分、Embedding、检索与引用校验；SQL 保存文档修订和活动构建，构建失败时保留旧活动版本。
-- **运行依赖**：最小开发模式使用 SQLite、本地存储、后台任务和数据库检索；完整 Compose 使用 MySQL、Redis、MinIO、Elasticsearch、Kafka 与独立 Worker。
-- **模型接入**：LLM 与 Embedding 分别配置。当前验证使用 DeepSeek 与千问 `text-embedding-v4`；文档和查询的编码模型及维度必须一致。
+后端通过 LangGraph 编排诊断、知识问答和账单三类 Agent。Agent 分别查询文档或业务数据，再汇总成面向用户的回答。账单查询通过 MCP（模型上下文协议）连接独立的只读服务。
 
-生成状态、额度预留与结算、诊断、工单及审批检查点保存在 SQL。Redis 提供跨副本实时事件与取消，故障时通过 SQL 快照恢复。审批执行使用持久队列、租约与重试，恢复时保留原审批人和决定。
+| 部分 | 技术与职责 |
+| --- | --- |
+| 前端 | Vue 3、TypeScript、Naive UI；聊天、引用预览、知识库和管理页面 |
+| 应用服务 | Python、FastAPI、WebSocket；认证、接口和流式交互 |
+| 业务与数据 | SQLAlchemy、Alembic、LangGraph；会话、诊断、审批、用量及数据库迁移 |
+| 知识处理 | 文档解析、切分、Embedding（向量编码）、检索与引用；独立 Worker 执行后台构建 |
+| 完整运行环境 | MySQL、Redis、MinIO、Elasticsearch、Kafka；分别用于业务数据、缓存与实时事件、文件存储、检索及任务通知 |
+
+会话、诊断和审批进度保存在数据库中，支持中断恢复；Redis 共享多个服务实例之间的实时事件。知识文档更新后由后台构建新版本，构建失败时仍可查询原有版本。
 
 ## 快速开始
 
-### 完整 Docker 演示
+先选择运行方式：Docker 启动完整演示环境；本机开发模式使用 SQLite 和本地文件存储，便于修改代码。两种方式都需要配置语言模型与 Embedding 服务。
+
+### 模型配置
+
+在 `backend/.env` 中配置两个服务：语言模型负责理解问题和生成回答，Embedding 将文档与问题编码为检索向量。例如：
+
+```dotenv
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_API_KEY=<your-llm-key>
+LLM_MODEL=<provider-model>
+EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+EMBEDDING_API_KEY=<your-embedding-key>
+EMBEDDING_MODEL=text-embedding-v4
+EMBEDDING_DIMENSION=256
+```
+
+将占位符替换为服务商提供的密钥和模型名称。文档入库与问题检索须使用相同的 Embedding 模型和维度；调用模型服务会产生对应供应商的用量。
+
+### Docker 启动
 
 需要 Docker Engine 与 Compose v2。从仓库根目录执行，首次创建配置时复制模板；已有 `.env` 则保留并补齐所需项。
 
@@ -61,7 +91,7 @@ docker compose ps -a
 
 Linux / macOS 首次复制配置使用 `cp -n backend/.env.example backend/.env`，直连编码服务时使用 `export DOCKER_EMBEDDING_HTTP_PROXY=`；其余 Docker 命令相同。有代理需求时填写容器可达的代理地址。
 
-编排会执行数据库迁移与演示初始化，并启动前端、API、Worker、Billing MCP 及基础设施。首次构建和知识编码需要等待；真实问答及文档编码会产生供应商用量。
+编排会执行数据库迁移与演示初始化，并启动前端、API、Worker、Billing MCP 及基础设施。首次启动需要下载镜像、构建服务并初始化数据，可通过 `docker compose logs --tail 100 api worker` 查看运行日志。
 
 | 入口 | 默认地址 |
 | --- | --- |
@@ -73,7 +103,7 @@ Linux / macOS 首次复制配置使用 `cp -n backend/.env.example backend/.env`
 
 ### 本机开发
 
-建议使用 **Python 3.12、Node 20、pnpm 9.15.5**，与 CI 保持一致。在仓库根目录打开终端，准备后端：
+使用 **Python 3.12、Node 20、pnpm 9.15.5**。在仓库根目录打开终端，准备后端：
 
 ```powershell
 cd backend
@@ -94,25 +124,13 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Linux / macOS 使用 `source .venv/bin/activate` 激活环境，首次复制配置使用 `cp -n .env.example .env`。最小模式无需启动完整基础设施；实际问答、知识编码和检索仍需有效的模型配置。纯离线开发可运行测试夹具。
+Linux / macOS 使用 `source .venv/bin/activate` 激活环境，首次复制配置使用 `cp -n .env.example .env`。后端默认在 `8000` 端口运行，前端地址见开发服务器启动输出。
 
-关键模型配置如下，密钥放在本机环境文件或部署秘密中：
+启动后登录界面，进入知识库导入文档，等待文档处理完成，再创建会话提问。处理文档和检索问题需要可用的 Embedding 服务；生成回答需要可用的语言模型服务。PDF / DOCX 的解析环境配置见运维手册。
 
-```dotenv
-LLM_BASE_URL=https://api.deepseek.com/v1
-LLM_API_KEY=<your-llm-key>
-LLM_MODEL=<provider-model>
-EMBEDDING_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-EMBEDDING_API_KEY=<your-embedding-key>
-EMBEDDING_MODEL=text-embedding-v4
-EMBEDDING_DIMENSION=256
-```
+## 测试与检查
 
-文字 PDF / DOCX 解析需要独立 Docling 环境与模型缓存，接入这些格式前按运维手册准备。
-
-## 开发验证
-
-测试覆盖会话隔离、生成与结算、知识构建、诊断恢复、审批、权限和用量对账，并包含 HTTP 与浏览器业务流程验证。
+测试覆盖会话隔离、生成与结算、知识构建、诊断恢复、审批、权限和用量对账，并包含 HTTP 接口和浏览器流程测试。
 
 常用本地检查分别在对应目录执行：
 
@@ -129,11 +147,7 @@ pnpm test:stream
 pnpm build
 ```
 
-CI 自动执行离线检查、前端与浏览器验收；隔离集成连接临时 MySQL、Elasticsearch、Redis 和 Billing MCP。真实模型评测通过显式命令运行，日常 CI 使用离线夹具。
-
-## 功能边界
-
-退款使用合成支付沙箱，API 细分诊断使用独立 Demo 业务数据。真实支付渠道需要接入业务系统；扫描 OCR 和截图理解尚未提供。部署时需配置模型、存储与业务依赖，并执行数据库迁移。
+CI 自动执行代码检查、前端构建和浏览器测试，并使用临时 MySQL、Elasticsearch、Redis 和 Billing MCP 运行集成测试。日常 CI 使用模拟模型响应，无需供应商密钥；真实模型评测单独运行。
 
 ## 代码与文档
 
@@ -145,9 +159,9 @@ backend/tests/            单元、回归与集成测试
 backend/eval/             评测题集与历史题目候选
 backend/vendor_knowledge/ 官方知识快照及来源清单
 deploy/                  隔离测试与部署编排
-docs/                    日常手册和必要验收记录
+docs/                    开发、架构、运维等项目文档
 ```
 
-需要深入某一部分时再查阅对应手册：[开发](docs/DEVELOPMENT.md)、[架构](docs/ARCHITECTURE.md)、[运维](docs/OPERATIONS.md)、[测试](docs/TESTING.md)、[发布](docs/RELEASING.md)、[维护台账](docs/MAINTENANCE.md)。完整目录见[文档索引](docs/README.md)，详细测试范围见[候选验收记录](docs/archive/reports/RELEASE_CANDIDATE_ACCEPTANCE_2026-11-19.md)。
+需要深入某一部分时再查阅对应手册：[开发](docs/DEVELOPMENT.md)、[架构](docs/ARCHITECTURE.md)、[运维](docs/OPERATIONS.md)、[测试](docs/TESTING.md)、[发布](docs/RELEASING.md)、[维护台账](docs/MAINTENANCE.md)。完整目录见[文档索引](docs/README.md)。
 
-内部包、数据库与 Compose 中的 `PaiSmart` 为保留的技术标识。
+部分包名、数据库名和容器名称沿用 `PaiSmart`，均属于本项目的内部命名。
