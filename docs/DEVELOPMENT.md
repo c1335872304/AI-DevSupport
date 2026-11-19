@@ -87,7 +87,7 @@ git push -u origin <branch>
 gh pr checks 1 --repo c1335872304/AI-DevSupport --watch
 ```
 
-多行 PR 说明写入临时文件，通过 `gh pr edit --body-file <file>` 提交。推送后按提交 SHA 核对两轮 Fast CI 和隔离集成，具体覆盖见[测试](TESTING.md#ci)。
+多行 PR 说明写入临时文件，通过 `gh pr edit --body-file <file>` 提交。推送后按提交 SHA 核对 PR 的 Fast CI 和隔离集成，具体覆盖见[测试](TESTING.md#ci)。
 
 `.gitattributes` 对冻结评测和知识快照使用 `-text`。发生哈希失败时，从可信清单对应的 Git blob 恢复原字节，再验证清单。日志、数据库、密钥、依赖和模型缓存按现有忽略规则留在各自环境中。
 
